@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Buffers\" />
+    <Folder Include="Descriptors\Custom\" />
+    <Folder Include="Descriptors\Dvb\" />
+    <Folder Include="Descriptors\ExtendedDvb\" />
+    <Folder Include="DictionariesData\" />
+    <Folder Include="Enums\" />
+    <Folder Include="Service\" />
+    <Folder Include="Tables\DvbTables\" />
+    <Folder Include="Tables\DvbTableFactory\" />
+    <Folder Include="TransportStream\" />
+  </ItemGroup>
+
+</Project>
