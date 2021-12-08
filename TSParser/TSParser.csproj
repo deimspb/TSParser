@@ -16,7 +16,7 @@
     <Folder Include="Service\" />
     <Folder Include="Tables\DvbTables\" />
     <Folder Include="Tables\DvbTableFactory\" />
-    <Folder Include="TransportStream\" />
+    <Folder Include="TransportStream\NAL\" />
   </ItemGroup>
 
 </Project>
