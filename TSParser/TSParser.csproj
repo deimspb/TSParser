@@ -12,8 +12,6 @@
     <Folder Include="Descriptors\Custom\" />
     <Folder Include="Descriptors\Dvb\" />
     <Folder Include="Descriptors\ExtendedDvb\" />
-    <Folder Include="DictionariesData\" />
-    <Folder Include="Enums\" />
     <Folder Include="Tables\DvbTables\" />
     <Folder Include="Tables\DvbTableFactory\" />
     <Folder Include="TransportStream\NAL\" />

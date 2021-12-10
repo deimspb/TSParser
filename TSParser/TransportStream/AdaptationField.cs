@@ -1,42 +1,37 @@
-﻿using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Buffers.Binary;
 
 namespace TSParser.TransportStream
 {
     public readonly struct AdaptationField
     {
-        public byte AdaptationFieldLength  { get; } = default;
-        public bool DiscontinuityIndicator  { get; } = default;
-        public bool RandomAccessIndicator  { get; } = default;
-        public bool ElementaryStreamPriorityIndicator  { get; } = default;
-        public bool PCRFlag  { get; } = default;
-        public bool OPCRFlag  { get; } = default;
-        public bool SplicingPointFlag  { get; } = default;
-        public bool TransportPrivateDataFlag  { get; } = default;
-        public bool AdaptationFieldExtensionFlag  { get; } = default;
-        public ulong ProgramClockReferenceBase  { get; } = default;
-        public ushort ProgramClockReferenceExtension  { get; } = default;
-        public ulong OriginalProgramClockReferenceBase  { get; } = default;
-        public ushort OriginalProgramClockReferenceExtension  { get; } = default;
-        public byte SpliceCountdown  { get; } = default;
-        public byte TransportPrivateDataLength  { get; } = default;
+        public byte AdaptationFieldLength { get; } = default;
+        public bool DiscontinuityIndicator { get; } = default;
+        public bool RandomAccessIndicator { get; } = default;
+        public bool ElementaryStreamPriorityIndicator { get; } = default;
+        public bool PCRFlag { get; } = default;
+        public bool OPCRFlag { get; } = default;
+        public bool SplicingPointFlag { get; } = default;
+        public bool TransportPrivateDataFlag { get; } = default;
+        public bool AdaptationFieldExtensionFlag { get; } = default;
+        public ulong ProgramClockReferenceBase { get; } = default;
+        public ushort ProgramClockReferenceExtension { get; } = default;
+        public ulong OriginalProgramClockReferenceBase { get; } = default;
+        public ushort OriginalProgramClockReferenceExtension { get; } = default;
+        public byte SpliceCountdown { get; } = default;
+        public byte TransportPrivateDataLength { get; } = default;
         public byte[] PrivateDataByte { get; } = Array.Empty<byte>();
-        public byte AdaptationFieldExtensionLength  { get; } = default;
-        public bool LtwFlag  { get; } = default;
-        public bool PiecewiseRateFlag  { get; } = default;
-        public bool SeamlessSpliceFlag  { get; } = default;
-        public bool LtwValidFlag  { get; } = default;
-        public ushort LtwOffset  { get; } = default;
-        public uint PiecewiseRate  { get; } = default;
-        public byte SpliceType  { get; } = default;
-        public ulong DTSNext_AU  { get; } = default;
-        public ulong PcrValue  { get; } = default;
+        public byte AdaptationFieldExtensionLength { get; } = default;
+        public bool LtwFlag { get; } = default;
+        public bool PiecewiseRateFlag { get; } = default;
+        public bool SeamlessSpliceFlag { get; } = default;
+        public bool LtwValidFlag { get; } = default;
+        public ushort LtwOffset { get; } = default;
+        public uint PiecewiseRate { get; } = default;
+        public byte SpliceType { get; } = default;
+        public ulong DTSNext_AU { get; } = default;
+        public ulong PcrValue { get; } = default;
         public TimeSpan PcrTime => TsHelpers.GetPcrTimeSpan(PcrValue);
-        public ulong OPcrValue  { get; } = default;
+        public ulong OPcrValue { get; } = default;
         public TimeSpan OPcrTime => TsHelpers.GetPcrTimeSpan(OPcrValue);
 
         public AdaptationField(ReadOnlySpan<byte> bytes, out int pointer)
