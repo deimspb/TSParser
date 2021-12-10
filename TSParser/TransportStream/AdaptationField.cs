@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,34 +9,118 @@ namespace TSParser.TransportStream
 {
     public readonly struct AdaptationField
     {
-        public byte AdaptationFieldLength { get; init; }
-        public bool DiscontinuityIndicator { get; init; }
-        public bool RandomAccessIndicator { get; init; }
-        public bool ElementaryStreamPriorityIndicator { get; init; }
-        public bool PCRFlag { get; init; }
-        public bool OPCRFlag { get; init; }
-        public bool SplicingPointFlag { get; init; }
-        public bool TransportPrivateDataFlag { get; init; }
-        public bool AdaptationFieldExtensionFlag { get; init; }
-        public ulong ProgramClockReferenceBase { get; init; }
-        public ushort ProgramClockReferenceExtension { get; init; }
-        public ulong OriginalProgramClockReferenceBase { get; init; }
-        public ushort OriginalProgramClockReferenceExtension { get; init; }
-        public byte SpliceCountdown { get; init; }
-        public byte TransportPrivateDataLength { get; init; }
-        public byte[] PrivateDataByte { get; init; }
-        public byte AdaptationFieldExtensionLength { get; init; }
-        public bool LtwFlag { get; init; }
-        public bool PiecewiseRateFlag { get; init; }
-        public bool SeamlessSpliceFlag { get; init; }
-        public bool LtwValidFlag { get; init; }
-        public ushort LtwOffset { get; init; }
-        public uint PiecewiseRate { get; init; }
-        public byte SpliceType { get; init; }
-        public ulong DTSNext_AU { get; init; }
-        public ulong PcrValue { get; init; }
+        public byte AdaptationFieldLength  { get; } = default;
+        public bool DiscontinuityIndicator  { get; } = default;
+        public bool RandomAccessIndicator  { get; } = default;
+        public bool ElementaryStreamPriorityIndicator  { get; } = default;
+        public bool PCRFlag  { get; } = default;
+        public bool OPCRFlag  { get; } = default;
+        public bool SplicingPointFlag  { get; } = default;
+        public bool TransportPrivateDataFlag  { get; } = default;
+        public bool AdaptationFieldExtensionFlag  { get; } = default;
+        public ulong ProgramClockReferenceBase  { get; } = default;
+        public ushort ProgramClockReferenceExtension  { get; } = default;
+        public ulong OriginalProgramClockReferenceBase  { get; } = default;
+        public ushort OriginalProgramClockReferenceExtension  { get; } = default;
+        public byte SpliceCountdown  { get; } = default;
+        public byte TransportPrivateDataLength  { get; } = default;
+        public byte[] PrivateDataByte { get; } = Array.Empty<byte>();
+        public byte AdaptationFieldExtensionLength  { get; } = default;
+        public bool LtwFlag  { get; } = default;
+        public bool PiecewiseRateFlag  { get; } = default;
+        public bool SeamlessSpliceFlag  { get; } = default;
+        public bool LtwValidFlag  { get; } = default;
+        public ushort LtwOffset  { get; } = default;
+        public uint PiecewiseRate  { get; } = default;
+        public byte SpliceType  { get; } = default;
+        public ulong DTSNext_AU  { get; } = default;
+        public ulong PcrValue  { get; } = default;
         public TimeSpan PcrTime => TsHelpers.GetPcrTimeSpan(PcrValue);
-        public ulong OPcrValue { get; init; }
+        public ulong OPcrValue  { get; } = default;
         public TimeSpan OPcrTime => TsHelpers.GetPcrTimeSpan(OPcrValue);
+
+        public AdaptationField(ReadOnlySpan<byte> bytes, out int pointer)
+        {
+            pointer = 0;
+            AdaptationFieldLength = bytes[pointer++];
+            if (AdaptationFieldLength > 0)
+            {
+                DiscontinuityIndicator = (bytes[pointer] & 0x80) != 0;
+                RandomAccessIndicator = (bytes[pointer] & 0x40) != 0;
+                ElementaryStreamPriorityIndicator = (bytes[pointer] & 0x20) != 0;
+                PCRFlag = (bytes[pointer] & 0x10) != 0;
+                OPCRFlag = (bytes[pointer] & 0x8) != 0;
+                SplicingPointFlag = (bytes[pointer] & 0x4) != 0;
+                TransportPrivateDataFlag = (bytes[pointer] & 0x2) != 0;
+                AdaptationFieldExtensionFlag = (bytes[pointer++] & 0x1) != 0;
+
+                if (PCRFlag)
+                {
+                    ProgramClockReferenceBase = TsHelpers.GetPcrBase(bytes.Slice(pointer, 6));
+                    // reserved 6 bits
+                    pointer += 4;
+                    ProgramClockReferenceExtension = TsHelpers.GetPcrExtension(bytes.Slice(pointer, 2));
+                    pointer += 2;
+                    PcrValue = ProgramClockReferenceBase * 300 + ProgramClockReferenceExtension;
+                }
+
+                if (OPCRFlag)
+                {
+                    OriginalProgramClockReferenceBase = TsHelpers.GetPcrBase(bytes.Slice(pointer, 6));
+                    // reserved 6 bits
+                    pointer += 4;
+                    OriginalProgramClockReferenceExtension = TsHelpers.GetPcrExtension(bytes.Slice(pointer, 2));
+                    pointer += 2;
+                    OPcrValue = OriginalProgramClockReferenceBase * 300 + OriginalProgramClockReferenceExtension;
+                }
+
+                if (SplicingPointFlag)
+                {
+                    SpliceCountdown = bytes[pointer++];
+                }
+
+                if (TransportPrivateDataFlag)
+                {
+                    TransportPrivateDataLength = bytes[pointer++];
+                    PrivateDataByte = new byte[TransportPrivateDataLength];
+                    for (int i = 0; i < TransportPrivateDataLength; i++)
+                    {
+                        PrivateDataByte[i] = bytes[pointer++]; //TODO: refactor this
+                    }
+
+                }
+
+                if (AdaptationFieldExtensionFlag)
+                {
+                    AdaptationFieldExtensionLength = bytes[pointer++];
+                    LtwFlag = (bytes[pointer] & 0x80) != 0;
+                    PiecewiseRateFlag = (bytes[pointer] & 0x40) != 0;
+                    SeamlessSpliceFlag = (bytes[pointer++] & 0x20) != 0;
+                    //reserved 5 bits
+                    if (LtwFlag)
+                    {
+                        LtwValidFlag = (bytes[pointer] & 0x80) != 0;
+                        LtwOffset = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x7FFF);
+                        pointer += 2;
+                    }
+
+                    if (PiecewiseRateFlag)
+                    {
+                        //reserved 2 bits
+                        PiecewiseRate = (uint)((BinaryPrimitives.ReadUInt32BigEndian(bytes[pointer..]) & 0x3FFF00) >> 8);//TODO: check this
+                        pointer += 3;
+                    }
+
+                    if (SeamlessSpliceFlag)
+                    {
+                        SpliceType = (byte)((bytes[pointer] & 0xF0) >> 4);
+                        DTSNext_AU = TsHelpers.GetPtsDts(bytes.Slice(pointer, 5));
+                        pointer += 5;
+                    }
+                }
+            }
+
+            pointer = AdaptationFieldLength + 1;
+        }
     }
 }

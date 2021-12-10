@@ -83,7 +83,7 @@ namespace TSParser.TransportStream
                 }
                 else
                 {
-                    m_data = new byte[0];
+                    m_data = Array.Empty<byte>(); 
                 }
 
             }
