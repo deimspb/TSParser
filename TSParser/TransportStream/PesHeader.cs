@@ -15,6 +15,7 @@
 using System.Buffers.Binary;
 using TSParser.DictionariesData;
 using TSParser.Enums;
+using TSParser.Service;
 
 namespace TSParser.TransportStream
 {
@@ -57,9 +58,9 @@ namespace TSParser.TransportStream
         public readonly bool TrefExtensionFlag { get; } = default;
         public readonly byte PESHeaderDataLength { get; } = default;
         public readonly ulong PTSHex { get; } = default;
-        public readonly TimeSpan PTSTime => TsHelpers.GetPtsDtsValue(PTSHex);
+        public readonly TimeSpan PTSTime => Utils.GetPtsDtsValue(PTSHex);
         public readonly ulong DTSHex { get; } = default;
-        public readonly TimeSpan DTSTime => TsHelpers.GetPtsDtsValue(DTSHex);
+        public readonly TimeSpan DTSTime => Utils.GetPtsDtsValue(DTSHex);
         public readonly uint ESRate { get; } = default;
 
         public PesHeader(ReadOnlySpan<byte> bytes, out int pointer)
@@ -99,17 +100,17 @@ namespace TSParser.TransportStream
                 if (PTSDTSFlags == 0b10)
                 {
                     //0010 
-                    PTSHex = TsHelpers.GetPtsDts(bytes.Slice(pointer, 5));
+                    PTSHex = Utils.GetPtsDts(bytes.Slice(pointer, 5));
                     pointer += 5;
                 }
 
                 if (PTSDTSFlags == 0b11)
                 {
                     //0010
-                    PTSHex = TsHelpers.GetPtsDts(bytes.Slice(pointer, 5));
+                    PTSHex = Utils.GetPtsDts(bytes.Slice(pointer, 5));
                     pointer += 5;
                     //0001
-                    DTSHex = TsHelpers.GetPtsDts(bytes.Slice(pointer, 5));
+                    DTSHex = Utils.GetPtsDts(bytes.Slice(pointer, 5));
                     pointer += 5;
                 }
 
@@ -122,7 +123,7 @@ namespace TSParser.TransportStream
                 if (ESRateFlag)
                 {
                     //TODO: check this
-                    ESRate = TsHelpers.GetEsRate(bytes.Slice(pointer, 3));
+                    ESRate = Utils.GetEsRate(bytes.Slice(pointer, 3));
                     pointer += 3;
                 }
 

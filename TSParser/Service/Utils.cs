@@ -1,4 +1,4 @@
-﻿// Copyright 2021 Eldar Nizamutdinov 
+﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
 //  
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace TSParser.TransportStream
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace TSParser.Service
 {
-    internal static class TsHelpers
+    internal class Utils
     {
         internal static ulong GetPcrBase(ReadOnlySpan<byte> bytes)
         {

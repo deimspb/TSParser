@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
+using TSParser.Service;
 
 namespace TSParser.TransportStream
 {
@@ -44,9 +45,9 @@ namespace TSParser.TransportStream
         public byte SpliceType { get; } = default;
         public ulong DTSNext_AU { get; } = default;
         public ulong PcrValue { get; } = default;
-        public TimeSpan PcrTime => TsHelpers.GetPcrTimeSpan(PcrValue);
+        public TimeSpan PcrTime => Utils.GetPcrTimeSpan(PcrValue);
         public ulong OPcrValue { get; } = default;
-        public TimeSpan OPcrTime => TsHelpers.GetPcrTimeSpan(OPcrValue);
+        public TimeSpan OPcrTime => Utils.GetPcrTimeSpan(OPcrValue);
 
         public AdaptationField(ReadOnlySpan<byte> bytes, out int pointer)
         {
@@ -65,20 +66,20 @@ namespace TSParser.TransportStream
 
                 if (PCRFlag)
                 {
-                    ProgramClockReferenceBase = TsHelpers.GetPcrBase(bytes.Slice(pointer, 6));
+                    ProgramClockReferenceBase = Utils.GetPcrBase(bytes.Slice(pointer, 6));
                     // reserved 6 bits
                     pointer += 4;
-                    ProgramClockReferenceExtension = TsHelpers.GetPcrExtension(bytes.Slice(pointer, 2));
+                    ProgramClockReferenceExtension = Utils.GetPcrExtension(bytes.Slice(pointer, 2));
                     pointer += 2;
                     PcrValue = ProgramClockReferenceBase * 300 + ProgramClockReferenceExtension;
                 }
 
                 if (OPCRFlag)
                 {
-                    OriginalProgramClockReferenceBase = TsHelpers.GetPcrBase(bytes.Slice(pointer, 6));
+                    OriginalProgramClockReferenceBase = Utils.GetPcrBase(bytes.Slice(pointer, 6));
                     // reserved 6 bits
                     pointer += 4;
-                    OriginalProgramClockReferenceExtension = TsHelpers.GetPcrExtension(bytes.Slice(pointer, 2));
+                    OriginalProgramClockReferenceExtension = Utils.GetPcrExtension(bytes.Slice(pointer, 2));
                     pointer += 2;
                     OPcrValue = OriginalProgramClockReferenceBase * 300 + OriginalProgramClockReferenceExtension;
                 }
@@ -123,7 +124,7 @@ namespace TSParser.TransportStream
                     if (SeamlessSpliceFlag)
                     {
                         SpliceType = (byte)((bytes[pointer] & 0xF0) >> 4);
-                        DTSNext_AU = TsHelpers.GetPtsDts(bytes.Slice(pointer, 5));
+                        DTSNext_AU = Utils.GetPtsDts(bytes.Slice(pointer, 5));
                         pointer += 5;
                     }
                 }

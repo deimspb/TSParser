@@ -1,4 +1,4 @@
-﻿// Copyright 2021 Eldar Nizamutdinov 
+﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
 //  
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
@@ -34,8 +34,7 @@ namespace TSParser.TransportStream
         public readonly PesHeader Pes_header { get; } = default;
         public readonly bool HasPesHeader { get; } = default;
         public readonly AdaptationField Adaptation_field { get; } = default;
-        public ReadOnlySpan<byte> Payload
-        {
+        public ReadOnlySpan<byte> Payload {
             get { return m_data.AsSpan(); }
         }
         public readonly ulong PacketNumber { get; } = default;
@@ -97,7 +96,7 @@ namespace TSParser.TransportStream
                 }
                 else
                 {
-                    m_data = Array.Empty<byte>(); 
+                    m_data = Array.Empty<byte>();
                 }
 
             }

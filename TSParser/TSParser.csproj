@@ -12,9 +12,9 @@
     <Folder Include="Descriptors\Custom\" />
     <Folder Include="Descriptors\Dvb\" />
     <Folder Include="Descriptors\ExtendedDvb\" />
-    <Folder Include="Tables\DvbTables\" />
     <Folder Include="Tables\DvbTableFactory\" />
     <Folder Include="TransportStream\NAL\" />
+    <Folder Include="Comparer\" />
   </ItemGroup>
 
 </Project>
