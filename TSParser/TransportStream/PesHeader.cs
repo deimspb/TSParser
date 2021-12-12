@@ -11,7 +11,7 @@ namespace TSParser.TransportStream
 {
     public readonly struct PesHeader
     {
-        public readonly int PACKET_START_CODE_PREFIX = 0x000001;
+        public const int PACKET_START_CODE_PREFIX = 0x000001;
         public readonly byte StreamId { get; } = default;
         public readonly string StreamIdName => Dictionaries.GetStreamIdName(StreamId);
         public readonly ushort PESPacketLength { get; } = default;

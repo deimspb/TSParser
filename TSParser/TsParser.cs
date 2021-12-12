@@ -8,5 +8,14 @@ namespace TSParser
 {
     public class TsParser
     {
+        #region Private fields
+
+        #endregion
+        #region Public methods
+
+        #endregion
+        #region Private methods
+
+        #endregion
     }
 }

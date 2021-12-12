@@ -7,7 +7,7 @@ namespace TSParser.TransportStream
     {
         private readonly byte[] m_data;
 
-        public readonly byte SYNC_BYTE = 0x47;
+        public const byte SYNC_BYTE = 0x47;
         public readonly bool TransportErrorIndicator { get; }
         public readonly bool PayloadUnitStartIndicator { get; } = default;
         public readonly bool TransportPriority { get; } = default;
