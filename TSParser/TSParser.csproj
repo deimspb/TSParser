@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <Folder Include="Buffers\" />
+    <Folder Include="Descriptors\Custom\" />
     <Folder Include="Descriptors\Dvb\" />
     <Folder Include="Descriptors\ExtendedDvb\" />
     <Folder Include="Tables\DvbTables\" />
