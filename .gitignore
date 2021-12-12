@@ -398,5 +398,5 @@ FodyWeavers.xsd
 *.sln.iml
 
 #spesific
-TSParser/Descriptors/Custom
+TSParser/Descriptors/Custom/
 .editorconfig
