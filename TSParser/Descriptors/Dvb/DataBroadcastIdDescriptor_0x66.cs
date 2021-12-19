@@ -13,27 +13,23 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
-using TSParser.Service;
 
-namespace TSParser.Tables.DvbTables
+namespace TSParser.Descriptors.Dvb
 {
-    public record TDT : Table
+    public record DataBroadcastIdDescriptor_0x66 : Descriptor
     {
-        public DateTime UtcDateTime { get; init; }
-        public TDT(ReadOnlySpan<byte> bytes)
+        public ushort DataBroadcastId { get; }
+        public byte[] IdSelectorByte { get; }
+        public DataBroadcastIdDescriptor_0x66(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            TableId = bytes[0];
-            SectionSyntaxIndicator = (bytes[1] & 0x80) != 0;
-            SectionLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(1, 2)) & 0x0FFF);
-            UtcDateTime = Utils.GetDateTimeFromMJD_UTC(bytes.Slice(3, 5));
-            TableBytes = bytes;
+            DataBroadcastId = BinaryPrimitives.ReadUInt16BigEndian(bytes[2..]);
+            IdSelectorByte = new byte[DescriptorLength - 2];
+            bytes.Slice(4, DescriptorLength - 2).CopyTo(IdSelectorByte);
         }
 
         public override string ToString()
         {
-            var tdt = $"-=TDT=-\n";
-            tdt += $"   UTC date time: {UtcDateTime}";
-            return tdt;
+            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, data broadcast id: {DataBroadcastId}";
         }
     }
 }

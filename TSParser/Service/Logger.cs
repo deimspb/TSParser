@@ -28,11 +28,11 @@ namespace TSParser.Service
     public class Logger
     {
         public delegate void LogHandler(string msg);
-        public static event LogHandler OnLogMessage;
+        public static event LogHandler OnLogMessage = null!;
 
         public static ObservableCollection<string> Log = new ObservableCollection<string>();
 
-        public static void Send(LogStatus status, string additionalInfo = null, Exception ex = null)
+        public static void Send(LogStatus status, string? additionalInfo = null, Exception? ex = null)
         {
             try
             {
@@ -52,13 +52,13 @@ namespace TSParser.Service
                         break;
                     case LogStatus.Exception:
                         {
-                            string fulltext = $"[{DateTime.Now:dd.MM.yyy HH:mm:ss.fff}] [EXCEPTION] in [{additionalInfo}] [{ex?.TargetSite.DeclaringType}] [{ex?.TargetSite.Name}] [{ex?.Message}] \r\n";
+                            string fulltext = $"[{DateTime.Now:dd.MM.yyy HH:mm:ss.fff}] [EXCEPTION] in [{additionalInfo}] [{ex?.TargetSite?.DeclaringType}] [{ex?.TargetSite?.Name}] [{ex?.Message}] \r\n";
                             PrintLog(fulltext);
                         }
                         break;
                     case LogStatus.Fatal:
                         {
-                            string fulltext = $"[{DateTime.Now:dd.MM.yyy HH:mm:ss.fff}] [FATAL] in [{additionalInfo}] [{ex?.TargetSite.DeclaringType}] [{ex?.TargetSite.Name}] [{ex?.Message}] \r\n";
+                            string fulltext = $"[{DateTime.Now:dd.MM.yyy HH:mm:ss.fff}] [FATAL] in [{additionalInfo}] [{ex?.TargetSite?.DeclaringType}] [{ex?.TargetSite?.Name}] [{ex?.Message}] \r\n";
                             PrintLog(fulltext);
                         }
                         break;

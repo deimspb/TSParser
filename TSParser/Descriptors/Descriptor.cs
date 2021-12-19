@@ -12,9 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.DictionariesData;
+using TSParser.Service;
+
 namespace TSParser.Descriptors
 {
     public record Descriptor
     {
+        public byte DescriptorTag { get; }
+        public byte DescriptorLength { get; }
+        public string DescriptorName => Dictionaries.DescriptorNames[DescriptorTag];
+        public byte[] Data { get; } = null!;
+        public Descriptor(ReadOnlySpan<byte> bytes)
+        {
+            int pointer = 0;
+            DescriptorTag = bytes[pointer++];
+            DescriptorLength = bytes[pointer++];
+
+            if (bytes.Length - pointer >= DescriptorLength)
+            {
+                Data = new byte[DescriptorLength + 1];
+                bytes.Slice(0, Data.Length).CopyTo(Data);
+            }
+            else
+            {
+                Logger.Send(LogStatus.Warning, $"Pointer out of descriptor tag 0x{DescriptorTag:X}");
+            }
+        }
+
+        public override string ToString()
+        {
+            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Length: {DescriptorLength}";
+        }
     }
 }

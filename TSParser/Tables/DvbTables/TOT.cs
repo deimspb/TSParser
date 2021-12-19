@@ -1,4 +1,4 @@
-﻿// Copyright 2021 Eldar Nizamutdinov 
+﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
 //  
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,63 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Buffers.Binary;
+using TSParser.Descriptors;
+using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
 {
-    public record TOT
+    public record TOT : Table
     {
+        public DateTime UTCDateTime { get; }
+        public ushort DescriptorLoopLength { get; }
+        public List<Descriptor> TotDescriptors { get; }
+        public TOT(ReadOnlySpan<byte> bytes)
+        {
+            TableId = bytes[0];
+            SectionSyntaxIndicator = (bytes[1] & 0x80) != 0;
+            SectionLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(1, 2)) & 0x0FFF);
+            UTCDateTime = Utils.GetDateTimeFromMJD_UTC(bytes.Slice(3, 5));
+            DescriptorLoopLength = BinaryPrimitives.ReadUInt16BigEndian(bytes[8..]);
+            var pointer = 10;
+            var descAllocation = $"Table: TOT";
+            TotDescriptors = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, DescriptorLoopLength), descAllocation);
+            CRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
+
+            TableBytes = bytes;
+        }
+
+        public override string ToString()
+        {
+            var tot = "-=TOT=-\n";
+
+            tot += $"   UTC date time: {UTCDateTime}/n";
+
+            if (TotDescriptors != null)
+            {
+                tot += $"   TOT descriptors count: {TotDescriptors.Count}\n";
+                foreach (var desc in TotDescriptors)
+                {
+                    tot += $"      {desc}\n";
+                }
+            }
+
+            tot += $"   CRC: {CRC32}\n";
+
+            return tot;
+        }
+        public virtual bool Equals(TOT? tot)
+        {
+            if (tot == null) return false;
+
+            return CRC32 == tot.CRC32;
+        }
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return (int)CRC32;
+            }
+        }
     }
 }

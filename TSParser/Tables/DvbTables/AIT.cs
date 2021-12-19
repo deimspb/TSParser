@@ -12,28 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Buffers.Binary;
-using TSParser.Service;
-
 namespace TSParser.Tables.DvbTables
 {
-    public record TDT : Table
+    internal record AIT : Table
     {
-        public DateTime UtcDateTime { get; init; }
-        public TDT(ReadOnlySpan<byte> bytes)
+        public AIT(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            TableId = bytes[0];
-            SectionSyntaxIndicator = (bytes[1] & 0x80) != 0;
-            SectionLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(1, 2)) & 0x0FFF);
-            UtcDateTime = Utils.GetDateTimeFromMJD_UTC(bytes.Slice(3, 5));
-            TableBytes = bytes;
-        }
-
-        public override string ToString()
-        {
-            var tdt = $"-=TDT=-\n";
-            tdt += $"   UTC date time: {UtcDateTime}";
-            return tdt;
         }
     }
 }

@@ -13,27 +13,25 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
-using TSParser.Service;
 
-namespace TSParser.Tables.DvbTables
+namespace TSParser.Descriptors.Dvb
 {
-    public record TDT : Table
+    public record CaDescriptor_0x09 : Descriptor
     {
-        public DateTime UtcDateTime { get; init; }
-        public TDT(ReadOnlySpan<byte> bytes)
+        public ushort CaSystemId { get; }
+        public ushort CaPid { get; }
+        public byte[] PrivateDateBytes { get; }
+        public CaDescriptor_0x09(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            TableId = bytes[0];
-            SectionSyntaxIndicator = (bytes[1] & 0x80) != 0;
-            SectionLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(1, 2)) & 0x0FFF);
-            UtcDateTime = Utils.GetDateTimeFromMJD_UTC(bytes.Slice(3, 5));
-            TableBytes = bytes;
+            CaSystemId = BinaryPrimitives.ReadUInt16BigEndian(bytes[2..]);
+            CaPid = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[4..]) & 0x1FFF);
+            PrivateDateBytes = new byte[DescriptorLength - 4];
+            bytes.Slice(6, PrivateDateBytes.Length).CopyTo(PrivateDateBytes);
         }
 
         public override string ToString()
         {
-            var tdt = $"-=TDT=-\n";
-            tdt += $"   UTC date time: {UtcDateTime}";
-            return tdt;
+            return $"         CA system id: {CaSystemId}, CA pid: {CaPid}, private data: {BitConverter.ToString(PrivateDateBytes):X}";           
         }
     }
 }

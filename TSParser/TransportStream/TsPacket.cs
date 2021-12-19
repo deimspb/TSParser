@@ -18,8 +18,7 @@ using TSParser.Service;
 namespace TSParser.TransportStream
 {
     public readonly struct TsPacket
-    {
-        private readonly byte[] m_data;
+    {       
 
         public const byte SYNC_BYTE = 0x47;
         public readonly bool TransportErrorIndicator { get; }
@@ -34,9 +33,7 @@ namespace TSParser.TransportStream
         public readonly PesHeader Pes_header { get; } = default;
         public readonly bool HasPesHeader { get; } = default;
         public readonly AdaptationField Adaptation_field { get; } = default;
-        public ReadOnlySpan<byte> Payload {
-            get { return m_data.AsSpan(); }
-        }
+        public readonly byte[] Payload { get; }       
         public readonly ulong PacketNumber { get; } = default;
 
         internal TsPacket(ReadOnlySpan<byte> bytes, ulong packetCounter)
@@ -57,8 +54,8 @@ namespace TSParser.TransportStream
 
                 if (TransportErrorIndicator || Pid == 0x1FFF) // if tei or null packet, copy payload and return
                 {
-                    m_data = new byte[184];
-                    bytes.Slice(4).CopyTo(m_data);
+                    Payload = new byte[184];
+                    bytes.Slice(4).CopyTo(Payload);
                     return;
                 }
 
@@ -91,12 +88,12 @@ namespace TSParser.TransportStream
 
                 if (payloadSize > 1 && payloadSize <= 188 - 4)
                 {
-                    m_data = new byte[payloadSize];
-                    bytes.Slice(pointer).CopyTo(m_data);
+                    Payload = new byte[payloadSize];
+                    bytes.Slice(pointer).CopyTo(Payload);
                 }
                 else
                 {
-                    m_data = Array.Empty<byte>();
+                    Payload = Array.Empty<byte>();
                 }
 
             }

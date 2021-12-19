@@ -12,15 +12,87 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using TSParser.Descriptors.Dvb;
+using TSParser.Service;
 
 namespace TSParser.Descriptors
 {
-    public record DescriptorFactory
+    internal record DescriptorFactory
     {
+        private static List<byte> m_unknownDescriptorListId = new List<byte>();
+        private static List<byte> m_unknownExtensionDescList = new List<byte>();
+
+        internal static Descriptor GetDescriptor(ReadOnlySpan<byte> bytes, string descAllocation = "")
+        {
+            try
+            {
+                switch (bytes[0])
+                {
+                    case 0x0A: return new Iso639LanguageDescriptor_0x0A(bytes);
+                    case 0x56: return new TeletextDescriptor_0x56(bytes);
+                    case 0x6A: return new AC3Descriptor_0x6A(bytes);
+                    case 0x66: return new DataBroadcastIdDescriptor_0x66(bytes);
+                    case 0x09: return new CaDescriptor_0x09(bytes);
+                    case 0x54: return new ContentDescriptor_0x54(bytes);
+                    case 0x4D: return new ShortEventDescriptor_0x4D(bytes);
+                    case 0x4E: return new ExtendedEventDescriptor_0x4E(bytes);
+                    case 0x55: return new ParentalRatingDescriptor_0x55(bytes);
+                    case 0x7F: return GetExtensionDescriptor(bytes, descAllocation);
+                    default:
+                        {
+                            if (!m_unknownDescriptorListId.Contains(bytes[0]))
+                            {
+                                Logger.Send(LogStatus.Info, $"Not specified descriptor with tag: 0x{bytes[0]:X}, descriptor location: {descAllocation}");
+                                m_unknownDescriptorListId.Add(bytes[0]);
+                            }
+
+                            return new Descriptor(bytes);
+                        }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Send(LogStatus.Exception, $"While creating descriptor tag: 0x{bytes[0]:X} descriptor location: {descAllocation}", ex);
+                return new Descriptor(bytes);
+            }
+        }
+        internal static Descriptor GetExtensionDescriptor(ReadOnlySpan<byte> bytes, string descAllocation = "")
+        {
+            try
+            {
+                switch (bytes[2])
+                {
+                    default:
+                        {
+                            if (!m_unknownExtensionDescList.Contains(bytes[2]))
+                            {
+                                Logger.Send(LogStatus.Info, $"Not specified extension descriptor with tag: 0x{bytes[2]:X}, descriptor location: {descAllocation}");
+                                m_unknownExtensionDescList.Add(bytes[2]);
+                            }
+
+                            return new ExtensionDescriptor_0x7F(bytes);
+                        }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Send(LogStatus.Exception, $"While creating extension descriptor tag: 0x{bytes[1]:X} descriptor location: {descAllocation}", ex);
+                return new ExtensionDescriptor_0x7F(bytes);
+            }
+        }
+        internal static List<Descriptor> GetDescriptorList(ReadOnlySpan<byte> bytes, string descAllocation = "")
+        {
+            var pointer = 0;
+            List<Descriptor> descriptors = new List<Descriptor>();
+
+            while (pointer < bytes.Length)
+            {
+                var desc = GetDescriptor(bytes[pointer..], descAllocation);
+                descriptors.Add(desc);
+                pointer += desc.DescriptorLength + 2;
+            }
+
+            return descriptors;
+        }
     }
 }
