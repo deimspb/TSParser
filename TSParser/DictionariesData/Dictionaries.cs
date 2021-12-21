@@ -4605,6 +4605,50 @@ namespace TSParser.DictionariesData
                 default: return "Unknown";
             }
         }
+        internal static string GetServiceType(byte bt)
+        {
+            switch (bt)
+            {
+                case 0x00: return "reserved for future use";
+                case 0x01: return "digital television service";
+                case 0x02: return "digital radio sound service";
+                case 0x03: return "Teletext service";
+                case 0x04: return "NVOD reference service";
+                case 0x05: return "NVOD time-shifted service";
+                case 0x06: return "mosaic service";
+                case 0x07: return "FM radio service";
+                case 0x08: return "DVB SRM service [41]";
+                case 0x09: return "reserved for future use";
+                case 0x0A: return "advanced codec digital radio sound";
+                case 0x0B: return "H.264/AVC mosaic service";
+                case 0x0C: return "data broadcast service";
+                case 0x0D: return "reserved for Common Interface Usage ";
+                case 0x0E: return "RCS Map (see ETSI EN 301 790 [7])";
+                case 0x0F: return "RCS FLS (see ETSI EN 301 790 [7])";
+                case 0x10: return "DVB MHP service";
+                case 0x11: return "MPEG-2 HD digital television service";
+                case byte n when (n >= 0x12 && n <= 0x15): return "reserved for future use";
+                case 0x16: return "H.264/AVC SD digital television service";
+                case 0x17: return "0x17 H.264/AVC SD NVOD time-shifted service";
+                case 0x18: return "0x18 H.264/AVC SD NVOD reference service";
+                case 0x19: return "0x19 H.264/AVC HD digital television service";
+                case 0x1A: return "0x1A H.264/AVC HD NVOD time-shifted service";
+                case 0x1B: return "0x1B H.264/AVC HD NVOD reference service";
+                case 0x1C: return "0x1C H.264/AVC frame compatible plano-stereoscopic HD digital television service";
+                case 0x1D: return "0x1D H.264/AVC frame compatible plano-stereoscopic HD NVOD time-shifted service";
+                case 0x1E: return "0x1E H.264/AVC frame compatible plano-stereoscopic HD NVOD reference service";
+                case 0x1F: return "0x1F HEVC digital television service";
+                case 0x20: return "0x20 HEVC UHD high frame rate";
+                case byte n when (n >= 0x21 && n <= 0x7f): return "reserved for future use";
+                case byte n when (n >= 0x80 && n <= 0xfe): return "user defined";
+                case 0xff: return "reserved for future use";
+                default:
+                    {
+                        throw new Exception("service type exception");
+                    }
+
+            }
+        }
 
 
     }

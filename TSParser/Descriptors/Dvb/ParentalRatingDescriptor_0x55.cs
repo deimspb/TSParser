@@ -29,10 +29,10 @@ namespace TSParser.Descriptors.Dvb
         }
         public override string ToString()
         {
-            string str = "";
+            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
             foreach (var item in ParentalRatingItems)
             {
-                str += item;
+                str += $"         {item}";
             }
             return str;
         }

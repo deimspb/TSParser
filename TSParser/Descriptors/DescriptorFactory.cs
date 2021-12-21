@@ -38,6 +38,10 @@ namespace TSParser.Descriptors
                     case 0x4E: return new ExtendedEventDescriptor_0x4E(bytes);
                     case 0x55: return new ParentalRatingDescriptor_0x55(bytes);
                     case 0x7F: return GetExtensionDescriptor(bytes, descAllocation);
+                    case 0x40: return new NetworkNameDescriptor_0x40(bytes);
+                    case 0x52: return new StreamIdentifierDescriptor_0x52(bytes);
+                    case 0x48: return new ServiceDescriptor_0x48(bytes);
+                    case 0x6F: return new ApplicationSignallingDescriptor_0x6F(bytes);
                     default:
                         {
                             if (!m_unknownDescriptorListId.Contains(bytes[0]))

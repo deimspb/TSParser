@@ -334,14 +334,14 @@ namespace TSParser
                     }
                 default:
                     {
-                        GetPmt(tsPacket);
+                        GetOtherTables(tsPacket);
                         break;
                     }
             }
 
 
         }
-        private void GetPmt(TsPacket tsPacket)
+        private void GetOtherTables(TsPacket tsPacket)
         {
             if (m_pmtPids == null) return;
 

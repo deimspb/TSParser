@@ -66,10 +66,10 @@ namespace TSParser.Descriptors.Dvb
             {
                 foreach(var item in EventItems)
                 {
-                    str += $"{item}\n";
+                    str += $"            {item}\n";
                 }
             }
-            str += $"            {Text}";
+            str += $"                     {Text}";
             return str;
         }
     }
