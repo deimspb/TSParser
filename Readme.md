@@ -69,3 +69,13 @@ To Get tables you need to subscribe to the events.
  ```
  RunParserAsync();
  ```
+ ## TODO list:
+ * Add simple TR 101 290 first priority errors logs
+ * Add NAL unit parsing
+ * Add ISDB support
+ * Add ATSC support
+ * Add Plp support
+ * Add teletext parsing
+ * Add subtitling parsing
+ * Add Ait support
+ * Add SCTE35 support
