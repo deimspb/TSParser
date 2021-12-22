@@ -24,7 +24,7 @@ namespace AppTest
 
         public void Run()
         {
-            string tsFile = @"E:\dvb\dvb_lib\14ntv.ts";
+            string tsFile = @"E:\dvb\dvb_lib\14.ts";
             parser = new TsParser(tsFile);
 
             //parser.OnPatReady += Parser_OnPatReady;
