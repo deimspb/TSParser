@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using TSParser.Descriptors.Dvb;
+using TSParser.Descriptors.ExtendedDvb;
 using TSParser.Service;
 
 namespace TSParser.Descriptors
@@ -51,6 +52,8 @@ namespace TSParser.Descriptors
                     case 0x14: return new AssociationTagDescriptor_0x14(bytes);
                     case 0x53: return new CaIdentifierDescriptor_0x53(bytes);
                     case 0x41: return new ServiceListDescriptor_0x41(bytes);
+                    case 0x83: return new LogicalChannelNumberDescriptor_0x83(bytes);
+                    case 0x5F: return new PrivateDataSpecifierDescriptor_0x5F(bytes);
                     default:
                         {
                             if (!m_unknownDescriptorListId.Contains(bytes[0]))
@@ -75,11 +78,12 @@ namespace TSParser.Descriptors
             {
                 switch (bytes[2])
                 {
+                    case 0x00: return new ImageIconDescriptor_0x00(bytes);
                     default:
                         {
                             if (!m_unknownExtensionDescList.Contains(bytes[2]))
                             {
-                                Logger.Send(LogStatus.Info, $"Not specified extension descriptor with tag: 0x{bytes[2]:X}, descriptor location: {descAllocation}");
+                                Logger.Send(LogStatus.Info, $"Not specified extension descriptor with tag: 0x{bytes[2]:X2}, descriptor location: {descAllocation}");
                                 m_unknownExtensionDescList.Add(bytes[2]);
                             }
 

@@ -12,12 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Buffers.Binary;
+
 namespace TSParser.Descriptors.Dvb
 {
-    internal record LogicalChannelNumberDescriptor_0x83 : Descriptor
+    public record LogicalChannelNumberDescriptor_0x83 : Descriptor
     {
+        public LcnItem[] LcnItems { get; }
         public LogicalChannelNumberDescriptor_0x83(ReadOnlySpan<byte> bytes) : base(bytes)
         {
+            LcnItems = new LcnItem[DescriptorLength / 4];
+            for(int i = 0; i < LcnItems.Length; i++)
+            {
+                LcnItems[i] = new LcnItem(bytes.Slice(2 + i * 4));
+            }
+        }
+        public override string ToString()
+        {
+            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            foreach(var item in LcnItems)
+            {
+                str += $"           {item}\n";
+            }
+            return str;
+        }
+    }
+    public struct LcnItem
+    {
+        public ushort ServiceID { get; }
+        public bool VisisbleServiceDlag { get; }
+        public ushort LogicalChannelNumber { get; }
+        public LcnItem(ReadOnlySpan<byte> bytes)
+        {
+            ServiceID = BinaryPrimitives.ReadUInt16BigEndian(bytes);
+            VisisbleServiceDlag = (bytes[2] & 0x80) != 0;
+            LogicalChannelNumber = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[2..]) & 0x03ff);
+        }
+        public override string ToString()
+        {
+            return $"Service id:{ServiceID}, visible:{VisisbleServiceDlag}, lcn: {LogicalChannelNumber}";
         }
     }
 }

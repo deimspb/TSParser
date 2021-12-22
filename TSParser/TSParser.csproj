@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <Folder Include="Descriptors\Custom\" />
-    <Folder Include="Descriptors\ExtendedDvb\" />
     <Folder Include="TransportStream\NAL\" />
     <Folder Include="Comparer\" />
   </ItemGroup>
