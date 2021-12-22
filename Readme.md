@@ -66,14 +66,14 @@ where 239.1.1.27 udp multicast destination address
 
 To Get tables you need to subscribe to the events.
  each table have it's own event:
- event PatReady OnPatReady 
- event PmtReady OnPmtReady 
- event EitReady OnEitReady 
- event TdtReady OnTdtReady 
- event SdtReady OnSdtReady 
- event BatReady OnBatReady 
- event CatReady OnCatReady 
- event NitReady OnNitReady 
+ * event PatReady OnPatReady 
+ * event PmtReady OnPmtReady 
+ * event EitReady OnEitReady 
+ * event TdtReady OnTdtReady 
+ * event SdtReady OnSdtReady 
+ * event BatReady OnBatReady 
+ * event CatReady OnCatReady 
+ * event NitReady OnNitReady 
 
  You can also subcribe to event OnParserComplete which will rase when file is complete or StopParser method calls.
 

@@ -146,5 +146,12 @@ namespace TSParser.Service
                             (bytes[2] >> 4) * 1000 + (bytes[2] & 0xf) * 100 +
                             (bytes[3] >> 4) * 10 + (bytes[3] & 0xf)));
         }
+        internal static TimeSpan GetTimeOffset(ReadOnlySpan<byte> bytes)
+        {
+            byte hour = (byte)(((bytes[0] >> 4) * 10) + (bytes[0] & 0xF));
+            byte minutes = (byte)(((bytes[1] >> 4) * 10) + (bytes[1] & 0xF));
+
+            return new TimeSpan(hour, minutes, 0);
+        }
     }
 }

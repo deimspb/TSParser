@@ -58,6 +58,12 @@ namespace TSParser.Descriptors
                     case 0x0E: return new MaximumBitrateDescriptor_0x0E(bytes);
                     case 0x05: return new RegistrationDescriptor_0x05(bytes);
                     case 0x38: return new HevcVideoDescriptor_0x38(bytes);
+                    case 0x0C: return new MultiplexBufferUtilizationDescriptor_0x0C(bytes);
+                    case 0x02: return new VideoStreamDescriptor_0x02(bytes);
+                    case 0x03: return new AudioStreamDescriptor_0x03(bytes);
+                    case 0x06: return new DataStreamAlignmentDescriptor_0x06(bytes);
+                    case 0x28: return new AvcVideoDescriptor_0x28(bytes);
+                    case 0x58: return new LocalTimeOffsetDescriptor_0x58(bytes);
                     default:
                         {
                             if (!m_unknownDescriptorListId.Contains(bytes[0]))

@@ -29,9 +29,9 @@ namespace TSParser.Tables.DvbTables
             SectionSyntaxIndicator = (bytes[1] & 0x80) != 0;
             SectionLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(1, 2)) & 0x0FFF);
             UTCDateTime = Utils.GetDateTimeFromMJD_UTC(bytes.Slice(3, 5));
-            DescriptorLoopLength = BinaryPrimitives.ReadUInt16BigEndian(bytes[8..]);
+            DescriptorLoopLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[8..])&0x0FFF);
             var pointer = 10;
-            var descAllocation = $"Table: TOT";
+            var descAllocation = $"Table: TOT";            
             TotDescriptors = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, DescriptorLoopLength), descAllocation);
             CRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
 
@@ -53,7 +53,7 @@ namespace TSParser.Tables.DvbTables
                 }
             }
 
-            tot += $"   CRC: {CRC32}\n";
+            tot += $"   CRC32: 0x{CRC32:X}\n";
 
             return tot;
         }

@@ -51,6 +51,7 @@ namespace TSParser
         public event PmtReady OnPmtReady = null!;
         public event EitReady OnEitReady = null!;
         public event TdtReady OnTdtReady = null!;
+        public event Totready OnTotready = null!;
         public event SdtReady OnSdtReady = null!;
         public event BatReady OnBatReady = null!;
         public event CatReady OnCatReady = null!;
@@ -206,10 +207,15 @@ namespace TSParser
             m_catFactory.OnCatReady += CatFactory_OnCatReady;
             m_nitFactory.OnNitReady += NitFactory_OnNitReady;
             m_tdtTotFactory.OnTdtReady += TdtTotFactory_OnTdtReady;
+            m_tdtTotFactory.OnTotready += TdtTotFactory_OnTotready;
             m_sdtBatFactory.OnSdtReady += SdtBatFactory_OnSdtReady;
             m_sdtBatFactory.OnBatReady += SdtBatFactory_OnBatReady;
 
 
+        }
+        private void TdtTotFactory_OnTotready(TOT tot)
+        {
+            OnTotready?.Invoke(tot);
         }
         private void NitFactory_OnNitReady(NIT nit)
         {
