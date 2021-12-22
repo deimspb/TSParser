@@ -399,7 +399,6 @@ FodyWeavers.xsd
 
 #spesific
 TSParser/Descriptors/Custom/
-TSParser/AppTest/*
-AppTest/*
+TSParser/AppTest/
 AppTest/
-.editorconfig
+
