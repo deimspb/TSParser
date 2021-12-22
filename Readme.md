@@ -69,6 +69,11 @@ To Get tables you need to subscribe to the events.
  ```
  RunParserAsync();
  ```
+ ## Library features
+
+ * Logger send info about not specified descriptors, but do it only one time for each not specified descriptor.
+
+
  ## TODO list:
  * Add simple TR 101 290 first priority errors logs
  * Add NAL unit parsing
@@ -79,3 +84,4 @@ To Get tables you need to subscribe to the events.
  * Add subtitling parsing
  * Add Ait support
  * Add SCTE35 support
+ * Add DekTec PCI/USB adapters support
