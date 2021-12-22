@@ -47,6 +47,7 @@ namespace TSParser.Tables.DvbTableFactory
             if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) //
             {
                 Logger.Send(LogStatus.ETSI, $"PAT CRC incorrect!");
+                return;
             }
 
             if (Pat?.CRC32 == CurrentCRC32) return; // if we already have pat table and its crc32 equal curent table crc drop it. because it is the same pat            

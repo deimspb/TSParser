@@ -47,6 +47,7 @@ namespace TSParser.Tables.DvbTableFactory
             if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) // drop invalid ts packet
             {
                 Logger.Send(LogStatus.ETSI, $"CAT CRC incorrect!");
+                return;
             }
 
             if (Cat?.CRC32 == CurrentCRC32) return; // if we already have cat table and its crc32 equal curent table crc drop it. because it is the same cat 

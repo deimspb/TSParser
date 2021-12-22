@@ -46,7 +46,8 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) // drop invalid ts packet
             {
-                Logger.Send(LogStatus.ETSI, $"PMT CRC incorrect!");
+                Logger.Send(LogStatus.ETSI, $"PMT pid {CurrentPid} CRC incorrect!");
+                return;
             }
 
             if (Pmt?.CRC32 == CurrentCRC32) return; // if we already have pmt table and its crc32 equal curent table crc drop it. because it is the same pmt             

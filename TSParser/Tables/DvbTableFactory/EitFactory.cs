@@ -44,7 +44,8 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
             {
-                Logger.Send(LogStatus.ETSI, $"PMT CRC incorrect!");
+                Logger.Send(LogStatus.ETSI, $"EIT CRC incorrect!");
+                return;
             }
 
             if (eitList.FindIndex(e => e.CRC32 == crc32) >= 0) return; // find index on crc32 base. if we have table with the same crc32, we shall drop curent table to prevent push outside duplicate tables 
