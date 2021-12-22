@@ -24,11 +24,11 @@ namespace AppTest
 
         public void Run()
         {
-            string tsFile = @"E:\dvb\dvb_lib\9.ts";
+            string tsFile = @"E:\dvb\dvb_lib\9_60min.ts";
             parser = new TsParser(tsFile);
 
             //parser.OnPatReady += Parser_OnPatReady;
-            parser.OnPmtReady += Parser_OnPmtReady;
+            //parser.OnPmtReady += Parser_OnPmtReady;
             //parser.OnEitReady += Parser_OnEitReady;
             //parser.OnTdtReady += Parser_OnTdtReady;
             //parser.OnSdtReady += Parser_OnSdtReady;
@@ -43,9 +43,10 @@ namespace AppTest
             parser.RunParser();
 
             sw.Stop();
-
+#if !DEBUG
+            Console.WriteLine($"Done in {sw.ElapsedMilliseconds} ms");
+#endif
             Debug.WriteLine($"Done in {sw.ElapsedMilliseconds} ms");
-
 
         }
 

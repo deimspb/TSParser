@@ -14,6 +14,7 @@
 
 using System.Buffers.Binary;
 using TSParser.Descriptors;
+using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
 {
@@ -31,10 +32,10 @@ namespace TSParser.Tables.DvbTables
             var pointer = 10;
             var descAllocation = $"Table: BAT, bouquet id: {BouquetId}, section number: {SectionNumber}";
             BatDescriptorList = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, BouquetDescriptorsLenght),descAllocation);
-            pointer += BouquetDescriptorsLenght;
+            pointer += BouquetDescriptorsLenght;            
             TransportStreamLoopLenght = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x0FFF);
+            pointer += 2;            
             BatTsLoopList = GetBatItems(bytes.Slice(pointer, TransportStreamLoopLenght));
-
         }
         private List<BatItem> GetBatItems(ReadOnlySpan<byte> bytes)
         {
@@ -76,7 +77,7 @@ namespace TSParser.Tables.DvbTables
                 bat += $"   Bat Descriptor List count: {BatDescriptorList.Count}\n";
                 foreach (var desc in BatDescriptorList)
                 {
-                    bat += $"      {desc}\n";
+                    bat += $"{desc}";
                 }
             }
             
@@ -87,7 +88,7 @@ namespace TSParser.Tables.DvbTables
                 bat += $"   Bat Ts Loop List count: {BatTsLoopList.Count}\n";
                 foreach (var tsloop in BatTsLoopList)
                 {
-                    bat += $"      {tsloop}\n";
+                    bat += $"{tsloop}";
                 }
             }
             
@@ -107,8 +108,8 @@ namespace TSParser.Tables.DvbTables
             TransportStreamId = BinaryPrimitives.ReadUInt16BigEndian(bytes);
             OriginalNetworkId = BinaryPrimitives.ReadUInt16BigEndian(bytes[2..]);
             TransportDescriptorsLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[4..]) & 0x0FFF);
-            var descAllocation = $"Bat item ts id: {TransportStreamId}";
-            BatItemDescriptors=DescriptorFactory.GetDescriptorList(bytes[6..], descAllocation);
+            var descAllocation = $"Bat item ts id: {TransportStreamId}";            
+            BatItemDescriptors=DescriptorFactory.GetDescriptorList(bytes.Slice(6,TransportDescriptorsLength), descAllocation);
         }
         public override string ToString()
         {
@@ -120,7 +121,7 @@ namespace TSParser.Tables.DvbTables
             {
                 foreach (var desc in BatItemDescriptors)
                 {
-                    item += $"         {desc}\n";
+                    item += $"{desc}";
                 }
             }
             

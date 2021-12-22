@@ -139,5 +139,12 @@ namespace TSParser.Service
 
             return new TimeSpan(hour, minutes, seconds);
         }
+        internal static uint BcdToUint(ReadOnlySpan<byte> bytes)
+        {
+            return checked((uint)((bytes[0] >> 4) * 10000000 + (bytes[0] & 0xf) * 1000000 +
+                            (bytes[1] >> 4) * 100000 + (bytes[1] & 0xf) * 10000 +
+                            (bytes[2] >> 4) * 1000 + (bytes[2] & 0xf) * 100 +
+                            (bytes[3] >> 4) * 10 + (bytes[3] & 0xf)));
+        }
     }
 }

@@ -112,7 +112,7 @@ namespace TSParser.Tables.DvbTables
             {
                 foreach (var desc in TransportStreamLoopDescriptors)
                 {
-                    loop += $"         {desc}";
+                    loop += $"         {desc}\n";
                 }
             }
             

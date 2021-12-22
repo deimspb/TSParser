@@ -36,7 +36,7 @@ namespace TSParser.Descriptors.Dvb
 
             foreach (var ln in Languages)
             {
-                str += $"{ln}";
+                str += $"{ln}\n";
             }
             return str;
         }

@@ -1,4 +1,4 @@
-﻿// Copyright 2021 Eldar Nizamutdinov 
+﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
 //  
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
@@ -49,12 +44,12 @@ namespace TSParser.Tables.DvbTables
         {
             string pat = $"-=PAT=-\n";
 
-            pat += $"{base.ToString()}";            
+            pat += $"{base.ToString()}";
 
-            pat += $"   Transport stream id: {TransportStreamId} \n";
+            pat += $"   Transport stream id: {TransportStreamId}\n";
             foreach (var pr in PatRecords)
             {
-                pat += $"      {pr} \n";
+                pat += $"      {pr}\n";
             }
 
             pat += $"   PAT CRC: 0x{CRC32:X}";

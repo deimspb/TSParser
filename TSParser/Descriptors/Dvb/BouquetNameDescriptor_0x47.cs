@@ -12,24 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Buffers.Binary;
+using TSParser.DictionariesData;
 
 namespace TSParser.Descriptors.Dvb
 {
-    public record DataBroadcastIdDescriptor_0x66 : Descriptor
+    public record BouquetNameDescriptor_0x47 : Descriptor
     {
-        public ushort DataBroadcastId { get; }
-        public byte[] IdSelectorByte { get; }
-        public DataBroadcastIdDescriptor_0x66(ReadOnlySpan<byte> bytes) : base(bytes)
+        public string BouquetName { get; }
+        public BouquetNameDescriptor_0x47(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            DataBroadcastId = BinaryPrimitives.ReadUInt16BigEndian(bytes[2..]);
-            IdSelectorByte = new byte[DescriptorLength - 2];
-            bytes.Slice(4, DescriptorLength - 2).CopyTo(IdSelectorByte);
+            BouquetName = Dictionaries.BytesToString(bytes.Slice(2, DescriptorLength));
         }
-
         public override string ToString()
         {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, data broadcast id: {DataBroadcastId}, {BitConverter.ToString(IdSelectorByte):X}";
+            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {BouquetName}\n";
         }
     }
 }

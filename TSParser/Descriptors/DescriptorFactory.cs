@@ -42,6 +42,15 @@ namespace TSParser.Descriptors
                     case 0x52: return new StreamIdentifierDescriptor_0x52(bytes);
                     case 0x48: return new ServiceDescriptor_0x48(bytes);
                     case 0x6F: return new ApplicationSignallingDescriptor_0x6F(bytes);
+                    case 0x43: return new SatelliteDeliverySystemDescriptor_0x43(bytes);
+                    case 0x44: return new CableDeliverySystemDescriptor_0x44(bytes);
+                    case 0x4A: return new LinkageDescriptor_0x4A(bytes);
+                    case 0x47: return new BouquetNameDescriptor_0x47(bytes);
+                    case 0x5C: return new MultilingualBouquetNameDescriptor_0x5C(bytes);
+                    case 0x13: return new CarouselIdentifierDescriptor_0x13(bytes);
+                    case 0x14: return new AssociationTagDescriptor_0x14(bytes);
+                    case 0x53: return new CaIdentifierDescriptor_0x53(bytes);
+                    case 0x41: return new ServiceListDescriptor_0x41(bytes);
                     default:
                         {
                             if (!m_unknownDescriptorListId.Contains(bytes[0]))
