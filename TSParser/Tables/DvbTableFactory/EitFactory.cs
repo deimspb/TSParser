@@ -62,7 +62,7 @@ namespace TSParser.Tables.DvbTableFactory
             {
                 if (eitList[idx].VersionNumber != CurrentEit.VersionNumber)
                 {
-                    Logger.Send(LogStatus.Info, $"EIT version changed for service id: {eitList[idx].ServiceId}");
+                    //Logger.Send(LogStatus.Info, $"EIT version changed for service id: {eitList[idx].ServiceId}");
                     eitList.RemoveAt(idx);
                 }
                 else

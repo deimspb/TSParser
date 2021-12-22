@@ -4081,7 +4081,7 @@ namespace TSParser.DictionariesData
             {0x35,"Program stereoscopic (3D) information"},
             {0x36,"Video stereoscopic (3D) information"},
             {0x37,"Reserved"},
-            {0x38,"Reserved"},
+            {0x38,"Hevc Video Descriptor"},
             {0x39,"Reserved"},
             {0x3A,"Reserved"},
             {0x3B,"Reserved"},

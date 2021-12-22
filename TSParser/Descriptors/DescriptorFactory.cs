@@ -54,6 +54,10 @@ namespace TSParser.Descriptors
                     case 0x41: return new ServiceListDescriptor_0x41(bytes);
                     case 0x83: return new LogicalChannelNumberDescriptor_0x83(bytes);
                     case 0x5F: return new PrivateDataSpecifierDescriptor_0x5F(bytes);
+                    case 0x59: return new SubtitlingDescriptor_0x59(bytes);
+                    case 0x0E: return new MaximumBitrateDescriptor_0x0E(bytes);
+                    case 0x05: return new RegistrationDescriptor_0x05(bytes);
+                    case 0x38: return new HevcVideoDescriptor_0x38(bytes);
                     default:
                         {
                             if (!m_unknownDescriptorListId.Contains(bytes[0]))

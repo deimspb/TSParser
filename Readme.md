@@ -16,24 +16,38 @@ DVB tables:
 * Support non zero pointer field
 
 Descriptors:
+* 0x05	RegistrationDescriptor_0x05
 * 0x09	CaDescriptor_0x09
 * 0x0A	Iso639LanguageDescriptor_0x0A
-* 0x43  SatelliteDeliverySystemDescriptor_0x43
+* 0x0E	MaximumBitrateDescriptor_0x0E
+* 0x13	CarouselIdentifierDescriptor_0x13
+* 0x14	AssociationTagDescriptor_0x14
+* 0x38	HevcVideoDescriptor_0x38
+* 0x40	NetworkNameDescriptor_0x40
+* 0x41	ServiceListDescriptor_0x41
+* 0x43	SatelliteDeliverySystemDescriptor_0x43
 * 0x44	CableDeliverySystemDescriptor_0x44
+* 0x47	BouquetNameDescriptor_0x47
 * 0x48	ServiceDescriptor_0x48
 * 0x4A	LinkageDescriptor_0x4A
 * 0x4D	ShortEventDescriptor_0x4D
 * 0x4E	ExtendedEventDescriptor_0x4E
 * 0x52	StreamIdentifierDescriptor_0x52
+* 0x53	CaIdentifierDescriptor_0x53
 * 0x54	ContentDescriptor_0x54
 * 0x55	ParentalRatingDescriptor_0x55
 * 0x56	TeletextDescriptor_0x56
+* 0x59	SubtitlingDescriptor_0x59
 * 0x5C	MultilingualBouquetNameDescriptor_0x5C
 * 0x66	DataBroadcastIdDescriptor_0x66
 * 0x6A	AC3Descriptor_0x6A
 * 0x6F	ApplicationSignallingDescriptor_0x6F
-* 0x13	CarouselIdentifierDescriptor_0x13
-* 0x14	AssociationTagDescriptor_0x14
+* 0x7F	ExtensionDescriptor_0x7F
+* 0x83	LogicalChannelNumberDescriptor_0x83
+
+Extension Descriptor:
+* 0x00  ImageIconDescriptor_0x00
+
 ## How to use this parser
 To read from file:
 ```
