@@ -98,6 +98,9 @@ namespace TSParser.Descriptors
                 switch (bytes[0])
                 {
                     case 0x00: return new ApplicationDescriptor_0x00(bytes);
+                    case 0x01: return new ApplicationNameDescriptor_0x01(bytes);
+                    case 0x02: return new TransportProtocolDescriptor_0x02(bytes);
+                    case 0x15: return new SimpleApplicationLocationDescriptor_0x15(bytes);
                     default:
                         {
                             if (!m_unknownAitDescList.Contains(bytes[0]))

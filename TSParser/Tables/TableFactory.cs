@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.Service;
 using TSParser.TransportStream;
 
 namespace TSParser.Tables
@@ -46,7 +47,9 @@ namespace TSParser.Tables
 
                 if (Pointer > tsPacket.Payload.Length)
                 {
-                    throw new Exception($"Pointer field greater than packet length for pid: {tsPacket.Pid}");
+                    //Logger.Send(LogStatus.Warning, $"Pointer field greater than packet length for pid: {tsPacket.Pid}");
+                    return;
+                    //throw new Exception($"Pointer field greater than packet length for pid: {tsPacket.Pid}");
                 }
 
                 if (isInProgresTable)

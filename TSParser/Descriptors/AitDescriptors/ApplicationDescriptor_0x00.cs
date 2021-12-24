@@ -49,7 +49,7 @@ namespace TSParser.Descriptors.AitDescriptors
         }
         public override string ToString()
         {
-            string str = $"         AIT Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            string str = $"       AIT Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
             str += $"                  Application Profiles Length: {ApplicationProfilesLength}\n";
 
             if(ApplicationProfileItems is not null)
@@ -91,7 +91,7 @@ namespace TSParser.Descriptors.AitDescriptors
         }
         public override string ToString()
         {
-            return $"Application Profile: {ApplicationProfile}, Version Major: {VersionMajor}, VersionMinor: {VersionMinor}, VersionMicro: {VersionMicro}";
+            return $"Application Profile: {ApplicationProfile}, Version Major: {VersionMajor}, Version Minor: {VersionMinor}, Version Micro: {VersionMicro}";
         }
     }
     public struct TransportProtocolLabelItem
