@@ -4602,7 +4602,26 @@ namespace TSParser.DictionariesData
                 case 0x20: return "Ttml Subtitling Descriptor";
                 case byte n when n >= 0x21 && n <= 0x7F: return "reserved";
                 case byte n when n >= 0x80 && n <= 0xFF: return "user defined";
-                default: return "Unknown";
+                default: return "Unknown extension descriptor";
+            }
+        }
+        internal static string GetAitDescriptorName(byte bt)
+        {
+            switch (bt)
+            {
+                case 0x00: return "Application Descriptor";
+                case 0x01: return "Application Name Descriptor";
+                case 0x02: return "Transport Protocol Descriptor";
+                case 0x05: return "External application authorization descriptor";
+                case 0x06: return "Application recording descriptor";
+                case 0x0B: return "Application icons descriptor";
+                case 0x14: return "Graphics constraints descriptor";
+                case 0x15: return "Simple application location descriptor";
+                case 0x16: return "Application usage descriptor";
+                case 0x17: return "Simple application boundary descriptor";
+                case 0x66: return "Generic data broadcast id descriptor";
+                case 0x6F: return "Application signalling descriptor";
+                default: return "Unknown AIT descriptor";
             }
         }
         internal static string GetServiceType(byte bt)
@@ -4649,7 +4668,105 @@ namespace TSParser.DictionariesData
 
             }
         }
+        internal static string GetMpeg4AudioProfileAndLevelValue(byte bt)
+        {
+            switch (bt)
+            {
+                case byte n when n >= 0x00 && n <= 0x0E: return "Reserved  ";
+                case 0x0F: return "No audio profile and level defined for the associated MPEG-4 audio stream ";
+                case 0x10: return "Main profile, level 1 ";
+                case 0x11: return "Main profile, level 2 ";
+                case 0x12: return "Main profile, level 3 ";
+                case 0x13: return "Main profile, level 4 ";
+                case byte n when n >= 0x14 && n <= 0x17: return "Reserved ";
+                case 0x18: return "Scalable Profile, level 1 ";
+                case 0x19: return "Scalable Profile, level 2 ";
+                case 0x1A: return "Scalable Profile, level 3 ";
+                case 0x1B: return "Scalable Profile, level 4 ";
+                case byte n when n >= 0x1C && n <= 0x1F: return "Reserved ";
+                case 0x20: return "Speech profile, level 1 ";
+                case 0x21: return "Speech profile, level 2 ";
+                case byte n when n >= 0x22 && n <= 0x27: return "Reserved ";
+                case 0x28: return "Synthesis profile, level 1 ";
+                case 0x29: return "Synthesis profile, level 2 ";
+                case 0x2A: return "Synthesis profile, level 3 ";
+                case byte n when n >= 0x2B && n <= 0x2F: return "Reserved ";
+                case 0x30: return "High quality audio profile, level 1 ";
+                case 0x31: return "High quality audio profile, level 2 ";
+                case 0x32: return "High quality audio profile, level 3 ";
+                case 0x33: return "High quality audio profile, level 4 ";
+                case 0x34: return "High quality audio profile, level 5 ";
+                case 0x35: return "High quality audio profile, level 6 ";
+                case 0x36: return "High quality audio profile, level 7 ";
+                case 0x37: return "High quality audio profile, level 8 ";
+                case 0x38: return "Low delay audio profile, level 1 ";
+                case 0x39: return "Low delay audio profile, level 2 ";
+                case 0x3A: return "Low delay audio profile, level 3 ";
+                case 0x3B: return "Low delay audio profile, level 4 ";
+                case 0x3C: return "Low delay audio profile, level 5 ";
+                case 0x3D: return "Low delay audio profile, level 6 ";
+                case 0x3E: return "Low delay audio profile, level 7 ";
+                case 0x3F: return "Low delay audio profile, level 8 ";
+                case 0x40: return "Natural audio profile, level 1 ";
+                case 0x41: return "Natural audio profile, level 2 ";
+                case 0x42: return "Natural audio profile, level 3 ";
+                case 0x43: return "Natural audio profile, level 4 ";
+                case byte n when n >= 0x44 && n <= 0x47: return "Reserved ";
+                case 0x48: return "Mobile audio internetworking profile, level 1 ";
+                case 0x49: return "Mobile audio internetworking profile, level 2 ";
+                case 0x4A: return "Mobile audio internetworking profile, level 3 ";
+                case 0x4B: return "Mobile audio internetworking profile, level 4 ";
+                case 0x4C: return "Mobile audio internetworking profile, level 5 ";
+                case 0x4D: return "Mobile audio internetworking profile, level 6 ";
+                case byte n when n >= 0x4E && n <= 0x4F: return "Reserved ";
+                case 0x50: return "AAC profile, level 1 ";
+                case 0x51: return "AAC profile, level 2 ";
+                case 0x52: return "AAC profile, level 4 ";
+                case 0x53: return "AAC profile, level 5 ";
+                case 0x54: return "AAC profile, level 6 ";
+                case 0x55: return "AAC profile, level 7 ";
+                case byte n when n >= 0x56 && n <= 0x57: return "Reserved ";
+                case 0x58: return "High efficiency AAC profile, level 2 ";
+                case 0x59: return "High efficiency AAC profile, level 3 ";
+                case 0x5A: return "High efficiency AAC profile, level 4 ";
+                case 0x5B: return "High efficiency AAC profile, level 5 ";
+                case 0x5C: return "High efficiency AAC profile, level 6 ";
+                case 0x5D: return "High efficiency AAC profile, level 7 ";
+                case byte n when n >= 0x5E && n <= 0x5F: return "Reserved ";
+                case 0x60: return "High efficiency AAC v2 profile, level 2 ";
+                case 0x61: return "High efficiency AAC v2 profile, level 3 ";
+                case 0x62: return "High efficiency AAC v2 profile, level 4 ";
+                case 0x63: return "High efficiency AAC v2 profile, level 5 ";
+                case 0x64: return "High efficiency AAC v2 profile, level 6 ";
+                case 0x65: return "High efficiency AAC v2 profile, level 7 ";
+                case byte n when n >= 0x66 && n <= 0x67: return "Reserved ";
+                case 0x68: return "Extended HE AAC Profile, level 1 ";
+                case 0x69: return "Extended HE AAC Profile, level 2 ";
+                case 0x6A: return "Extended HE AAC Profile, level 3 ";
+                case 0x6B: return "Extended HE AAC Profile, level 4 ";
+                case 0x6C: return "Extended HE AAC Profile, level 6 ";
+                case 0x6D: return "Extended HE AAC Profile, level 7 ";
+                case byte n when n >= 0x6E && n <= 0x6F: return "Reserved ";
+                case 0x70: return "Baseline USAC Profile, level 1 ";
+                case 0x71: return "Baseline USAC Profile, level 2 ";
+                case 0x72: return "Baseline USAC Profile, level 3 ";
+                case 0x73: return "Baseline USAC Profile, level 4 ";
+                case byte n when n >= 0x74 && n <= 0x7F: return "Reserved ";
+                case 0x80: return "Low Delay AAC Profile, level 1 ";
+                case byte n when n >= 0x81 && n <= 0x87: return "Reserved ";
+                case 0x88: return "Low Delay AAC v2 Profile, level 1 ";
+                case 0x89: return "Low Delay AAC v2 Profile, level 2 ";
+                case 0x8A: return "Low Delay AAC v2 Profile, level 3 ";
+                case 0x8B: return "Low Delay AAC v2 Profile, level 4 ";
+                case byte n when n >= 0x8C && n <= 0x8F: return "Reserved ";
+                case 0x90: return "High Definition AAC Profile, level 1 ";
+                case byte n when n >= 0x91 && n <= 0x97: return "Reserved ";
+                case 0x98: return "ALS Simple Profile, level 1 ";
+                case byte n when n >= 0x99 && n <= 0xFE: return "Reserved ";
+                default: return "Audio profile and level not specified by the MPEG-4_audio_profile_and_level field in this descriptor ";
 
+            }
+        }
 
     }
 }

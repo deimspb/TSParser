@@ -38,7 +38,7 @@ namespace TSParser.Tables.DvbTables
             PcrPid = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[8..]) & 0x1FFF);
             ProgramInfoLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[10..]) & 0x0FFF);
             var pointer = 12;
-            var descAllocation = $"Table: PMT, program number: {ProgramNumber}, section number: {SectionNumber}, programm info";
+            var descAllocation = $"Table: PMT, Program: {ProgramNumber}, Section number: {SectionNumber}";
 
             if (ProgramInfoLength > 0)
             {
@@ -57,7 +57,7 @@ namespace TSParser.Tables.DvbTables
 
             while (pointer < bytes.Length)
             {
-                var es = new EsInfo(bytes[pointer..]);
+                var es = new EsInfo(bytes[pointer..],ProgramNumber);
                 pointer += es.EsInfoLength + 5;
 
                 esList.Add(es);
@@ -118,7 +118,7 @@ namespace TSParser.Tables.DvbTables
         public ushort ElementaryPid { get; }
         public ushort EsInfoLength { get; }
         public List<Descriptor> EsDescriptorList { get; }
-        public EsInfo(ReadOnlySpan<byte> bytes)
+        public EsInfo(ReadOnlySpan<byte> bytes,ushort programId)
         {
 
             var pointer = 0;
@@ -127,7 +127,7 @@ namespace TSParser.Tables.DvbTables
             pointer += 2;
             EsInfoLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x0FFF);
             pointer += 2;
-            var descAllocation = $"Table: PMT, Es pid: {ElementaryPid}";
+            var descAllocation = $"Table: PMT, Program: {programId}, Es pid: {ElementaryPid}";
             EsDescriptorList = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, EsInfoLength), descAllocation);
         }
 

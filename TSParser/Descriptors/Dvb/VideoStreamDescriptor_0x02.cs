@@ -45,7 +45,7 @@ namespace TSParser.Descriptors.Dvb
         }
         public override string ToString()
         {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Mpeg1 Only Flag: {Mpeg1OnlyFlag}, Frame Rate Code: {FrameRateCode}, Profile And Level Indication: {ProfileAndLevelIndication}";
+            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Mpeg1 Only Flag: {Mpeg1OnlyFlag}, Frame Rate Code: {FrameRateCode}, Profile And Level Indication: {ProfileAndLevelIndication}\n";
         }
     }
 }

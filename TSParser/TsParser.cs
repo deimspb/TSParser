@@ -33,7 +33,8 @@ namespace TSParser
     public delegate void BatReady(BAT bat);
     public delegate void EitReady(EIT eit);
     public delegate void TdtReady(TDT tdt);
-    public delegate void Totready(TOT tot);
+    public delegate void TotReady(TOT tot);
+    public delegate void AitReady(AIT ait);
     public delegate void ParserComplete();
 
     public class TsParser
@@ -51,11 +52,12 @@ namespace TSParser
         public event PmtReady OnPmtReady = null!;
         public event EitReady OnEitReady = null!;
         public event TdtReady OnTdtReady = null!;
-        public event Totready OnTotready = null!;
+        public event TotReady OnTotready = null!;
         public event SdtReady OnSdtReady = null!;
         public event BatReady OnBatReady = null!;
         public event CatReady OnCatReady = null!;
         public event NitReady OnNitReady = null!;
+        public event AitReady OnAitReady = null!;
 
         private readonly Lazy<TsPacketFactory> packetFactory = new Lazy<TsPacketFactory>();
         private readonly Lazy<TdtTotFactory> tdtTotFactory = new Lazy<TdtTotFactory>();
@@ -90,6 +92,10 @@ namespace TSParser
 
         private PmtFactory[] m_pmtFactories = null!;
         private ushort[] m_pmtPids = null!;
+
+        private readonly Lazy<List<AitFactory>> aitFactories = new Lazy<List<AitFactory>>();
+        private List<AitFactory> m_aitFactories => aitFactories.Value;
+        private List<ushort> m_aitPids = new List<ushort>();
         #endregion
         #region Public methods        
         public TsParser(TsMode mode = TsMode.DVB)
@@ -210,8 +216,6 @@ namespace TSParser
             m_tdtTotFactory.OnTotready += TdtTotFactory_OnTotready;
             m_sdtBatFactory.OnSdtReady += SdtBatFactory_OnSdtReady;
             m_sdtBatFactory.OnBatReady += SdtBatFactory_OnBatReady;
-
-
         }
         private void TdtTotFactory_OnTotready(TOT tot)
         {
@@ -261,6 +265,26 @@ namespace TSParser
         private void PmtFactory_OnPmtReady(PMT pmt)
         {
             OnPmtReady?.Invoke(pmt);
+
+            var aitIdx = pmt.EsInfoList.FindIndex(es => es.StreamType == 0x05);
+            if (aitIdx >= 0 && pmt.EsInfoList[aitIdx].EsDescriptorList.Exists(desc => desc.DescriptorTag == 0x6F))
+            {
+                var aitPid = pmt.EsInfoList[aitIdx].ElementaryPid;
+                // prevent to add already added ait table after pmt update
+                if (!m_aitPids.Contains(aitPid))
+                {
+                    m_aitPids.Add(aitPid);
+                    var aitFactory = new AitFactory();
+                    aitFactory.CurrentPid = aitPid;
+                    aitFactory.OnAitReady += AitFactory_OnAitReady;
+                    m_aitFactories.Add(aitFactory);
+                }
+
+            }
+        }
+        private void AitFactory_OnAitReady(AIT ait)
+        {
+            OnAitReady?.Invoke(ait); 
         }
         private void DvbTableFactory(TsPacket tsPacket)
         {
@@ -349,13 +373,27 @@ namespace TSParser
         }
         private void GetOtherTables(TsPacket tsPacket)
         {
+            GetPmt(tsPacket);
+            GetAit(tsPacket);
+        }
+        private void GetPmt(TsPacket tsPacket)
+        {
             if (m_pmtPids == null) return;
 
-            var idx = Array.BinarySearch(m_pmtPids, tsPacket.Pid);
+            var idx = Array.IndexOf(m_pmtPids, tsPacket.Pid);
 
             if (idx >= 0)
             {
                 m_pmtFactories[idx].PushTable(tsPacket);
+            }
+        }
+        private void GetAit(TsPacket tsPacket)
+        {
+            var idx = m_aitPids.IndexOf(tsPacket.Pid);
+
+            if (idx >= 0)
+            {
+                m_aitFactories[idx].PushTable(tsPacket);
             }
         }
         private void AtscTableFactory(TsPacket tsPacket)

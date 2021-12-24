@@ -35,7 +35,7 @@ namespace TSParser.Tables.DvbTables
         {
             if (TableId != 0x4F && TableId != 0x4E && !(0x50 <= TableId && TableId <= 0x5F) && !(0x60 <= TableId && TableId <= 0x6F)) // check eit table id
             {
-                Logger.Send(LogStatus.ETSI, $"Invalid table id: {TableId} for EIT table");
+                Logger.Send(LogStatus.ETSI, $"Invalid table id: {TableId} for EIT table");                
             }
 
             ServiceId = BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]);
@@ -54,7 +54,7 @@ namespace TSParser.Tables.DvbTables
             var pointer = 0;
             while (pointer < bytes.Length)
             {
-                Event evt = new(bytes[pointer..]);
+                Event evt = new(bytes[pointer..],ServiceId);
                 pointer += evt.DescriptorLoopLength + 12;
                 events.Add(evt);
             }
@@ -116,7 +116,7 @@ namespace TSParser.Tables.DvbTables
         public ushort DescriptorLoopLength { get; }
 
         public List<Descriptor> EventDescriptors { get; }
-        public Event(ReadOnlySpan<byte> bytes)
+        public Event(ReadOnlySpan<byte> bytes,ushort serviceId)
         {
             var pointer = 0;
             EventId = BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]);
@@ -129,7 +129,7 @@ namespace TSParser.Tables.DvbTables
             FreeCAmode = (bytes[pointer] & 0x10) != 0;
             DescriptorLoopLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x0FFF);
             pointer += 2;
-            var allocation = $"Table: EIT, Event id: {EventId}";
+            var allocation = $"Table: EIT, Service id: {serviceId}, Event id: {EventId}";
             EventDescriptors = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, DescriptorLoopLength), allocation);
 
         }

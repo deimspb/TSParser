@@ -43,7 +43,7 @@ namespace TSParser.Tables.DvbTables
             List<BatItem> items = new List<BatItem>();
             while(pointer < bytes.Length)
             {
-                BatItem item = new BatItem(bytes[pointer..]);
+                BatItem item = new BatItem(bytes[pointer..],BouquetId);
                 pointer += item.TransportDescriptorsLength + 6;
                 items.Add(item);
             }
@@ -103,12 +103,12 @@ namespace TSParser.Tables.DvbTables
         public ushort OriginalNetworkId { get; } = default;
         public ushort TransportDescriptorsLength { get; } = default;
         public List<Descriptor> BatItemDescriptors { get; } = null!;
-        public BatItem(ReadOnlySpan<byte> bytes)
+        public BatItem(ReadOnlySpan<byte> bytes,ushort bouquetId)
         {
             TransportStreamId = BinaryPrimitives.ReadUInt16BigEndian(bytes);
             OriginalNetworkId = BinaryPrimitives.ReadUInt16BigEndian(bytes[2..]);
             TransportDescriptorsLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[4..]) & 0x0FFF);
-            var descAllocation = $"Bat item ts id: {TransportStreamId}";            
+            var descAllocation = $"Table: BAT, Bouquet id: {bouquetId}, item ts id: {TransportStreamId}";            
             BatItemDescriptors=DescriptorFactory.GetDescriptorList(bytes.Slice(6,TransportDescriptorsLength), descAllocation);
         }
         public override string ToString()

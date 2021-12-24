@@ -36,7 +36,7 @@ namespace TSParser.Tables.DvbTables
             List<ServiceDescriptionItem> items = new List<ServiceDescriptionItem>();
             while (pointer < bytes.Length)
             {
-                ServiceDescriptionItem item = new(bytes[pointer..]);
+                ServiceDescriptionItem item = new(bytes[pointer..],TransportStreamId);
                 pointer += item.DescriptorLoopLength + 5;
                 items.Add(item);
             }
@@ -89,7 +89,7 @@ namespace TSParser.Tables.DvbTables
         public bool FreeCAMode { get; } = default;
         public ushort DescriptorLoopLength { get; } = default;
         public List<Descriptor> SdtItemDescriptorList { get; } = null!;
-        public ServiceDescriptionItem(ReadOnlySpan<byte> bytes)
+        public ServiceDescriptionItem(ReadOnlySpan<byte> bytes, ushort tsId)
         {
             ServiceId = BinaryPrimitives.ReadUInt16BigEndian(bytes[0..]);
             EitScheduleFlag = (bytes[2] & 0x2) != 0;
@@ -98,7 +98,7 @@ namespace TSParser.Tables.DvbTables
             FreeCAMode = (bytes[3] & 0x10) != 0;
             DescriptorLoopLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]) & 0x0FFF);
             var pointer = 5;
-            var descAllocation = $"Table: SDT, service id: {ServiceId}";
+            var descAllocation = $"Table: SDT, Ts id: {tsId}, Service id: {ServiceId}";
             SdtItemDescriptorList = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, DescriptorLoopLength), descAllocation);
         }
         public override string ToString()

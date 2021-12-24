@@ -87,7 +87,7 @@ namespace TSParser.Tables.DvbTableFactory
             {
                 if (m_nitList[idx].VersionNumber != CurrentNit.VersionNumber)
                 {
-                    Logger.Send(LogStatus.Info, $"NIT table version changed for ts id: {m_nitList[idx].NetworkId}");
+                    Logger.Send(LogStatus.Info, $"NIT table version changed for ts id: {m_nitList[idx].NetworkId} from {m_nitList[idx].VersionNumber} to {CurrentNit.VersionNumber}");
                     m_nitList.RemoveAt(idx);
                 }
                 else

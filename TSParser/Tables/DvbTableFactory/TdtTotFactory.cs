@@ -22,7 +22,7 @@ namespace TSParser.Tables.DvbTableFactory
     internal class TdtTotFactory : TableFactory
     {
         internal event TdtReady OnTdtReady = null!;
-        internal event Totready OnTotready = null!;
+        internal event TotReady OnTotready = null!;
 
         private TDT m_tdt = null!;
         private TOT m_tot = null!;

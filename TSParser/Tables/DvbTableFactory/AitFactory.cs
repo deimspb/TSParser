@@ -12,33 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
 using System.Buffers.Binary;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using TSParser.Service;
 using TSParser.Tables.DvbTables;
 using TSParser.TransportStream;
 
 namespace TSParser.Tables.DvbTableFactory
 {
-    internal class PmtFactory : TableFactory
+    internal class AitFactory : TableFactory
     {
-        internal event PmtReady OnPmtReady = null!;
-        private PMT m_pmt=null!;    
-        internal PMT Pmt
-        {
-            get { return m_pmt; }
-            set { m_pmt = value; }
-        }
+        internal event AitReady OnAitReady = null!;
+        private AIT m_ait = null!;
 
-        private PMT CurrentPmt=null!;
+        internal AIT Ait
+        {
+            get => m_ait;
+            set => m_ait = value;
+        }
+        private AIT CurrentAit = null!;
         private uint CurrentCRC32;
+
+
         internal override void PushTable(TsPacket tsPacket)
         {
             AddData(tsPacket);
             if (!IsAllTable) return;
-            ParsePmt();
+            ParseAit();
         }
-
-        internal void ParsePmt()
+        private void ParseAit()
         {
             ReadOnlySpan<byte> bytes = TableData.AsSpan();
 
@@ -46,21 +52,21 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) // drop invalid ts packet
             {
-                Logger.Send(LogStatus.ETSI, $"PMT pid {CurrentPid} CRC incorrect!");
+                Logger.Send(LogStatus.ETSI, $"AIT pid {CurrentPid} CRC incorrect!");
                 return;
             }
 
-            if (Pmt?.CRC32 == CurrentCRC32) return; // if we already have pmt table and its crc32 equal curent table crc drop it. because it is the same pmt             
+            if (Ait?.CRC32 == CurrentCRC32) return; //// if we already have pmt table and its crc32 equal curent table crc drop it. because it is the same pmt            
 
-            CurrentPmt = new PMT(bytes);
+            CurrentAit = new AIT(bytes,CurrentPid);
 
-            if (Pmt != null && Pmt.VersionNumber != CurrentPmt.VersionNumber)
+            if(Ait!=null && Ait.VersionNumber != CurrentAit.VersionNumber)
             {
-                Logger.Send(LogStatus.Info, $"PMT version changed from {Pmt.VersionNumber} to {CurrentPmt.VersionNumber}");
+                Logger.Send(LogStatus.Info, $"AIT version changed from {Ait.VersionNumber} to {CurrentAit.VersionNumber}");
             }
 
-            Pmt = CurrentPmt;            
-            OnPmtReady?.Invoke(Pmt);
+            Ait = CurrentAit;
+            OnAitReady?.Invoke(Ait);
         }
     }
 }

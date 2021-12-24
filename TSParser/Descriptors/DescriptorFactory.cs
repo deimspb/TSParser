@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.Descriptors.AitDescriptors;
 using TSParser.Descriptors.Dvb;
 using TSParser.Descriptors.ExtendedDvb;
 using TSParser.Service;
@@ -22,6 +23,7 @@ namespace TSParser.Descriptors
     {
         private static List<byte> m_unknownDescriptorListId = new List<byte>();
         private static List<byte> m_unknownExtensionDescList = new List<byte>();
+        private static List<byte> m_unknownAitDescList = new List<byte>();
 
         internal static Descriptor GetDescriptor(ReadOnlySpan<byte> bytes, string descAllocation = "")
         {
@@ -64,11 +66,18 @@ namespace TSParser.Descriptors
                     case 0x06: return new DataStreamAlignmentDescriptor_0x06(bytes);
                     case 0x28: return new AvcVideoDescriptor_0x28(bytes);
                     case 0x58: return new LocalTimeOffsetDescriptor_0x58(bytes);
+                    case 0x8A: return new CueIdentifierDescriptor_0x8A(bytes);
+                    case 0x0F: return new PrivateDataIndicatorDescriptor_0x0F(bytes);
+                    case 0x45: return new VbiDataDescriptor_0x45(bytes);
+                    case 0x7C: return new AACDescriptor_0x7C(bytes);
+                    case 0x11: return new StdDescriptor_0x11(bytes);
+                    case 0x70: return new AdaptationFieldDataDescriptor_0x70(bytes);
+                    case 0x2A: return new AvcTimingAndHrdDescriptor_0x2A(bytes);
                     default:
                         {
                             if (!m_unknownDescriptorListId.Contains(bytes[0]))
                             {
-                                Logger.Send(LogStatus.Info, $"Not specified descriptor with tag: 0x{bytes[0]:X}, descriptor location: {descAllocation}");
+                                Logger.Send(LogStatus.Info, $"Not specified descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
                                 m_unknownDescriptorListId.Add(bytes[0]);
                             }
 
@@ -78,9 +87,35 @@ namespace TSParser.Descriptors
             }
             catch (Exception ex)
             {
-                Logger.Send(LogStatus.Exception, $"While creating descriptor tag: 0x{bytes[0]:X} descriptor location: {descAllocation}", ex);
+                Logger.Send(LogStatus.Exception, $"While creating descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
                 return new Descriptor(bytes);
             }
+        }
+        internal static Descriptor GetAitDescriptor(ReadOnlySpan<byte> bytes, string descAllocation = "")
+        {
+            try
+            {
+                switch (bytes[0])
+                {
+                    case 0x00: return new ApplicationDescriptor_0x00(bytes);
+                    default:
+                        {
+                            if (!m_unknownAitDescList.Contains(bytes[0]))
+                            {
+                                Logger.Send(LogStatus.Info, $"Not specified AIT descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
+                                m_unknownAitDescList.Add(bytes[0]);
+                            }
+
+                            return new AitDescriptor(bytes);
+                        }
+                }
+            }
+            catch(Exception ex)
+            {
+                Logger.Send(LogStatus.Exception, $"While creating AIT descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
+                return new AitDescriptor(bytes);
+            }
+            
         }
         internal static Descriptor GetExtensionDescriptor(ReadOnlySpan<byte> bytes, string descAllocation = "")
         {
@@ -103,23 +138,48 @@ namespace TSParser.Descriptors
             }
             catch (Exception ex)
             {
-                Logger.Send(LogStatus.Exception, $"While creating extension descriptor tag: 0x{bytes[1]:X} descriptor location: {descAllocation}", ex);
+                Logger.Send(LogStatus.Exception, $"While creating extension descriptor tag: 0x{bytes[1]:X2} descriptor location: {descAllocation}", ex);
                 return new ExtensionDescriptor_0x7F(bytes);
             }
         }
-        internal static List<Descriptor> GetDescriptorList(ReadOnlySpan<byte> bytes, string descAllocation = "")
+        internal static List<Descriptor> GetDescriptorList(ReadOnlySpan<byte> bytes, string descAllocation = "", byte callerTableId = 0)
+        {
+            switch (callerTableId)
+            {
+                case 0x74:
+                    {
+                        return GetAitDescriptorList(bytes, descAllocation);
+                    }
+                default:
+                    {
+                        return GetDvbDescriptorList(bytes, descAllocation);
+                    }
+            }
+        }        
+        internal static List<Descriptor> GetDvbDescriptorList(ReadOnlySpan<byte> bytes, string descAllocation = "")
         {
             var pointer = 0;
             List<Descriptor> descriptors = new List<Descriptor>();
-
             while (pointer < bytes.Length)
             {
                 var desc = GetDescriptor(bytes[pointer..], descAllocation);
                 descriptors.Add(desc);
                 pointer += desc.DescriptorLength + 2;
             }
-
             return descriptors;
         }
+        internal static List<Descriptor> GetAitDescriptorList(ReadOnlySpan<byte> bytes, string descAllocation = "")
+        {
+            var pointer = 0;
+            List<Descriptor> descriptors = new List<Descriptor>();
+            while (pointer < bytes.Length)
+            {
+                var desc = GetAitDescriptor(bytes[pointer..], descAllocation);
+                descriptors.Add(desc);
+                pointer += desc.DescriptorLength + 2;
+            }
+            return descriptors;
+        }
+        
     }
 }
