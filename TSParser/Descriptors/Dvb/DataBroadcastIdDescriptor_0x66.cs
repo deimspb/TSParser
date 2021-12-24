@@ -19,7 +19,7 @@ namespace TSParser.Descriptors.Dvb
     public record DataBroadcastIdDescriptor_0x66 : Descriptor
     {
         public ushort DataBroadcastId { get; }
-        public byte[] IdSelectorByte { get; }
+        public byte[] IdSelectorByte { get; } //TODO: implement with ETSI TS 101 162
         public DataBroadcastIdDescriptor_0x66(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             DataBroadcastId = BinaryPrimitives.ReadUInt16BigEndian(bytes[2..]);

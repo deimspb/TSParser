@@ -73,6 +73,8 @@ namespace TSParser.Descriptors
                     case 0x11: return new StdDescriptor_0x11(bytes);
                     case 0x70: return new AdaptationFieldDataDescriptor_0x70(bytes);
                     case 0x2A: return new AvcTimingAndHrdDescriptor_0x2A(bytes);
+                    case 0x5A: return new TerrestrialDeliverySystemDescriptor_0x5A(bytes);
+                    case 0x64: return new DataBroadcastDescriptor_0x64(bytes);
                     default:
                         {
                             if (!m_unknownDescriptorListId.Contains(bytes[0]))
