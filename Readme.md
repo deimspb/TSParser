@@ -17,53 +17,57 @@ DVB tables:
 * Support non zero pointer field
 
 Descriptors:
-* 0x02 VideoStreamDescriptor_0x02
-* 0x03 AudioStreamDescriptor_0x03
-* 0x05 RegistrationDescriptor_0x05
-* 0x06 DataStreamAlignmentDescriptor_0x06
-* 0x09 CaDescriptor_0x09
-* 0x0A Iso639LanguageDescriptor_0x0A
-* 0x0C MultiplexBufferUtilizationDescriptor_0x0C
-* 0x0E MaximumBitrateDescriptor_0x0E
-* 0x11 StdDescriptor_0x11
-* 0x13 CarouselIdentifierDescriptor_0x13
-* 0x14 AssociationTagDescriptor_0x14
-* 0x28 AvcVideoDescriptor_0x28
-* 0x2A AvcTimingAndHrdDescriptor_0x2A
-* 0x38 HevcVideoDescriptor_0x38
-* 0x40 NetworkNameDescriptor_0x40
-* 0x41 ServiceListDescriptor_0x41
-* 0x43 SatelliteDeliverySystemDescriptor_0x43
-* 0x44 CableDeliverySystemDescriptor_0x44
-* 0x45 VbiDataDescriptor_0x45
-* 0x47 BouquetNameDescriptor_0x47
-* 0x48 ServiceDescriptor_0x48
-* 0x4A LinkageDescriptor_0x4A
-* 0x4D ShortEventDescriptor_0x4D
-* 0x4E ExtendedEventDescriptor_0x4E
-* 0x52 StreamIdentifierDescriptor_0x52
-* 0x53 CaIdentifierDescriptor_0x53
-* 0x54 ContentDescriptor_0x54
-* 0x55 ParentalRatingDescriptor_0x55
-* 0x56 TeletextDescriptor_0x56
-* 0x58 LocalTimeOffsetDescriptor_0x58
-* 0x59 SubtitlingDescriptor_0x59
-* 0x5C MultilingualBouquetNameDescriptor_0x5C
-* 0x66 DataBroadcastIdDescriptor_0x66
-* 0x6A AC3Descriptor_0x6A
-* 0x6F ApplicationSignallingDescriptor_0x6F
-* 0x70 AdaptationFieldDataDescriptor_0x70
-* 0x7F ExtensionDescriptor_0x7F
-* 0x83 LogicalChannelNumberDescriptor_0x83
-* 0x8A CueIdentifierDescriptor_0x8A
-* 0x7C AACDescriptor_0x7C
-
+ * 0x02 VideoStreamDescriptor_0x02
+ * 0x03 AudioStreamDescriptor_0x03
+ * 0x05 RegistrationDescriptor_0x05
+ * 0x06 DataStreamAlignmentDescriptor_0x06
+ * 0x09 CaDescriptor_0x09
+ * 0x0A Iso639LanguageDescriptor_0x0A
+ * 0x0C MultiplexBufferUtilizationDescriptor_0x0C
+ * 0x0E MaximumBitrateDescriptor_0x0E
+ * 0x11 StdDescriptor_0x11
+ * 0x13 CarouselIdentifierDescriptor_0x13
+ * 0x14 AssociationTagDescriptor_0x14
+ * 0x28 AvcVideoDescriptor_0x28
+ * 0x2A AvcTimingAndHrdDescriptor_0x2A
+ * 0x38 HevcVideoDescriptor_0x38
+ * 0x40 NetworkNameDescriptor_0x40
+ * 0x41 ServiceListDescriptor_0x41
+ * 0x43 SatelliteDeliverySystemDescriptor_0x43
+ * 0x44 CableDeliverySystemDescriptor_0x44
+ * 0x45 VbiDataDescriptor_0x45
+ * 0x47 BouquetNameDescriptor_0x47
+ * 0x48 ServiceDescriptor_0x48
+ * 0x4A LinkageDescriptor_0x4A
+ * 0x4D ShortEventDescriptor_0x4D
+ * 0x4E ExtendedEventDescriptor_0x4E
+ * 0x52 StreamIdentifierDescriptor_0x52
+ * 0x53 CaIdentifierDescriptor_0x53
+ * 0x54 ContentDescriptor_0x54
+ * 0x55 ParentalRatingDescriptor_0x55
+ * 0x56 TeletextDescriptor_0x56
+ * 0x58 LocalTimeOffsetDescriptor_0x58
+ * 0x59 SubtitlingDescriptor_0x59
+ * 0x5A TerrestrialDeliverySystemDescriptor_0x5A
+ * 0x5C MultilingualBouquetNameDescriptor_0x5C
+ * 0x64 DataBroadcastDescriptor_0x64
+ * 0x66 DataBroadcastIdDescriptor_0x66
+ * 0x6A AC3Descriptor_0x6A
+ * 0x6F ApplicationSignallingDescriptor_0x6F
+ * 0x70 AdaptationFieldDataDescriptor_0x70
+ * 0x7F ExtensionDescriptor_0x7F
+ * 0x83 LogicalChannelNumberDescriptor_0x83
+ * 0x8A CueIdentifierDescriptor_0x8A
+ * 0x7C AACDescriptor_0x7C
 
 Extension Descriptor:
 * 0x00  ImageIconDescriptor_0x00
 
 AIT Descriptor:
 * 0x00	ApplicationDescriptor_0x00
+* 0x01	ApplicationNameDescriptor_0x01
+* 0x02	TransportProtocolDescriptor_0x02
+* 0x15	SimpleApplicationLocationDescriptor_0x15
 
 ## How to use this parser
 To read from file:
@@ -91,6 +95,7 @@ To Get tables you need to subscribe to the events.
  * event BatReady OnBatReady 
  * event CatReady OnCatReady 
  * event NitReady OnNitReady 
+ * event AitReady OnAitReady
 
  You can also subcribe to event OnParserComplete which will rase when file is complete or StopParser method calls.
 
