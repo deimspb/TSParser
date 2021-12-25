@@ -14,6 +14,7 @@
 
 using System.Buffers.Binary;
 using TSParser.Descriptors;
+using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
 {
@@ -78,6 +79,31 @@ namespace TSParser.Tables.DvbTables
             sdt += $"   SDT CRC 0x{CRC32:X}\n";
             return sdt;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string sdt = $"{headerPrefix}-=SDT=-\n";
+
+            sdt += base.Print(prefixLen +2);
+
+            sdt += $"{prefix}Transport stream id: {TransportStreamId}\n";
+            sdt += $"{prefix}Original network id: {OriginalNetworkId}\n";
+
+            if (SdtItemsList != null)
+            {
+                sdt += $"{prefix}SDT item list count: {SdtItemsList.Count}\n";
+                foreach (var item in SdtItemsList)
+                {
+                    sdt += item.Print(prefixLen +4);
+                }
+            }
+
+
+            sdt += $"{prefix}SDT CRC32: 0x{CRC32:X}\n";
+            return sdt;
+        }
     }
 
     public struct ServiceDescriptionItem
@@ -116,6 +142,30 @@ namespace TSParser.Tables.DvbTables
             foreach (var desc in SdtItemDescriptorList)
             {
                 sdtItem += $"            {desc}";
+            }
+
+
+
+            return sdtItem;
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string sdtItem = $"{headerPrefix}SDT item\n";
+            sdtItem += $"{prefix}Service id: {ServiceId}\n";
+
+            sdtItem += $"{prefix}EIT schedule flag: {EitScheduleFlag}\n";
+            sdtItem += $"{prefix}EIT present following flag: {EitPresentFollowingFlag}\n";
+            sdtItem += $"{prefix}Running status: {RunningStatus}\n";
+            sdtItem += $"{prefix}Free CA mode: {FreeCAMode}\n";
+            sdtItem += $"{prefix}Descriptor loop length: {DescriptorLoopLength}\n";
+
+            sdtItem += $"{prefix}SDT item descriptor count: {SdtItemDescriptorList.Count}\n";
+            foreach (var desc in SdtItemDescriptorList)
+            {
+                sdtItem += desc.Print(prefixLen +4);
             }
 
 

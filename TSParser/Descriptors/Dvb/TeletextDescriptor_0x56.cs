@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using TSParser.DictionariesData;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -40,6 +41,16 @@ namespace TSParser.Descriptors.Dvb
             }
             return str;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            foreach (var ln in Languages)
+            {
+                str += ln.Print(prefixLen + 2);
+            }
+            return str;
+        }
     }
     public struct Language
     {
@@ -62,6 +73,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"            Language: {LanguageName}, Teletext type: {TeletextTypeName}, Page number: {TeletextPageNumber}";
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = new string(' ', prefixLen);
+            return $"{headerPrefix}Language: {LanguageName}, Teletext type: {TeletextTypeName}, Page number: {TeletextPageNumber}\n";
         }
     }
 }

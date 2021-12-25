@@ -44,5 +44,10 @@ namespace TSParser.Descriptors
         {
             return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Length: {DescriptorLength}\n";
         }
+        public virtual string Print(int prefixLen)
+        {
+            string headerPrefix = new string(' ', prefixLen);
+            return $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Length: {DescriptorLength}\n";
+        }
     }
 }

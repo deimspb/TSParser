@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using TSParser.DictionariesData;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -38,6 +39,17 @@ namespace TSParser.Descriptors.Dvb
             }
             return str;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+
+            string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            foreach (var ir in iso639Records)
+            {
+                str += ir.Print(prefixLen+2);
+            }
+            return str;
+        }
     }
 
     public readonly struct Iso639Record
@@ -56,6 +68,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"            Language code: {LanguageCode}, Audio type: {AudioTypeName}";
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            return $"{headerPrefix}Language code: {LanguageCode}, Audio type: {AudioTypeName}\n";
         }
     }
 

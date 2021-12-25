@@ -25,7 +25,6 @@ namespace TSParser.Descriptors.AitDescriptors
         public byte Visibility { get; }
         public byte ApplicationPriority { get; }
         public TransportProtocolLabelItem[] TransportProtocolLabels { get; } = null!;
-
         public ApplicationDescriptor_0x00(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             var pointer = 2;
@@ -75,6 +74,37 @@ namespace TSParser.Descriptors.AitDescriptors
             }
             return str;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str = $"{headerPrefix}AIT Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            str += $"{prefix}Application Profiles Length: {ApplicationProfilesLength}\n";
+
+            if (ApplicationProfileItems is not null)
+            {
+                str += $"{prefix}Application Profile Items count: {ApplicationProfileItems.Length}\n";
+                foreach (var item in ApplicationProfileItems)
+                {
+                    str += $"{item.Print(prefixLen + 4)}";
+                }
+            }
+
+            str += $"{prefix}Service Bound Flag: {ServiceBoundFlag}\n";
+            str += $"{prefix}Visibility: {Visibility}\n";
+            str += $"{prefix}Application Priority: {ApplicationPriority}\n";
+
+            if (TransportProtocolLabels is not null)
+            {
+                str += $"{prefix}Transport Protocol Labels count: {TransportProtocolLabels.Length}\n";
+                foreach (var item in TransportProtocolLabels)
+                {
+                    str += $"{item.Print(prefixLen + 4)}";
+                }
+            }
+            return str;
+        }
     }
     public struct ApplicationProfileItem
     {
@@ -93,6 +123,11 @@ namespace TSParser.Descriptors.AitDescriptors
         {
             return $"Application Profile: {ApplicationProfile}, Version Major: {VersionMajor}, Version Minor: {VersionMinor}, Version Micro: {VersionMicro}";
         }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = new string(' ', prefixLen);
+            return $"{headerPrefix}Application Profile: {ApplicationProfile}, Version Major: {VersionMajor}, Version Minor: {VersionMinor}, Version Micro: {VersionMicro}\n";
+        }
     }
     public struct TransportProtocolLabelItem
     {
@@ -104,6 +139,11 @@ namespace TSParser.Descriptors.AitDescriptors
         public override string ToString()
         {
             return $"Transport Protocol Label: {TransportProtocolLabel}";
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            return $"{headerPrefix}Transport Protocol Label: {TransportProtocolLabel}\n";
         }
     }
 }

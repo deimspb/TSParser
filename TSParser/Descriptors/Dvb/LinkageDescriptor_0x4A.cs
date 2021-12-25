@@ -57,6 +57,11 @@ namespace TSParser.Descriptors.Dvb
         {
             return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Tsid: {TransportStreamId}, Onid: {OriginalNetworkId}, Sid: {ServiceId}, type: {LinkageTypeName}";
         }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            return $"{header}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Tsid: {TransportStreamId}, Onid: {OriginalNetworkId}, Sid: {ServiceId}, type: {LinkageTypeName}\n";
+        }
         private string GetLinkageType(byte bt)
         {
             switch (bt)

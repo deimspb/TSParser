@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using TSParser.DictionariesData;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.AitDescriptors
 {
@@ -40,6 +41,16 @@ namespace TSParser.Descriptors.AitDescriptors
             }
             return str;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string str = $"{headerPrefix}AIT descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            foreach (var applicationName in ApplicationNames)
+            {
+                str += applicationName.Print(prefixLen+2);
+            }
+            return str;
+        }
     }
     public struct ApplicationName
     {
@@ -57,6 +68,11 @@ namespace TSParser.Descriptors.AitDescriptors
         public override string ToString()
         {
             return $"Language code: {Iso639LanguageCode}, Application name: {ApplicationNameChar}";
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            return $"{headerPrefix}Language code: {Iso639LanguageCode}, Application name: {ApplicationNameChar}\n";
         }
     }
 

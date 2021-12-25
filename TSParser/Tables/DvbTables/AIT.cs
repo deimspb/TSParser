@@ -83,6 +83,43 @@ namespace TSParser.Tables.DvbTables
 
             return str;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str = $"{headerPrefix}-=AIT pid: {m_aitPid}=-\n";
+
+            str += base.Print(prefixLen + 2);
+
+            str += $"{prefix}Test Application Flag: {TestApplicationFlag}\n";
+            str += $"{prefix}Application Type: {ApplicationType}\n";
+            str += $"{prefix}Common Descriptors Length: {CommonDescriptorsLength}\n";
+
+            if (AitDescriptorsList is not null)
+            {
+                str += $"{prefix}AIT descriptors count: {AitDescriptorsList.Count}\n";
+                foreach (var descriptor in AitDescriptorsList)
+                {
+                    str += $"{descriptor.Print(prefixLen + 4)}";
+                }
+            }
+
+            str += $"{prefix}Application Loop Length: {ApplicationLoopLength}\n";
+
+            if (ApplicationLoops is not null)
+            {
+                str += $"{prefix}Application Loops count: {ApplicationLoops.Count}\n";
+                foreach (var loop in ApplicationLoops)
+                {
+                    str += loop.Print(prefixLen + 4);
+                }
+            }
+
+            str += $"{prefix}AIT CRC: 0x{CRC32:X}\n";
+
+            return str;
+        }
         public virtual bool Equals(AIT? table)
         {
             if (table == null) return false;
@@ -139,6 +176,26 @@ namespace TSParser.Tables.DvbTables
                 foreach(var descriptor in ApplicationLoopDescriptors)
                 {
                     str += $"         {descriptor}";
+                }
+            }
+
+            return str;
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str = $"{headerPrefix}Application ID: 0x{AppIdentifier.ApplicationId:X}\n";
+            str += $"{prefix}Organisation ID: 0x{AppIdentifier.OrganisationId:X}\n";
+            str += $"{prefix}Application Control Code: {ApplicationControlCode}\n";
+
+            if (ApplicationLoopDescriptors is not null)
+            {
+                str += $"{prefix}Application loop descriptors count: {ApplicationLoopDescriptors.Count}\n";
+                foreach (var descriptor in ApplicationLoopDescriptors)
+                {
+                    str += descriptor.Print(prefixLen + 4);
                 }
             }
 

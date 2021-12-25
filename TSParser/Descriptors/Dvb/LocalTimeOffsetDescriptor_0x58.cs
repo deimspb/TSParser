@@ -38,6 +38,17 @@ namespace TSParser.Descriptors.Dvb
             }
             return str;
         }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+
+            string str = $"{header}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            foreach (var i in LocalTimes)
+            {
+                str += i.Print(prefixLen + 2);
+            }
+            return str;
+        }
     }
     public struct LocalTime
     {
@@ -64,6 +75,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"Country: {CountryCode}, region id: {CountryRegionId}, polarity: {LocalTimeOffsetPolarity}, time offset: {LocalTimeOffset}, time of change: {TimeOfChange}, next time offset: {NextTimeOffset}";
+        }
+        public string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            return $"{header}Country: {CountryCode}, region id: {CountryRegionId}, polarity: {LocalTimeOffsetPolarity}, time offset: {LocalTimeOffset}, time of change: {TimeOfChange}, next time offset: {NextTimeOffset}\n";
         }
     }
 }

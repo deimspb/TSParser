@@ -95,6 +95,41 @@ namespace TSParser.Tables.DvbTables
             bat += $"   CRC: 0x{CRC32:X}\n";
             return bat;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            var bat = $"{headerPrefix}-=BAT=-\n";
+            bat += $"{prefix}Bouquet id: {BouquetId}\n";
+
+            bat += base.Print(prefixLen + 2);
+
+            bat += $"{prefix}Bouquet descriptors lenght: {BouquetDescriptorsLenght}\n";
+
+            if (BatDescriptorList != null)
+            {
+                bat += $"{prefix}Bat Descriptor List count: {BatDescriptorList.Count}\n";
+                foreach (var desc in BatDescriptorList)
+                {
+                    bat += desc.Print(prefixLen +4);
+                }
+            }
+
+            bat += $"{prefix}Transport stream loop lenght: {TransportStreamLoopLenght}\n";
+
+            if (BatTsLoopList != null)
+            {
+                bat += $"{prefix}Bat Ts Loop List count: {BatTsLoopList.Count}\n";
+                foreach (var tsloop in BatTsLoopList)
+                {
+                    bat += tsloop.Print(prefixLen + 4);
+                }
+            }
+
+            bat += $"{prefix}CRC: 0x{CRC32:X}\n";
+            return bat;
+        }
     }
 
     public struct BatItem
@@ -125,6 +160,25 @@ namespace TSParser.Tables.DvbTables
                 }
             }
             
+            return item;
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            var item = $"{headerPrefix}Bat item Transport stream id: {TransportStreamId}\n";
+            item += $"{prefix}Original network id: {OriginalNetworkId}\n";
+            item += $"{prefix}Transport descriptors length: {TransportDescriptorsLength}\n";
+
+            if (BatItemDescriptors != null)
+            {
+                foreach (var desc in BatItemDescriptors)
+                {
+                    item += desc.Print(prefixLen + 4);
+                }
+            }
+
             return item;
         }
     }

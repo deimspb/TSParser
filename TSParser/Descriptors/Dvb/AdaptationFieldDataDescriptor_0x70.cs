@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.Service;
+
 namespace TSParser.Descriptors.Dvb
 {
     public record AdaptationFieldDataDescriptor_0x70 : Descriptor
@@ -24,6 +26,12 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Adaptation Field Data Identifier: {AdaptationFieldDataIdentifier}\n";
+        }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+
+            return $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Adaptation Field Data Identifier: {AdaptationFieldDataIdentifier}\n";
         }
     }
 }

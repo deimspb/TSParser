@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -32,6 +33,12 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"         CA system id: {CaSystemId}, CA pid: {CaPid}, private data: {BitConverter.ToString(PrivateDateBytes):X}";           
+        }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+
+            return $"{header}CA system id: {CaSystemId}, CA pid: {CaPid}, private data: {BitConverter.ToString(PrivateDateBytes):X}\n";
         }
     }
 }

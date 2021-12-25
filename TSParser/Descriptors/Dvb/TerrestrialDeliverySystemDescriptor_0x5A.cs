@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -64,6 +65,26 @@ namespace TSParser.Descriptors.Dvb
             str += $"                   Guard Interval: {GetGuardInterval(GuardInterval)}\n";
             str += $"                   Transmission Mode: {GetTransmissionMode(TransmissionMode)}\n";
             str += $"                   OthervFrequency Flag: {OtherFrequencyFlag}";
+            return str;
+        }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str = $"{header}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            str += $"{prefix}Centre Frequency:{CentreFrequency} Hz\n";
+            str += $"{prefix}Bandwidth: {GetBw(Bandwidth)}\n";
+            str += $"{prefix}Priority: {Priority}\n";
+            str += $"{prefix}TimeSlicing Indicator: {TimeSlicingIndicator}\n";
+            str += $"{prefix}MpeFec Indicator: {MpeFecIndicator}\n";
+            str += $"{prefix}Constellation: {GetConstellation(Constellation)}\n";
+            str += $"{prefix}Hierarchy Information: {GetConstellation(Constellation)}\n";
+            str += $"{prefix}Code Rate HpStream: {GetCodeRateHpStream(CodeRateHpStream)}\n";
+            str += $"{prefix}Code Rate LpStream: {GetCodeRateHpStream(CodeRateLpStream)}\n";
+            str += $"{prefix}Guard Interval: {GetGuardInterval(GuardInterval)}\n";
+            str += $"{prefix}Transmission Mode: {GetTransmissionMode(TransmissionMode)}\n";
+            str += $"{prefix}OthervFrequency Flag: {OtherFrequencyFlag}\n";
             return str;
         }
         private string GetBw(byte bt)

@@ -16,8 +16,8 @@ namespace TSParser.Buffers
 {
     internal class CircularBuffer
     {
-        private byte[][] m_buffer;
-        private int[] m_dataLength;
+        private byte[][] m_buffer = null!;
+        private int[] m_dataLength = null!;
         private int m_nextAddPosition;
         private int m_lastRemPosition;
         private bool m_wrapped;

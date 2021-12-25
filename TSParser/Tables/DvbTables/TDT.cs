@@ -35,5 +35,14 @@ namespace TSParser.Tables.DvbTables
             tdt += $"   UTC date time: {UtcDateTime}";
             return tdt;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            var tdt = $"{headerPrefix}-=TDT=-\n";
+            tdt += $"{prefix}UTC date time: {UtcDateTime}\n";
+            return tdt;
+        }
     }
 }

@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -40,6 +41,17 @@ namespace TSParser.Descriptors.Dvb
             foreach(DataService ds in DataServices)
             {
                 str += $"{ds}";
+            }
+            return str;
+        }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+
+            string str = $"{header}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            foreach (DataService ds in DataServices)
+            {
+                str += ds.Print(prefixLen + 2);
             }
             return str;
         }
@@ -80,6 +92,19 @@ namespace TSParser.Descriptors.Dvb
             }
             return str;
         }
+        public string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str = $"{header}Data Service Id: {DataServiceId}\n";
+            str += $"{prefix}Data Service name: {DataServiceName}\n";
+            foreach (var item in VbiLines)
+            {
+                str += item.Print(prefixLen + 4);
+            }
+            return str;
+        }
         private string GetDataServiceName(byte bt)
         {
             switch (bt)
@@ -110,6 +135,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"Field parity: {FieldParity}, Line offset: {LineOffset}\n";
+        }
+        public string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            return $"{header}Field parity: {FieldParity}, Line offset: {LineOffset}\n";
         }
     }
 }

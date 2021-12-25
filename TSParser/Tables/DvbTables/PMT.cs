@@ -96,6 +96,41 @@ namespace TSParser.Tables.DvbTables
             pmt += $"   PMT CRC: 0x{CRC32:X}\n";
             return pmt;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string pmt = $"{headerPrefix}-=PMT for program number: {ProgramNumber}=-\n";
+
+            pmt += base.Print(prefixLen + 2);
+
+            pmt += $"{prefix}Program number: {ProgramNumber}\n";
+            pmt += $"{prefix}PCR pid: {PcrPid}\n";
+            pmt += $"{prefix}Program info length: {ProgramInfoLength}\n";
+
+            if (PmtDescriptorList is not null)
+            {
+                pmt += $"{prefix}PMT descriptor count: {PmtDescriptorList.Count}\n";
+                foreach (var desc in PmtDescriptorList)
+                {
+                    pmt += desc.Print(prefixLen + 4);
+                }
+            }
+
+            if (EsInfoList is not null)
+            {
+                pmt += $"{prefix}PMT ES records count: {EsInfoList.Count}\n";
+                foreach (var es in EsInfoList)
+                {
+                    pmt += es.Print(prefixLen + 4);
+                }
+            }
+
+
+            pmt += $"{prefix}PMT CRC32: 0x{CRC32:X}\n";
+            return pmt;
+        }
         public virtual bool Equals(PMT? table)
         {
             if (table == null) return false;
@@ -141,6 +176,22 @@ namespace TSParser.Tables.DvbTables
             foreach (var desc in EsDescriptorList)
             {
                 es += $"{desc}\n";
+            }
+            return es;
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string es = $"{headerPrefix}ES PID: {ElementaryPid}\n";
+            es += $"{prefix}Stream type: {StreamType}\n";
+            es += $"{prefix}Stream type name: {StreamTypeName}\n";
+            es += $"{prefix}ES info legth: {EsInfoLength}\n";
+            es += $"{prefix}ES descriptor count: {EsDescriptorList.Count} \n";
+            foreach (var desc in EsDescriptorList)
+            {
+                es += desc.Print(prefixLen + 4);
             }
             return es;
         }

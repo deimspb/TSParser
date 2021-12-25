@@ -87,6 +87,35 @@ namespace TSParser.Tables.DvbTables
             return eit;
         }
 
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            var eit = $"{headerPrefix}-=EIT=-\n";
+
+            eit += $"{prefix}Service id: {ServiceId}\n";
+
+            eit += base.Print(prefixLen + 2);
+
+            eit += $"{prefix}Transport stream id: {TransportStreamId}\n";
+            eit += $"{prefix}Original network id: {OriginalNetworkId}\n";
+            eit += $"{prefix}Segment last section number: {SegmentLastSectionNumber}\n";
+            eit += $"{prefix}Last table id: {LastTableId}\n";
+
+            if (EventList != null)
+            {
+                eit += $"{prefix}Event List count: {EventList.Count}\n";
+                foreach (var ev in EventList)
+                {
+                    eit += ev.Print(prefixLen +4);
+                }
+            }
+            eit += $"{prefix}CRC32: 0x{CRC32:X}\n";
+
+            return eit;
+        }
+
         public virtual bool Equals(EIT? table)
         {
             if (table == null) return false;
@@ -145,6 +174,23 @@ namespace TSParser.Tables.DvbTables
             foreach (var desc in EventDescriptors)
             {
                 evnt += $"         {desc}\n";
+            }
+            return evnt;
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            var evnt = $"{headerPrefix}Event id: {EventId}\n";
+            evnt += $"{prefix}Event start time: {StartDateTime}\n";
+            evnt += $"{prefix}Event duration: {DurationTimeSpan}\n";
+            evnt += $"{prefix}Running status: {RunningStatus}\n";
+            evnt += $"{prefix}Free CA mode: {FreeCAmode}\n";
+            evnt += $"{prefix}Descriptor loop length: {DescriptorLoopLength}\n";
+            foreach (var desc in EventDescriptors)
+            {
+                evnt += desc.Print(prefixLen + 4);
             }
             return evnt;
         }

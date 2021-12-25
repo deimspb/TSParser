@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -31,6 +32,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Private data specifier: 0x{PrivateDataSpecifier:X}\n";
+        }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            return $"{header}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Private data specifier: 0x{PrivateDataSpecifier:X}\n";
         }
     }
 }

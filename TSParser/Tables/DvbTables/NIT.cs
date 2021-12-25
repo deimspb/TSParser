@@ -14,6 +14,7 @@
 
 using System.Buffers.Binary;
 using TSParser.Descriptors;
+using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
 {
@@ -87,6 +88,34 @@ namespace TSParser.Tables.DvbTables
             }
             return nit;
         }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            var nit = $"{header}-=NIT=-\n";
+            nit += $"{prefix}Network id: {NetworkId}\n";
+            nit += base.Print(prefixLen + 2);
+            nit += $"{prefix}Network descriptors lenght: {NetworkDescriptorsLenght}\n";
+            if (NetworkDescriptorsLenght > 0)
+            {
+                nit += $"{prefix}Nit Descriptor List count: {NitDescriptorList.Count}\n";
+                foreach (var desc in NitDescriptorList)
+                {
+                    nit += desc.Print(prefixLen + 4);
+                }
+            }
+            nit += $"{prefix}Transport stream loop lenght: {TransportStreamLoopLenght}\n";
+            if (TransportStreamLoopLenght > 0)
+            {
+                nit += $"{prefix}Transport Stream Loops count: {TransportStreamLoops.Count}\n";
+                foreach (var loop in TransportStreamLoops)
+                {
+                    nit += loop.Print(prefixLen + 4);
+                }
+            }
+            return nit;
+        }
     }
     public struct TransportStreamLoop
     {
@@ -116,6 +145,24 @@ namespace TSParser.Tables.DvbTables
                 }
             }
             
+            return loop;
+        }
+        public string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            var loop = $"{header}Transport stream id: {TransportStreamId}\n";
+            loop += $"{prefix}Original network id: {OriginalNetworkId}\n";
+            loop += $"{prefix}Transport descriptors length: {TransportDescriptorsLength}\n";
+            if (TransportStreamLoopDescriptors != null)
+            {
+                foreach (var desc in TransportStreamLoopDescriptors)
+                {
+                    loop += desc.Print(prefixLen + 4);
+                }
+            }
+
             return loop;
         }
     }

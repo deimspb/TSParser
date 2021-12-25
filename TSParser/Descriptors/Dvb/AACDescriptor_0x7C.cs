@@ -18,6 +18,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TSParser.DictionariesData;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -54,6 +55,16 @@ namespace TSParser.Descriptors.Dvb
             string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
             str += $"            Profile And Level: {ProfileName}\n";
             str += $"            Aac Type Flag: {AacTypeFlag}\n";
+            return str;
+        }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            str += $"{prefix}Profile And Level: {ProfileName}\n";
+            str += $"{prefix}Aac Type Flag: {AacTypeFlag}\n";
             return str;
         }
     }

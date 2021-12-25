@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -61,6 +62,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, 0x{AssociationTag:X2}, Use: 0x{Use:X2}, Transaction id: 0x{TransactionId:X2}, Timeout: 0x{TimeOut:X2}";
+        }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            return $"{header}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, 0x{AssociationTag:X2}, Use: 0x{Use:X2}, Transaction id: 0x{TransactionId:X2}, Timeout: 0x{TimeOut:X2}";
         }
     }
 }

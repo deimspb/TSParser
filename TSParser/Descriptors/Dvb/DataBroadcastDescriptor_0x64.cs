@@ -14,6 +14,7 @@
 
 using System.Buffers.Binary;
 using TSParser.DictionariesData;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -52,6 +53,21 @@ namespace TSParser.Descriptors.Dvb
             str += $"         Iso639 Language Code: {Iso639LanguageCode}\n";
             str += $"         Text Length: {TextLength}\n";
             str += $"         Text Char: {TextChar}\n";
+            return str;
+        }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            str += $"{prefix}Data Broadcast Id: 0x{DataBroadcastId}\n";
+            str += $"{prefix}Component Tag: {ComponentTag}\n";
+            str += $"{prefix}Selector Length: {SelectorLength}\n";
+            str += $"{prefix}Selector Byte: {BitConverter.ToString(SelectorByte):X}\n";
+            str += $"{prefix}Iso639 Language Code: {Iso639LanguageCode}\n";
+            str += $"{prefix}Text Length: {TextLength}\n";
+            str += $"{prefix}Text Char: {TextChar}\n";
             return str;
         }
     }

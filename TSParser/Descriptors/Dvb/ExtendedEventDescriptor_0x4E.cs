@@ -18,6 +18,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TSParser.DictionariesData;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -72,6 +73,22 @@ namespace TSParser.Descriptors.Dvb
             str += $"                     {Text}";
             return str;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            if (EventItems is not null)
+            {
+                foreach (var item in EventItems)
+                {
+                    str += item.Print(prefixLen + 4);
+                }
+            }
+            str += $"{prefix}{Text}\n";
+            return str;
+        }
     }
 
     public struct EventItem
@@ -95,6 +112,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"            {ItemDescription}, {ItemText}";
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            return $"{headerPrefix}{ItemDescription}, {ItemText}\n";
         }
     }
 }

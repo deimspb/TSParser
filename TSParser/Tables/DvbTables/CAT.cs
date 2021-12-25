@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using TSParser.Descriptors;
+using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
 {
@@ -56,6 +57,27 @@ namespace TSParser.Tables.DvbTables
             
             cat += $"CRC: 0x{CRC32:X}\n";
             return cat;
+        }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            var cat = $"{headerPrefix}-=CAT=-\n";
+
+            cat += base.Print(prefixLen+2);
+
+            if (CatDescriptorList != null)
+            {
+                cat += $"{prefix}CAT descriptors count: {CatDescriptorList.Count}\n";
+                foreach (var desc in CatDescriptorList)
+                {
+                    cat += desc.Print(prefixLen +4);
+                }
+            }
+
+            cat += $"{prefix}CRC32: 0x{CRC32:X}\n";
+            return cat;            
         }
     }
 }

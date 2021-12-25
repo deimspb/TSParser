@@ -18,6 +18,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TSParser.DictionariesData;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.AitDescriptors
 {
@@ -33,6 +34,11 @@ namespace TSParser.Descriptors.AitDescriptors
         public override string ToString()
         {
             return $"       AIT descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, path: {Dictionaries.BytesToString(InitialPathBytes)}\n";
+        }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            return $"{headerPrefix}AIT descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, path: {Dictionaries.BytesToString(InitialPathBytes)}\n";
         }
     }
 }

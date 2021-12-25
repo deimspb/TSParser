@@ -153,5 +153,13 @@ namespace TSParser.Service
 
             return new TimeSpan(hour, minutes, 0);
         }
+        internal static string HeaderPrefix(int prefixLen)
+        {
+            return new string(' ',prefixLen);
+        }
+        internal static string Prefix(int prefixLen)
+        {
+            return new string(' ', prefixLen + 2);
+        }
     }
 }

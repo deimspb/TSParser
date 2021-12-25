@@ -26,5 +26,10 @@ namespace TSParser.Descriptors.AitDescriptors
         {
             return $"       AIT descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Length: {DescriptorLength}\n";
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = new string(' ', prefixLen);
+            return $"{headerPrefix}AIT descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Length: {DescriptorLength}\n";
+        }
     }
 }

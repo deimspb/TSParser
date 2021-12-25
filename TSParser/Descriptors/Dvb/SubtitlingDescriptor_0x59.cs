@@ -19,6 +19,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TSParser.DictionariesData;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -42,6 +43,16 @@ namespace TSParser.Descriptors.Dvb
             }
             return str;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            foreach (Subtitle subtitle in Subtitles)
+            {
+                str += subtitle.Print(prefixLen + 2);
+            }
+            return str;
+        }
     }
     public struct Subtitle
     {
@@ -59,6 +70,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"Subtitle language: {Iso639LanguageCode}, Type: {SubtitlingType}, Composition Page Id: {CompositionPageId}, Ancillary Page Id: {AncillaryPageId}";
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            return $"{headerPrefix}Subtitle language: {Iso639LanguageCode}, Type: {SubtitlingType}, Composition Page Id: {CompositionPageId}, Ancillary Page Id: {AncillaryPageId}\n";
         }
     }
 }

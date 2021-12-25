@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.Service;
+
 namespace TSParser.Descriptors.Dvb
 {
     public record AudioStreamDescriptor_0x03 : Descriptor
@@ -31,6 +33,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, layer: {Layer}";
+        }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            return $"{header}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, layer: {Layer}\n";
         }
     }
 }

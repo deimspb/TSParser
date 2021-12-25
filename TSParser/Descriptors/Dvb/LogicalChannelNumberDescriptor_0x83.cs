@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -36,6 +37,17 @@ namespace TSParser.Descriptors.Dvb
             }
             return str;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+
+            string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            foreach (var item in LcnItems)
+            {
+                str += item.Print(prefixLen + 2);
+            }
+            return str;
+        }
     }
     public struct LcnItem
     {
@@ -51,6 +63,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"Service id:{ServiceID}, visible:{VisisbleServiceDlag}, lcn: {LogicalChannelNumber}";
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            return $"{headerPrefix}Service id:{ServiceID}, visible:{VisisbleServiceDlag}, lcn: {LogicalChannelNumber}\n";
         }
     }
 }

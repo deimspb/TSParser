@@ -51,6 +51,12 @@ namespace TSParser.Descriptors.Dvb
         {
             return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {FrequencyStr}, {FecInnerStr}, {ModulationStr}, {SymbolRateStr}, {FecInnerStr}";
         }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+
+            return $"{header}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {FrequencyStr}, {FecInnerStr}, {ModulationStr}, {SymbolRateStr}, {FecInnerStr}\n";
+        }
         private string GetFecOuter(byte bt)
         {
             switch (bt)

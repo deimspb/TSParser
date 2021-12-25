@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
+using TSParser.Service;
 
 namespace TSParser.Tables
 {
@@ -58,6 +59,20 @@ namespace TSParser.Tables
             tbl += $"   Current next indicator: {CurrentNextIndicator}\n";
             tbl += $"   Section number: {SectionNumber}\n";
             tbl += $"   Last section number: {LastSectionNumber}\n";
+
+            return tbl;
+        }
+
+        public virtual string Print(int prefixLen)
+        {            
+            string prefix = Utils.Prefix(prefixLen);
+
+            string tbl = $"{prefix}Section syntax indicator: {SectionSyntaxIndicator}\n";
+            tbl += $"{prefix}Section length: {SectionLength} bytes\n";
+            tbl += $"{prefix}Table version number: {VersionNumber}\n";
+            tbl += $"{prefix}Current next indicator: {CurrentNextIndicator}\n";
+            tbl += $"{prefix}Section number: {SectionNumber}\n";
+            tbl += $"{prefix}Last section number: {LastSectionNumber}\n";
 
             return tbl;
         }

@@ -59,6 +59,11 @@ namespace TSParser.Descriptors.Dvb
         {
             return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {FrequencyStr}, {SymbolRateStr} {OrbitalPositionStr}, {WestEastStr}, {PolarizationStr}, {ModualtionSystemStr}, {RollOffStr}, {ModulationTypeStr}, {FecInnerStr}";
         }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            return $"{header}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {FrequencyStr}, {SymbolRateStr} {OrbitalPositionStr}, {WestEastStr}, {PolarizationStr}, {ModualtionSystemStr}, {RollOffStr}, {ModulationTypeStr}, {FecInnerStr}\n";
+        }
         private string GetPolarisationStr(byte polarization)
         {
             switch (polarization)

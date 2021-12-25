@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.Service;
+
 namespace TSParser.Descriptors.Dvb
 {
     public record AvcVideoDescriptor_0x28 : Descriptor
@@ -48,6 +50,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Profile Idc: {ProfileIdc}, Level Idc: {LevelIdc}";
+        }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            return $"{header}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Profile Idc: {ProfileIdc}, Level Idc: {LevelIdc}\n";
         }
     }
 }

@@ -18,6 +18,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TSParser.DictionariesData;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -43,6 +44,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"         Service type: {ServiceTypeName}, Service provider: {ServiceProviderName}, Service name: {ServiceName}\n";
+        }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            return $"{header}Service type: {ServiceTypeName}, Service provider: {ServiceProviderName}, Service name: {ServiceName}\n";
         }
     }
 }

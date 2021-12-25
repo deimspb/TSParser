@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -27,6 +28,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Maximum bitrate: {MaximumBitrate * 50} bytes/sec";
+        }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            return $"{prefixLen}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Maximum bitrate: {MaximumBitrate * 50} bytes/sec\n";
         }
     }
 }

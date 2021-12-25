@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.Service;
+
 namespace TSParser.Descriptors.Dvb
 {
     public record ContentDescriptor_0x54:Descriptor
@@ -35,6 +37,16 @@ namespace TSParser.Descriptors.Dvb
             }
             return str;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            foreach (var b in ContentNibbles)
+            {
+                str += b.Print(prefixLen + 2);
+            }
+            return str;
+        }
     }
     public struct ContentNibble
     {
@@ -52,6 +64,11 @@ namespace TSParser.Descriptors.Dvb
         public override string ToString()
         {
             return $"            {GetContentString()}";
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            return $"{headerPrefix}{GetContentString()}\n";
         }
 
         private string GetContentString()

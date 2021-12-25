@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
@@ -41,6 +42,16 @@ namespace TSParser.Descriptors.Dvb
             }
             return str;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            foreach (var item in AitItems)
+            {
+                str += $"{item.Print(prefixLen + 2)}";
+            }
+            return str;
+        }
     }
     public struct AitItem
     {
@@ -55,6 +66,11 @@ namespace TSParser.Descriptors.Dvb
         {
             return $"Application type: {ApplicationType}, AIT version: {AitVersion}";
         }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            return $"{headerPrefix}Application type: {ApplicationType}, AIT version: {AitVersion}\n";
+        } 
     }
 
 }

@@ -57,6 +57,26 @@ namespace TSParser.Tables.DvbTables
             return pat;
         }
 
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string pat = $"{headerPrefix}-=PAT=-\n";
+
+            pat += base.Print(prefixLen + 2);
+
+            pat += $"{prefix}Transport stream id: {TransportStreamId}\n";
+            foreach (var pr in PatRecords)
+            {
+                pat += pr.Print(prefixLen + 4);
+            }
+
+            pat += $"{prefix}PAT CRC32: 0x{CRC32:X}";
+
+            return pat;
+        }
+
         public virtual bool Equals(PAT? pat)
         {
             if (pat == null) return false;
@@ -85,6 +105,11 @@ namespace TSParser.Tables.DvbTables
         public override string ToString()
         {
             return $"Program number: {ProgramNumber}, Pid: {Pid}";
+        }
+        public string Print(int prefixLen)
+        {            
+            string prefix = Utils.HeaderPrefix(prefixLen);
+            return $"{prefix}Program number: {ProgramNumber}, Pid: {Pid}\n";
         }
     }
 }

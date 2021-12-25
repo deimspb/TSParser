@@ -19,6 +19,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TSParser.DictionariesData;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.ExtendedDvb
 {
@@ -96,6 +97,11 @@ namespace TSParser.Descriptors.ExtendedDvb
         public override string ToString()
         {
             return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {ExtensionDescriptorName}, Icon type: {IconTypeChar}, Icon url: {UrlChar}";
+        }
+        public override string Print(int prefixLen)
+        {
+            string header = Utils.HeaderPrefix(prefixLen);
+            return $"{header}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {ExtensionDescriptorName}, Icon type: {IconTypeChar}, Icon url: {UrlChar}\n";
         }
     }
 }

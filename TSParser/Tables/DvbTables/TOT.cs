@@ -57,6 +57,28 @@ namespace TSParser.Tables.DvbTables
 
             return tot;
         }
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            var tot = $"{headerPrefix}-=TOT=-\n";
+
+            tot += $"{prefix}UTC date time: {UTCDateTime}/n";
+
+            if (TotDescriptors != null)
+            {
+                tot += $"{prefix}TOT descriptors count: {TotDescriptors.Count}\n";
+                foreach (var desc in TotDescriptors)
+                {
+                    tot += desc.Print(prefixLen + 4);
+                }
+            }
+
+            tot += $"{prefix}TOT CRC32: 0x{CRC32:X}\n";
+
+            return tot;
+        }
         public virtual bool Equals(TOT? tot)
         {
             if (tot == null) return false;
