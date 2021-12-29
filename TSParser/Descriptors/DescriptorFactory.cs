@@ -83,6 +83,8 @@ namespace TSParser.Descriptors
                     case 0x64: return new DataBroadcastDescriptor_0x64(bytes);
                     case 0x6C: return new CellListDescriptor_0x6C(bytes);
                     case 0x6D: return new CellFrequencyLinkDescriptor_0x6D(bytes);
+                    case 0x50: return new ComponentDescriptor_0x50(bytes);
+                    case 0x60: return new ServiceMoveDescriptor_0x60(bytes);
                     default:
                         {
                             if (!m_unknownDescriptorListId.Contains(bytes[0]))
@@ -110,7 +112,10 @@ namespace TSParser.Descriptors
                     case 0x00: return new ApplicationDescriptor_0x00(bytes);
                     case 0x01: return new ApplicationNameDescriptor_0x01(bytes);
                     case 0x02: return new TransportProtocolDescriptor_0x02(bytes);
+                    case 0x03: return new DvbJApplicationDescriptor_0x03(bytes);
+                    case 0x04: return new DvbJApplicationLocationDescriptor_0x04(bytes);
                     case 0x15: return new SimpleApplicationLocationDescriptor_0x15(bytes);
+                    case 0x10: return new ApplicationStorageDescriptor_0x10(bytes);
                     default:
                         {
                             if (!m_unknownAitDescList.Contains(bytes[0]))
@@ -162,6 +167,7 @@ namespace TSParser.Descriptors
             {
                 switch (bytes[0])
                 {
+                    case 0x01: return new DtmfDescriptor_0x01(bytes);
                     default:
                         {
                             if (!m_unknownSpliceDescList.Contains(bytes[0]))

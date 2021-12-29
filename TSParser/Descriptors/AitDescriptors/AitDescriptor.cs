@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using TSParser.DictionariesData;
+using TSParser.Service;
 
 namespace TSParser.Descriptors.AitDescriptors
 {
@@ -28,7 +29,7 @@ namespace TSParser.Descriptors.AitDescriptors
         }
         public override string Print(int prefixLen)
         {
-            string headerPrefix = new string(' ', prefixLen);
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
             return $"{headerPrefix}AIT descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Length: {DescriptorLength}\n";
         }
     }

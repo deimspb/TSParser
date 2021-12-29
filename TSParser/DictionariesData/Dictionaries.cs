@@ -4612,9 +4612,12 @@ namespace TSParser.DictionariesData
                 case 0x00: return "Application Descriptor";
                 case 0x01: return "Application Name Descriptor";
                 case 0x02: return "Transport Protocol Descriptor";
+                case 0x03: return "DVB-J application descriptor";
+                case 0x04: return "DVB-J application location descriptor";
                 case 0x05: return "External application authorization descriptor";
                 case 0x06: return "Application recording descriptor";
                 case 0x0B: return "Application icons descriptor";
+                case 0x10: return "Application storage descriptor";
                 case 0x14: return "Graphics constraints descriptor";
                 case 0x15: return "Simple application location descriptor";
                 case 0x16: return "Application usage descriptor";

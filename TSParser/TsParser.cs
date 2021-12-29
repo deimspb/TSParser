@@ -109,6 +109,8 @@ namespace TSParser
         private readonly Lazy<List<Scte35Factory>> scte35Factories = new Lazy<List<Scte35Factory>>();
         private List<Scte35Factory> m_scte35Factories=>scte35Factories.Value;
         private List<ushort> m_scte35Pids = new List<ushort>();
+
+        private int m_connectionAttempts = 5;
         #endregion
         #region Public methods        
         public TsParser(TsMode mode = TsMode.DVB)
@@ -231,7 +233,6 @@ namespace TSParser
             m_SdtBatFactory.OnSdtReady += SdtBatFactory_OnSdtReady;
             m_SdtBatFactory.OnBatReady += SdtBatFactory_OnBatReady;
         }
-
         private void MipFactory_OnMipReady(MIP mip)
         {
             OnMipReady?.Invoke(mip);
@@ -530,8 +531,10 @@ namespace TSParser
         {
             try
             {
+                
                 buffer = new CircularBuffer(5000, 1500, false);
-
+                
+                var bytesCount = 0;
                 socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
                 IPEndPoint endPoint = new IPEndPoint(m_incomingIpInterface, m_multicastPort);
                 socket.Bind(endPoint);
@@ -541,8 +544,22 @@ namespace TSParser
                 socket.ReceiveTimeout = 5000;
 
                 byte[] bytes = new byte[1500];
+                
 
-                var bytesCount = socket.Receive(bytes);
+                while(!m_ct.IsCancellationRequested)
+                {
+                    if (m_connectionAttempts <= 0) return;
+                    try
+                    {
+                        bytesCount = socket.Receive(bytes);
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Send(LogStatus.Exception, $"Receive exception attempts left: {m_connectionAttempts}", ex);
+                        m_connectionAttempts--;
+                    }
+                }
 
                 var packetLen = -1;
 
@@ -556,13 +573,14 @@ namespace TSParser
                     packetLen = 204;
                 }
 
-                Logger.Send(LogStatus.Info, $"Start with network ts packet length: {packetLen}, network packet lenght: {bytesCount}");
+                Logger.Send(LogStatus.Info, $"Start with network {m_multicastGroup}:{m_multicastPort} ts packet length: {packetLen}, network packet lenght: {bytesCount}");
 
                 m_bufferReaderTask = Task.Run(() => ReadFromBuffer(packetLen), m_ct);
 
-
+                m_connectionAttempts = 5; 
                 while (!m_ct.IsCancellationRequested)
                 {
+                    if (m_connectionAttempts <= 0) return;
                     try
                     {
                         var bytesLen = socket.Receive(bytes);
@@ -570,7 +588,8 @@ namespace TSParser
                     }
                     catch (Exception ex)
                     {
-                        Logger.Send(LogStatus.Exception, $"Receive exception", ex);
+                        Logger.Send(LogStatus.Exception, $"Receive exception attempts left: {m_connectionAttempts}", ex);
+                        m_connectionAttempts--;
                     }
 
                 }

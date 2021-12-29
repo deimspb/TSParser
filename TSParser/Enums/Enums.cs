@@ -64,5 +64,10 @@ namespace TSParser.Enums
         Teletext,
         Sybtitling
     }
+    public enum ParserMode
+    {
+        Packet,
+        Table
+    }
     
 }

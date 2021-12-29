@@ -102,7 +102,7 @@ namespace TSParser.Tables.DvbTables
                 str += $"{prefix}AIT descriptors count: {AitDescriptorsList.Count}\n";
                 foreach (var descriptor in AitDescriptorsList)
                 {
-                    str += $"{descriptor.Print(prefixLen + 4)}";
+                    str += descriptor.Print(prefixLen + 4);
                 }
             }
 

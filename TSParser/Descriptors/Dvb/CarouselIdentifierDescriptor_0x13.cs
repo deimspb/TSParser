@@ -81,7 +81,24 @@ namespace TSParser.Descriptors.Dvb
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
-            return $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Carousel Id: {CarouselId}, {FormatIdName}\n";
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str =  $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+            str += $"{prefix}Carousel Id: {CarouselId}, Format id: {FormatIdName}\n";
+            if (FormatId == 0x01)
+            {
+                str += $"{prefix}Module Version: 0x{ModuleVersion}\n";
+                str += $"{prefix}Module Id: 0x{ModuleId}\n";
+                str += $"{prefix}Block Size: {BlockSize}\n";
+                str += $"{prefix}Module Size: {ModuleSize}\n";
+                str += $"{prefix}Compression Method: {CompressionMethod}\n";
+                str += $"{prefix}Original Size: {OriginalSize}\n";
+                str += $"{prefix}Time Out: {TimeOut}\n";
+                str += $"{prefix}Object Key Length: {ObjectKeyLength}\n";
+                str += $"{prefix}Object Key Data: {BitConverter.ToString(ObjectKeyData):X}\n";
+            }
+
+            return str;
         }
         private string GetFormatIdName(byte bt)
         {
