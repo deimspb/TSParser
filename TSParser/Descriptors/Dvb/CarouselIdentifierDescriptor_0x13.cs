@@ -23,6 +23,16 @@ namespace TSParser.Descriptors.Dvb
         public byte FormatId { get; }
         public string FormatIdName=>GetFormatIdName(FormatId);
         public byte[] PrivateDataBytes { get; } = null!;
+        public byte ModuleVersion { get; }
+        public ushort ModuleId { get; }
+        public ushort BlockSize { get; }
+        public uint ModuleSize { get; }
+        public byte CompressionMethod { get; }
+        public uint OriginalSize { get; }
+        public byte TimeOut { get; }
+        public byte ObjectKeyLength { get; }
+        public byte[] ObjectKeyData { get; } = null!;
+
         public CarouselIdentifierDescriptor_0x13(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             var pointer = 2;
@@ -41,7 +51,26 @@ namespace TSParser.Descriptors.Dvb
             }
             if (FormatId == 0x01)
             {
-                Logger.Send(LogStatus.Info, $"Carousel identifier descriptor Format id 0x01 not yet implement");//TODO: implement enhanced boot
+                ModuleVersion = bytes[pointer++];
+                ModuleId = BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]);
+                pointer += 2;
+                BlockSize = BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]);
+                pointer += 2;
+                ModuleSize = BinaryPrimitives.ReadUInt32BigEndian(bytes[pointer..]);
+                pointer += 4;
+                CompressionMethod = bytes[pointer++];
+                OriginalSize = BinaryPrimitives.ReadUInt32BigEndian(bytes[pointer..]);
+                pointer += 4;
+                TimeOut = bytes[pointer++];
+                ObjectKeyLength = bytes[pointer++];
+                ObjectKeyData = new byte[ObjectKeyLength];
+                bytes.Slice(pointer,ObjectKeyLength).CopyTo(ObjectKeyData);
+            }
+            var privatedataLen = DescriptorLength - ObjectKeyLength - 21;
+            if(privatedataLen > 0)
+            {
+                PrivateDataBytes = new byte[privatedataLen];
+                bytes.Slice(pointer, privatedataLen).CopyTo(PrivateDataBytes);
             }
 
         }

@@ -34,7 +34,7 @@ namespace TSParser.Descriptors.Dvb
         public TerrestrialDeliverySystemDescriptor_0x5A(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             var pointer = 2;
-            CentreFrequency = BinaryPrimitives.ReadUInt32BigEndian(bytes[pointer..])/10;
+            CentreFrequency = BinaryPrimitives.ReadUInt32BigEndian(bytes[pointer..])*10;
             pointer += 4;
             Bandwidth = (byte)(bytes[pointer]>>5);
             Priority = (bytes[pointer] & 0x10) != 0;
@@ -84,7 +84,7 @@ namespace TSParser.Descriptors.Dvb
             str += $"{prefix}Code Rate LpStream: {GetCodeRateHpStream(CodeRateLpStream)}\n";
             str += $"{prefix}Guard Interval: {GetGuardInterval(GuardInterval)}\n";
             str += $"{prefix}Transmission Mode: {GetTransmissionMode(TransmissionMode)}\n";
-            str += $"{prefix}OthervFrequency Flag: {OtherFrequencyFlag}\n";
+            str += $"{prefix}Other Frequency Flag: {OtherFrequencyFlag}\n";
             return str;
         }
         private string GetBw(byte bt)

@@ -23,7 +23,7 @@ namespace TSParser.Service
         Warning,
         Exception,
         Fatal,
-        ETSI
+        ETSI        
     }
     public class Logger
     {

@@ -35,12 +35,15 @@ namespace TSParser.TransportStream
         public readonly AdaptationField Adaptation_field { get; } = default;
         public readonly byte[] Payload { get; }       
         public readonly ulong PacketNumber { get; } = default;
+        public readonly byte[] PacketHeader { get; }
 
         internal TsPacket(ReadOnlySpan<byte> bytes, ulong packetCounter)
         {
             var pointer = 0;
             var pid = 0xFFFF;
             PacketNumber = packetCounter;
+            PacketHeader = new byte[4];
+            bytes[0..4].CopyTo(PacketHeader);
             try
             {
                 if (bytes[pointer++] != SYNC_BYTE)

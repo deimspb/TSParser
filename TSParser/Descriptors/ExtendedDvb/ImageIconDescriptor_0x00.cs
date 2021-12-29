@@ -12,21 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.DictionariesData;
 using TSParser.Service;
 
 namespace TSParser.Descriptors.ExtendedDvb
 {
-    public record ImageIconDescriptor_0x00 : Descriptor
-    {
-        public byte DescriptorTagExtension { get; }
-        public string ExtensionDescriptorName => Dictionaries.GetExtendedDescriptorName(DescriptorTagExtension);
+    public record ImageIconDescriptor_0x00 : ExtendedDescriptor
+    {        
         public byte DescriptorNumber { get; }
         public byte LastDescriptorNumber { get; }
         public byte IconId { get; }
@@ -43,8 +36,7 @@ namespace TSParser.Descriptors.ExtendedDvb
         public string UrlChar { get; } = null!;
         public ImageIconDescriptor_0x00(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            var pointer = 2;
-            DescriptorTagExtension = bytes[pointer++];
+            var pointer = 3;            
             DescriptorNumber = (byte)((bytes[pointer] & 0xF0) >> 4);
             LastDescriptorNumber = (byte)(bytes[pointer++] & 0x0F);
             //reserved 5 bits
@@ -79,7 +71,7 @@ namespace TSParser.Descriptors.ExtendedDvb
                     bytes.Slice(pointer, IconDataLength).CopyTo(IconDataByte);
                     pointer += IconDataLength;
                 }
-                else if(IconTransportMode == 0x01)
+                else if (IconTransportMode == 0x01)
                 {
                     UrlLength = bytes[pointer++];
                     UrlChar = Dictionaries.BytesToString(bytes.Slice(pointer, UrlLength));
@@ -93,11 +85,7 @@ namespace TSParser.Descriptors.ExtendedDvb
                 bytes.Slice(pointer, IconDataLength).CopyTo(IconDataByte);
                 pointer += IconDataLength;
             }
-        }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {ExtensionDescriptorName}, Icon type: {IconTypeChar}, Icon url: {UrlChar}";
-        }
+        }        
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);

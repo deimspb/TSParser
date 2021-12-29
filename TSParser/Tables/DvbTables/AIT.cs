@@ -26,6 +26,7 @@ namespace TSParser.Tables.DvbTables
         public List<Descriptor> AitDescriptorsList { get; } = default!;
         public ushort ApplicationLoopLength { get; }
         public List<ApplicationLoop> ApplicationLoops { get; } = default!;
+
         private ushort m_aitPid;
         public AIT(ReadOnlySpan<byte> bytes, ushort aitPid) : base(bytes)
         {

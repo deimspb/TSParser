@@ -19,27 +19,26 @@ using TSParser.TransportStream;
 
 namespace TSParser.Tables.DvbTableFactory
 {
-    internal class AitFactory : TableFactory
+    internal class Scte35Factory : TableFactory
     {
-        internal event AitReady OnAitReady = null!;
-        private AIT m_ait = null!;
+        internal event Scte35Ready OnScte35Ready = null!;
+        private SCTE35 scte35 = null!;
 
-        internal AIT Ait
+        internal SCTE35 Scte35
         {
-            get => m_ait;
-            set => m_ait = value;
+            get => scte35;
+            set => scte35 = value;
         }
-        private AIT CurrentAit = null!;
+        private SCTE35 CurrentScte35=null!;
         private uint CurrentCRC32;
-
-
         internal override void PushTable(TsPacket tsPacket)
         {
             AddData(tsPacket);
             if (!IsAllTable) return;
-            ParseAit();
+            ParseScte35();
         }
-        private void ParseAit()
+
+        private void ParseScte35()
         {
             ReadOnlySpan<byte> bytes = TableData.AsSpan();
 
@@ -47,21 +46,16 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) // drop invalid ts packet
             {
-                Logger.Send(LogStatus.ETSI, $"AIT pid {CurrentPid} CRC incorrect!");
+                Logger.Send(LogStatus.ETSI, $"SCTE35 pid {CurrentPid} CRC incorrect!");
                 return;
             }
 
-            if (Ait?.CRC32 == CurrentCRC32) return; //// if we already have ait table and its crc32 equal curent table crc drop it. because it is the same ait            
+            if (Scte35?.CRC32 == CurrentCRC32) return; //if we already have scte35 table and its crc32 equal curent table crc drop it. because it is the same scte35
 
-            CurrentAit = new AIT(bytes, CurrentPid);
+            CurrentScte35 = new SCTE35(bytes, CurrentPid);
 
-            if (Ait != null && Ait.VersionNumber != CurrentAit.VersionNumber)
-            {
-                Logger.Send(LogStatus.Info, $"AIT version changed from {Ait.VersionNumber} to {CurrentAit.VersionNumber}");
-            }
-
-            Ait = CurrentAit;
-            OnAitReady?.Invoke(Ait);
+            Scte35 = CurrentScte35;
+            OnScte35Ready?.Invoke(Scte35);
         }
     }
 }

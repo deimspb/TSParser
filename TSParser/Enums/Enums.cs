@@ -58,5 +58,11 @@ namespace TSParser.Enums
         ATSC,
         ISDB
     }
+    public enum DecoderMode
+    {
+        SCTE35,
+        Teletext,
+        Sybtitling
+    }
     
 }

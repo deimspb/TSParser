@@ -4152,7 +4152,7 @@ namespace TSParser.DictionariesData
             {0x7C,"AAC"},
             {0x7D,"XAIT Location"},
             {0x7E,"FTA Content Management"},
-            {0x7F,"Extension"},
+            {0x7F,"Extension descriptor"},
             {0x80,"ATSC"},
             {0x81,"ATSC"},
             {0x82,"ATSC"},
@@ -4624,6 +4624,18 @@ namespace TSParser.DictionariesData
                 default: return "Unknown AIT descriptor";
             }
         }
+        internal static string GetSpliceInfoDescriptorName(byte bt)
+        {
+            switch (bt)
+            {
+                case 0x00: return "Avail descriptor";
+                case 0x01: return "DTMF descriptor";
+                case 0x02: return "Segmentation descriptor";
+                case 0x03: return "Time descriptor";
+                case 0x04: return "Audio descriptor";
+                default: return "Reserved for future SCTE splice_descriptors";
+            }
+        }
         internal static string GetServiceType(byte bt)
         {
             switch (bt)
@@ -4765,6 +4777,33 @@ namespace TSParser.DictionariesData
                 case byte n when n >= 0x99 && n <= 0xFE: return "Reserved ";
                 default: return "Audio profile and level not specified by the MPEG-4_audio_profile_and_level field in this descriptor ";
 
+            }
+        }
+        internal static string GetSliceCommandTypeName(byte bt)
+        {
+            switch (bt)
+            {
+                case 0x00: return "Splice null";
+                case 0x04: return "Splice Schedule";
+                case 0x05: return "Splice Insert";
+                case 0x06: return "Time Signal";
+                case 0x07: return "Bandwidth Reservation";
+                case 0xFF: return "Private Command";
+                default: return "Reserved";
+            }
+        }
+        internal static string GetTxFunctionName(byte bt)
+        {
+            switch (bt)
+            {
+                case 0x00: return "Tx Time Offse tFunction";
+                case 0x01: return "Tx Frequency Offset Function";
+                case 0x02: return "Tx Power Function";
+                case 0x03: return "Private Data Function";
+                case 0x04: return "Cell Id Function";
+                case 0x05: return "Enable Function";
+                case 0x06: return "Bandwidth Function";
+                default: return "Future Use";
             }
         }
 

@@ -15,15 +15,21 @@
 using TSParser.Descriptors.AitDescriptors;
 using TSParser.Descriptors.Dvb;
 using TSParser.Descriptors.ExtendedDvb;
+using TSParser.Descriptors.Scte35Descriptors;
 using TSParser.Service;
 
 namespace TSParser.Descriptors
 {
     internal record DescriptorFactory
     {
+        private delegate Descriptor GetDescriptorDelegate(ReadOnlySpan<byte> bytes, string descAllocation);
+        private static GetDescriptorDelegate GetDesc = null!;
+
+
         private static List<byte> m_unknownDescriptorListId = new List<byte>();
         private static List<byte> m_unknownExtensionDescList = new List<byte>();
         private static List<byte> m_unknownAitDescList = new List<byte>();
+        private static List<byte> m_unknownSpliceDescList = new List<byte>();
 
         internal static Descriptor GetDescriptor(ReadOnlySpan<byte> bytes, string descAllocation = "")
         {
@@ -75,6 +81,8 @@ namespace TSParser.Descriptors
                     case 0x2A: return new AvcTimingAndHrdDescriptor_0x2A(bytes);
                     case 0x5A: return new TerrestrialDeliverySystemDescriptor_0x5A(bytes);
                     case 0x64: return new DataBroadcastDescriptor_0x64(bytes);
+                    case 0x6C: return new CellListDescriptor_0x6C(bytes);
+                    case 0x6D: return new CellFrequencyLinkDescriptor_0x6D(bytes);
                     default:
                         {
                             if (!m_unknownDescriptorListId.Contains(bytes[0]))
@@ -129,6 +137,7 @@ namespace TSParser.Descriptors
                 switch (bytes[2])
                 {
                     case 0x00: return new ImageIconDescriptor_0x00(bytes);
+                    case 0x04: return new T2DeliverySystemDescriptor_0x04(bytes);
                     default:
                         {
                             if (!m_unknownExtensionDescList.Contains(bytes[2]))
@@ -137,14 +146,37 @@ namespace TSParser.Descriptors
                                 m_unknownExtensionDescList.Add(bytes[2]);
                             }
 
-                            return new ExtensionDescriptor_0x7F(bytes);
+                            return new ExtendedDescriptor(bytes);
                         }
                 }
             }
             catch (Exception ex)
             {
                 Logger.Send(LogStatus.Exception, $"While creating extension descriptor tag: 0x{bytes[1]:X2} descriptor location: {descAllocation}", ex);
-                return new ExtensionDescriptor_0x7F(bytes);
+                return new ExtendedDescriptor(bytes);
+            }
+        }
+        internal static Descriptor GetSpliceDescriptor(ReadOnlySpan<byte> bytes, string descAllocation = "")
+        {
+            try
+            {
+                switch (bytes[0])
+                {
+                    default:
+                        {
+                            if (!m_unknownSpliceDescList.Contains(bytes[0]))
+                            {
+                                Logger.Send(LogStatus.Info, $"Not specified Splice descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
+                                m_unknownSpliceDescList.Add(bytes[0]);
+                            }
+                            return new Scte35Descriptor(bytes);
+                        }
+                }
+            }
+            catch(Exception ex)
+            {
+                Logger.Send(LogStatus.Exception, $"While creating Splice descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
+                return new Scte35Descriptor(bytes);
             }
         }
         internal static List<Descriptor> GetDescriptorList(ReadOnlySpan<byte> bytes, string descAllocation = "", byte callerTableId = 0)
@@ -153,14 +185,33 @@ namespace TSParser.Descriptors
             {
                 case 0x74:
                     {
-                        return GetAitDescriptorList(bytes, descAllocation);
+                        GetDesc = GetAitDescriptor;
+                        return GetDescList(bytes, descAllocation);
+                    }
+                case 0xFC:
+                    {
+                        GetDesc = GetSpliceDescriptor;
+                        return GetDescList(bytes, descAllocation);
                     }
                 default:
                     {
-                        return GetDvbDescriptorList(bytes, descAllocation);
+                        GetDesc = GetDescriptor;
+                        return GetDescList(bytes, descAllocation);
                     }
             }
-        }        
+        }
+        internal static List<Descriptor> GetSpliceDescriptorsList(ReadOnlySpan<byte> bytes, string descAllocation = "")
+        {
+            var pointer = 0;
+            List<Descriptor> descriptors = new List<Descriptor>();
+            while (pointer < bytes.Length)
+            {
+                var desc = GetSpliceDescriptor(bytes[pointer..], descAllocation);
+                descriptors.Add(desc);
+                pointer += desc.DescriptorLength + 2;
+            }
+            return descriptors;
+        }
         internal static List<Descriptor> GetDvbDescriptorList(ReadOnlySpan<byte> bytes, string descAllocation = "")
         {
             var pointer = 0;
@@ -180,6 +231,18 @@ namespace TSParser.Descriptors
             while (pointer < bytes.Length)
             {
                 var desc = GetAitDescriptor(bytes[pointer..], descAllocation);
+                descriptors.Add(desc);
+                pointer += desc.DescriptorLength + 2;
+            }
+            return descriptors;
+        }
+        internal static List<Descriptor> GetDescList(ReadOnlySpan<byte> bytes, string descAllocation = "")
+        {
+            var pointer = 0;
+            List<Descriptor> descriptors = new List<Descriptor>();
+            while (pointer < bytes.Length)
+            {
+                var desc = GetDesc(bytes[pointer..], descAllocation);
                 descriptors.Add(desc);
                 pointer += desc.DescriptorLength + 2;
             }

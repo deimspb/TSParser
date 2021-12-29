@@ -21,10 +21,12 @@ using TSParser.Service;
 using TSParser.Tables;
 using TSParser.Tables.DvbTableFactory;
 using TSParser.Tables.DvbTables;
+using TSParser.Tables.Mip;
 using TSParser.TransportStream;
 
 namespace TSParser
 {
+    public delegate void TsPacketReady(TsPacket tsPacket);
     public delegate void PatReady(PAT pat);
     public delegate void PmtReady(PMT pmt);
     public delegate void CatReady(CAT cat);
@@ -35,6 +37,8 @@ namespace TSParser
     public delegate void TdtReady(TDT tdt);
     public delegate void TotReady(TOT tot);
     public delegate void AitReady(AIT ait);
+    public delegate void MipReady(MIP mip);
+    public delegate void Scte35Ready(SCTE35 scte35);
     public delegate void ParserComplete();
 
     public class TsParser
@@ -58,6 +62,9 @@ namespace TSParser
         public event CatReady OnCatReady = null!;
         public event NitReady OnNitReady = null!;
         public event AitReady OnAitReady = null!;
+        public event MipReady OnMipReady = null!;
+        public event Scte35Ready OnScte35Ready = null!;
+        public event TsPacketReady OnTsPacketReady = null!;
 
         private readonly Lazy<TsPacketFactory> packetFactory = new Lazy<TsPacketFactory>();
         private readonly Lazy<TdtTotFactory> tdtTotFactory = new Lazy<TdtTotFactory>();
@@ -66,13 +73,15 @@ namespace TSParser
         private readonly Lazy<NitFactory> nitFactory = new Lazy<NitFactory>();
         private readonly Lazy<PatFactory> patFactory = new Lazy<PatFactory>();
         private readonly Lazy<EitFactory> eitFactory = new Lazy<EitFactory>();
+        private readonly Lazy<MipFactory> mipFactory = new Lazy<MipFactory> ();
         private TsPacketFactory m_tsPacketFactory => packetFactory.Value;
-        private TdtTotFactory m_tdtTotFactory => tdtTotFactory.Value;
-        private SdtBatFactory m_sdtBatFactory => sdtBatFactory.Value;
-        private CatFactory m_catFactory => catFactory.Value;
-        private NitFactory m_nitFactory => nitFactory.Value;
+        private TdtTotFactory m_TdtTotFactory => tdtTotFactory.Value;
+        private SdtBatFactory m_SdtBatFactory => sdtBatFactory.Value;
+        private CatFactory m_CatFactory => catFactory.Value;
+        private NitFactory m_NitFactory => nitFactory.Value;
         private PatFactory m_PatFactory => patFactory.Value;
         private EitFactory m_EitFactory => eitFactory.Value;
+        private MipFactory m_MipFactory => mipFactory.Value;
 
         public readonly byte[] PacketSize = new byte[] { 188, 204 };
 
@@ -85,10 +94,10 @@ namespace TSParser
         private static CancellationTokenSource m_cts = new CancellationTokenSource();
         private CancellationToken m_ct = m_cts.Token;
 
-        private CircularBuffer buffer = null!;
+        private CircularBuffer buffer = null!;        
 
         private Task m_parserTask = null!;
-        private Task m_bufferReaderTask = null!;
+        private Task m_bufferReaderTask = null!;        
 
         private PmtFactory[] m_pmtFactories = null!;
         private ushort[] m_pmtPids = null!;
@@ -96,6 +105,10 @@ namespace TSParser
         private readonly Lazy<List<AitFactory>> aitFactories = new Lazy<List<AitFactory>>();
         private List<AitFactory> m_aitFactories => aitFactories.Value;
         private List<ushort> m_aitPids = new List<ushort>();
+
+        private readonly Lazy<List<Scte35Factory>> scte35Factories = new Lazy<List<Scte35Factory>>();
+        private List<Scte35Factory> m_scte35Factories=>scte35Factories.Value;
+        private List<ushort> m_scte35Pids = new List<ushort>();
         #endregion
         #region Public methods        
         public TsParser(TsMode mode = TsMode.DVB)
@@ -135,7 +148,7 @@ namespace TSParser
         }
         public void RunParser()
         {
-            InitEvents();
+            InitEvents();            
             m_parserTask = Task.Run(() => RunParserDel(), m_ct).ContinueWith(AfterParserComplete);
             m_parserTask.Wait();
         }
@@ -210,12 +223,18 @@ namespace TSParser
         {
             m_PatFactory.OnPatReady += PatFactory_OnPatReady;
             m_EitFactory.OnEitReady += EitFactory_OnEitReady;
-            m_catFactory.OnCatReady += CatFactory_OnCatReady;
-            m_nitFactory.OnNitReady += NitFactory_OnNitReady;
-            m_tdtTotFactory.OnTdtReady += TdtTotFactory_OnTdtReady;
-            m_tdtTotFactory.OnTotready += TdtTotFactory_OnTotready;
-            m_sdtBatFactory.OnSdtReady += SdtBatFactory_OnSdtReady;
-            m_sdtBatFactory.OnBatReady += SdtBatFactory_OnBatReady;
+            m_CatFactory.OnCatReady += CatFactory_OnCatReady;
+            m_NitFactory.OnNitReady += NitFactory_OnNitReady;
+            m_MipFactory.OnMipReady += MipFactory_OnMipReady;
+            m_TdtTotFactory.OnTdtReady += TdtTotFactory_OnTdtReady;
+            m_TdtTotFactory.OnTotready += TdtTotFactory_OnTotready;
+            m_SdtBatFactory.OnSdtReady += SdtBatFactory_OnSdtReady;
+            m_SdtBatFactory.OnBatReady += SdtBatFactory_OnBatReady;
+        }
+
+        private void MipFactory_OnMipReady(MIP mip)
+        {
+            OnMipReady?.Invoke(mip);
         }
         private void TdtTotFactory_OnTotready(TOT tot)
         {
@@ -270,7 +289,7 @@ namespace TSParser
             if (aitIdx >= 0 && pmt.EsInfoList[aitIdx].EsDescriptorList.Exists(desc => desc.DescriptorTag == 0x6F))
             {
                 var aitPid = pmt.EsInfoList[aitIdx].ElementaryPid;
-                // prevent to add already added ait table after pmt update
+                // prevent to add already added ait table after pmt update ??? 
                 if (!m_aitPids.Contains(aitPid))
                 {
                     m_aitPids.Add(aitPid);
@@ -281,6 +300,23 @@ namespace TSParser
                 }
 
             }
+            var scte35Idx = pmt.EsInfoList.FindIndex(es => es.StreamType == 0x86);            
+            if(scte35Idx >= 0)
+            {
+                var scte35Pid = pmt.EsInfoList[scte35Idx].ElementaryPid;
+                if (!m_scte35Pids.Contains(scte35Pid))
+                {
+                    m_scte35Pids.Add(scte35Pid);
+                    var scte35Factory = new Scte35Factory();
+                    scte35Factory.CurrentPid = scte35Pid;
+                    scte35Factory.OnScte35Ready += Scte35Factory_OnScte35Ready;
+                    m_scte35Factories.Add(scte35Factory);
+                }
+            }
+        }
+        private void Scte35Factory_OnScte35Ready(SCTE35 scte35)
+        {
+            OnScte35Ready?.Invoke(scte35);
         }
         private void AitFactory_OnAitReady(AIT ait)
         {
@@ -288,8 +324,6 @@ namespace TSParser
         }
         private void DvbTableFactory(TsPacket tsPacket)
         {
-            if (tsPacket.Pid == 0xFFFF) return; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
-
             // analyzer shall be here
 
             if (tsPacket.TransportErrorIndicator) return; // drop tei packets
@@ -304,17 +338,17 @@ namespace TSParser
                     }
                 case (ushort)ReservedPids.CAT:
                     {
-                        m_catFactory.PushTable(tsPacket);
+                        m_CatFactory.PushTable(tsPacket);
                         break;
                     }
                 case (ushort)ReservedPids.NIT:
                     {
-                        m_nitFactory.PushTable(tsPacket);
+                        m_NitFactory.PushTable(tsPacket);
                         break;
                     }
                 case (ushort)ReservedPids.SDT:
                     {
-                        m_sdtBatFactory.PushTable(tsPacket);
+                        m_SdtBatFactory.PushTable(tsPacket);
                         break;
                     }
                 case (ushort)ReservedPids.EIT:
@@ -329,12 +363,12 @@ namespace TSParser
                     }
                 case (ushort)ReservedPids.TDT:
                     {
-                        m_tdtTotFactory.PushTable(tsPacket);
+                        m_TdtTotFactory.PushTable(tsPacket);
                         break;
                     }
                 case (ushort)ReservedPids.NetworkSync:
                     {
-                        Logger.Send(LogStatus.Info, $"Not implement Network Sync table");
+                        m_MipFactory.PushTable(tsPacket);
                         break;
                     }
                 case (ushort)ReservedPids.RNT:
@@ -368,14 +402,13 @@ namespace TSParser
                         break;
                     }
             }
-
-
         }
         private void GetOtherTables(TsPacket tsPacket)
         {
             GetPmt(tsPacket);
             GetAit(tsPacket);
-        }
+            GetScte35(tsPacket);
+        }        
         private void GetPmt(TsPacket tsPacket)
         {
             if (m_pmtPids == null) return;
@@ -394,6 +427,14 @@ namespace TSParser
             if (idx >= 0)
             {
                 m_aitFactories[idx].PushTable(tsPacket);
+            }
+        }
+        private void GetScte35(TsPacket tsPacket)
+        {
+            var idx = m_scte35Pids.IndexOf(tsPacket.Pid);
+            if(idx >= 0)
+            {
+                m_scte35Factories[idx].PushTable(tsPacket);
             }
         }
         private void AtscTableFactory(TsPacket tsPacket)
@@ -431,6 +472,8 @@ namespace TSParser
 
             for (int i = 0; i < tsPackets.Length; i++)
             {
+                if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
+                OnTsPacketReady?.Invoke(tsPackets[i]);
                 SelectedTableFactory(tsPackets[i]);
             }
         }
