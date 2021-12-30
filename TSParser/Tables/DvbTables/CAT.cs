@@ -40,24 +40,24 @@ namespace TSParser.Tables.DvbTables
                 return (int)CRC32;
             }
         }
-        public override string ToString()
-        {
-            var cat = $"-=CAT=-\n";
+        //public override string ToString()
+        //{
+        //    var cat = $"-=CAT=-\n";
 
-            cat += base.ToString();            
+        //    cat += base.ToString();            
 
-            if(CatDescriptorList != null)
-            {
-                cat += $"   CAT descriptors count: {CatDescriptorList.Count}\n";
-                foreach (var desc in CatDescriptorList)
-                {
-                    cat += $"      {desc}\n";
-                }
-            }
+        //    if(CatDescriptorList != null)
+        //    {
+        //        cat += $"   CAT descriptors count: {CatDescriptorList.Count}\n";
+        //        foreach (var desc in CatDescriptorList)
+        //        {
+        //            cat += $"      {desc}\n";
+        //        }
+        //    }
             
-            cat += $"CRC: 0x{CRC32:X}\n";
-            return cat;
-        }
+        //    cat += $"CRC: 0x{CRC32:X}\n";
+        //    return cat;
+        //}
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

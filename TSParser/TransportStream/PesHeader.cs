@@ -117,7 +117,8 @@ namespace TSParser.TransportStream
                 if (ESCRFlag)
                 {
                     //TODO: need to implement
-                    throw new Exception($"Not impement ESCR");
+                    Logger.Send(LogStatus.NotImplement, $"Not impement ESCR");
+                    //throw new Exception($"Not impement ESCR");
                 }
 
                 if (ESRateFlag)
@@ -130,19 +131,23 @@ namespace TSParser.TransportStream
                 if (DSMTrickModeFlag)
                 {
                     //TODO: nees to impement
-                    throw new NotImplementedException($"Not impement DSM trick");
+                    Logger.Send(LogStatus.NotImplement, $"Not impement DSM trick");
+                    //throw new NotImplementedException($"Not impement DSM trick");
                 }
 
                 if (AdditionalCopyInfoFlag)
                 {
                     //TODO: nees to impement
-                    throw new NotImplementedException($"Not impement Additional copy");
+                    Logger.Send(LogStatus.NotImplement, $"Not impement Additional copy");
+                    //throw new NotImplementedException($"Not impement Additional copy");
+
                 }
 
                 if (PESCRCFlag)
                 {
                     //TODO: nees to impement
-                    throw new NotImplementedException($"Not impement PES CRC");
+                    Logger.Send(LogStatus.NotImplement, $"Not impement PES CRC");
+                    //throw new NotImplementedException($"Not impement PES CRC");
                 }
 
                 if (PESExtensionFlag)
@@ -164,8 +169,9 @@ namespace TSParser.TransportStream
                     if (PackHeaderFieldFlag)
                     {
                         PackFieldLength = bytes[pointer++];
+                        Logger.Send(LogStatus.NotImplement, $"Not implement Pack header");
                         //TODO: implement pack header
-                        throw new NotImplementedException($"Not implement Pack header");
+                        //throw new NotImplementedException($"Not implement Pack header");
                     }
 
                     if (ProgramPacketSequenceCounterFlag)
@@ -201,7 +207,8 @@ namespace TSParser.TransportStream
                             TrefExtensionFlag = (bytes[pointer] & 0x02) != 0;
                             if (!TrefExtensionFlag)
                             {
-                                throw new NotImplementedException($"Not impement TREF extension"); //TODO: impement TREF Extension
+                                Logger.Send(LogStatus.NotImplement, $"Not impement TREF extension");
+                                //throw new NotImplementedException($"Not impement TREF extension"); //TODO: impement TREF Extension
                             }
 
                         }
@@ -221,7 +228,8 @@ namespace TSParser.TransportStream
                      StreamId == (byte)PesStreamId.H_222_1_type_E)
             {
                 //TODO: impement padding byte
-                throw new NotImplementedException($"Not impement PES Extension");
+                //throw new NotImplementedException($"Not impement PES Extension");
+                Logger.Send(LogStatus.NotImplement, $"Not impement PES Extension");
             }
             else if (StreamId == (byte)PesStreamId.Padding_stream)
             {

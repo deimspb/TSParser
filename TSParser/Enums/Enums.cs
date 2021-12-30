@@ -64,7 +64,7 @@ namespace TSParser.Enums
         Teletext,
         Sybtitling
     }
-    public enum ParserMode
+    public enum DecodeMode
     {
         Packet,
         Table

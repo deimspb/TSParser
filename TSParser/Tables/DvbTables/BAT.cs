@@ -63,38 +63,38 @@ namespace TSParser.Tables.DvbTables
                 return (int)CRC32;
             }
         }
-        public override string ToString()
-        {
-            var bat = $"-=BAT=-\n";
-            bat += $"   Bouquet id: {BouquetId}\n";
+        //public override string ToString()
+        //{
+        //    var bat = $"-=BAT=-\n";
+        //    bat += $"   Bouquet id: {BouquetId}\n";
 
-            bat += base.ToString();          
+        //    bat += base.ToString();          
 
-            bat += $"   Bouquet descriptors lenght: {BouquetDescriptorsLenght}\n";
+        //    bat += $"   Bouquet descriptors lenght: {BouquetDescriptorsLenght}\n";
 
-            if (BatDescriptorList != null)
-            {
-                bat += $"   Bat Descriptor List count: {BatDescriptorList.Count}\n";
-                foreach (var desc in BatDescriptorList)
-                {
-                    bat += $"{desc}";
-                }
-            }
+        //    if (BatDescriptorList != null)
+        //    {
+        //        bat += $"   Bat Descriptor List count: {BatDescriptorList.Count}\n";
+        //        foreach (var desc in BatDescriptorList)
+        //        {
+        //            bat += $"{desc}";
+        //        }
+        //    }
             
-            bat += $"   Transport stream loop lenght: {TransportStreamLoopLenght}\n";
+        //    bat += $"   Transport stream loop lenght: {TransportStreamLoopLenght}\n";
 
-            if(BatTsLoopList != null)
-            {
-                bat += $"   Bat Ts Loop List count: {BatTsLoopList.Count}\n";
-                foreach (var tsloop in BatTsLoopList)
-                {
-                    bat += $"{tsloop}";
-                }
-            }
+        //    if(BatTsLoopList != null)
+        //    {
+        //        bat += $"   Bat Ts Loop List count: {BatTsLoopList.Count}\n";
+        //        foreach (var tsloop in BatTsLoopList)
+        //        {
+        //            bat += $"{tsloop}";
+        //        }
+        //    }
             
-            bat += $"   CRC: 0x{CRC32:X}\n";
-            return bat;
-        }
+        //    bat += $"   CRC: 0x{CRC32:X}\n";
+        //    return bat;
+        //}
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

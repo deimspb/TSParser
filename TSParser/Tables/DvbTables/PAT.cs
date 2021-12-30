@@ -40,22 +40,22 @@ namespace TSParser.Tables.DvbTables
             }
         }
 
-        public override string ToString()
-        {
-            string pat = $"-=PAT=-\n";
+        //public override string ToString()
+        //{
+        //    string pat = $"-=PAT=-\n";
 
-            pat += $"{base.ToString()}";
+        //    pat += $"{base.ToString()}";
 
-            pat += $"   Transport stream id: {TransportStreamId}\n";
-            foreach (var pr in PatRecords)
-            {
-                pat += $"      {pr}\n";
-            }
+        //    pat += $"   Transport stream id: {TransportStreamId}\n";
+        //    foreach (var pr in PatRecords)
+        //    {
+        //        pat += $"      {pr}\n";
+        //    }
 
-            pat += $"   PAT CRC: 0x{CRC32:X}";
+        //    pat += $"   PAT CRC: 0x{CRC32:X}";
 
-            return pat;
-        }
+        //    return pat;
+        //}
 
         public override string Print(int prefixLen)
         {

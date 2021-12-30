@@ -51,17 +51,17 @@ namespace TSParser.Tables
             CRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
         }
 
-        public override string ToString()
-        {
-            string tbl = $"   Section syntax indicator: {SectionSyntaxIndicator}\n";
-            tbl += $"   Section length: {SectionLength} bytes\n";
-            tbl += $"   Table version number: {VersionNumber}\n";
-            tbl += $"   Current next indicator: {CurrentNextIndicator}\n";
-            tbl += $"   Section number: {SectionNumber}\n";
-            tbl += $"   Last section number: {LastSectionNumber}\n";
+        //public override string ToString()
+        //{
+        //    string tbl = $"   Section syntax indicator: {SectionSyntaxIndicator}\n";
+        //    tbl += $"   Section length: {SectionLength} bytes\n";
+        //    tbl += $"   Table version number: {VersionNumber}\n";
+        //    tbl += $"   Current next indicator: {CurrentNextIndicator}\n";
+        //    tbl += $"   Section number: {SectionNumber}\n";
+        //    tbl += $"   Last section number: {LastSectionNumber}\n";
 
-            return tbl;
-        }
+        //    return tbl;
+        //}
 
         public virtual string Print(int prefixLen)
         {            

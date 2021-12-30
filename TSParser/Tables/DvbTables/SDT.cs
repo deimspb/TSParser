@@ -57,28 +57,28 @@ namespace TSParser.Tables.DvbTables
             }
         }
 
-        public override string ToString()
-        {
-            string sdt = $"-=SDT=-\n";
+        //public override string ToString()
+        //{
+        //    string sdt = $"-=SDT=-\n";
 
-            sdt += base.ToString();
+        //    sdt += base.ToString();
 
-            sdt += $"   Transport stream id: {TransportStreamId}\n";
-            sdt += $"   Original network id: {OriginalNetworkId}\n";
+        //    sdt += $"   Transport stream id: {TransportStreamId}\n";
+        //    sdt += $"   Original network id: {OriginalNetworkId}\n";
 
-            if (SdtItemsList != null)
-            {
-                sdt += $"   SDT item list count: {SdtItemsList.Count}\n";
-                foreach (var item in SdtItemsList)
-                {
-                    sdt += $"{item}\n";
-                }
-            }
+        //    if (SdtItemsList != null)
+        //    {
+        //        sdt += $"   SDT item list count: {SdtItemsList.Count}\n";
+        //        foreach (var item in SdtItemsList)
+        //        {
+        //            sdt += $"{item}\n";
+        //        }
+        //    }
 
 
-            sdt += $"   SDT CRC 0x{CRC32:X}\n";
-            return sdt;
-        }
+        //    sdt += $"   SDT CRC 0x{CRC32:X}\n";
+        //    return sdt;
+        //}
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

@@ -50,40 +50,40 @@ namespace TSParser.Tables.DvbTables
             pointer += ApplicationLoopLength;
 
         }
-        public override string ToString()
-        {
-            string str = $"-=AIT pid: {m_aitPid}=-\n";
+        //public override string ToString()
+        //{
+        //    string str = $"-=AIT pid: {m_aitPid}=-\n";
 
-            str+=base.ToString();
+        //    str+=base.ToString();
 
-            str += $"   Test Application Flag: {TestApplicationFlag}\n";
-            str += $"   Application Type: {ApplicationType}\n";
-            str += $"   Common Descriptors Length: {CommonDescriptorsLength}\n";
+        //    str += $"   Test Application Flag: {TestApplicationFlag}\n";
+        //    str += $"   Application Type: {ApplicationType}\n";
+        //    str += $"   Common Descriptors Length: {CommonDescriptorsLength}\n";
 
-            if(AitDescriptorsList is not null)
-            {
-                str += $"   AIT descriptors count: {AitDescriptorsList.Count}\n";
-                foreach(var descriptor in AitDescriptorsList)
-                {
-                    str += $"      {descriptor}\n";
-                }
-            }
+        //    if(AitDescriptorsList is not null)
+        //    {
+        //        str += $"   AIT descriptors count: {AitDescriptorsList.Count}\n";
+        //        foreach(var descriptor in AitDescriptorsList)
+        //        {
+        //            str += $"      {descriptor}\n";
+        //        }
+        //    }
 
-            str += $"   Application Loop Length: {ApplicationLoopLength}\n";
+        //    str += $"   Application Loop Length: {ApplicationLoopLength}\n";
 
-            if(ApplicationLoops is not null)
-            {
-                str += $"   Application Loops count: {ApplicationLoops.Count}\n";
-                foreach (var loop in ApplicationLoops)
-                {
-                    str += $"   {loop}\n";
-                }
-            }
+        //    if(ApplicationLoops is not null)
+        //    {
+        //        str += $"   Application Loops count: {ApplicationLoops.Count}\n";
+        //        foreach (var loop in ApplicationLoops)
+        //        {
+        //            str += $"   {loop}\n";
+        //        }
+        //    }
 
-            str += $"   AIT CRC: 0x{CRC32:X}\n";
+        //    str += $"   AIT CRC: 0x{CRC32:X}\n";
 
-            return str;
-        }
+        //    return str;
+        //}
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

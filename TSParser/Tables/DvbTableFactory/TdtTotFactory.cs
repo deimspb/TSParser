@@ -62,7 +62,7 @@ namespace TSParser.Tables.DvbTableFactory
                     break;
                 default:
                     {
-                        Logger.Send(LogStatus.WARNING, $"Not implement table id: {TableData[0]} for PID: 0x14");
+                        Logger.Send(LogStatus.NotImplement, $"Not implement table id: {TableData[0]} for PID: 0x14");
                     }
                     break;
             }

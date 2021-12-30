@@ -38,25 +38,25 @@ namespace TSParser.Tables.DvbTables
             TableBytes = bytes;
         }
 
-        public override string ToString()
-        {
-            var tot = "-=TOT=-\n";
+        //public override string ToString()
+        //{
+        //    var tot = "-=TOT=-\n";
 
-            tot += $"   UTC date time: {UTCDateTime}/n";
+        //    tot += $"   UTC date time: {UTCDateTime}/n";
 
-            if (TotDescriptors != null)
-            {
-                tot += $"   TOT descriptors count: {TotDescriptors.Count}\n";
-                foreach (var desc in TotDescriptors)
-                {
-                    tot += $"      {desc}\n";
-                }
-            }
+        //    if (TotDescriptors != null)
+        //    {
+        //        tot += $"   TOT descriptors count: {TotDescriptors.Count}\n";
+        //        foreach (var desc in TotDescriptors)
+        //        {
+        //            tot += $"      {desc}\n";
+        //        }
+        //    }
 
-            tot += $"   CRC32: 0x{CRC32:X}\n";
+        //    tot += $"   CRC32: 0x{CRC32:X}\n";
 
-            return tot;
-        }
+        //    return tot;
+        //}
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

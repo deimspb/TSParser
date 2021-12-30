@@ -61,31 +61,31 @@ namespace TSParser.Tables.DvbTables
 
             return events;
         }
-        public override string ToString()
-        {
-            var eit = $"-=EIT=-\n";
+        //public override string ToString()
+        //{
+        //    var eit = $"-=EIT=-\n";
 
-            eit += $"   Service id: {ServiceId}\n";
+        //    eit += $"   Service id: {ServiceId}\n";
 
-            eit += $"{base.ToString()}";             
+        //    eit += $"{base.ToString()}";             
 
-            eit += $"   Transport stream id: {TransportStreamId}\n";
-            eit += $"   Original network id: {OriginalNetworkId}\n";
-            eit += $"   Segment last section number: {SegmentLastSectionNumber}\n";
-            eit += $"   Last table id: {LastTableId}\n";
+        //    eit += $"   Transport stream id: {TransportStreamId}\n";
+        //    eit += $"   Original network id: {OriginalNetworkId}\n";
+        //    eit += $"   Segment last section number: {SegmentLastSectionNumber}\n";
+        //    eit += $"   Last table id: {LastTableId}\n";
 
-            if(EventList != null)
-            {
-                eit += $"   Event List count: {EventList.Count}\n";
-                foreach (var ev in EventList)
-                {
-                    eit += $"      {ev}\n";
-                }
-            }            
-            eit += $"   CRC: 0x{CRC32:X}\n";
+        //    if(EventList != null)
+        //    {
+        //        eit += $"   Event List count: {EventList.Count}\n";
+        //        foreach (var ev in EventList)
+        //        {
+        //            eit += $"      {ev}\n";
+        //        }
+        //    }            
+        //    eit += $"   CRC: 0x{CRC32:X}\n";
 
-            return eit;
-        }
+        //    return eit;
+        //}
 
         public override string Print(int prefixLen)
         {

@@ -29,12 +29,12 @@ namespace TSParser.Tables.DvbTables
             TableBytes = bytes;
         }
 
-        public override string ToString()
-        {
-            var tdt = $"-=TDT=-\n";
-            tdt += $"   UTC date time: {UtcDateTime}";
-            return tdt;
-        }
+        //public override string ToString()
+        //{
+        //    var tdt = $"-=TDT=-\n";
+        //    tdt += $"   UTC date time: {UtcDateTime}";
+        //    return tdt;
+        //}
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

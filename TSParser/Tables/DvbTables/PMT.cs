@@ -64,38 +64,38 @@ namespace TSParser.Tables.DvbTables
             }
             return esList;
         }
-        public override string ToString()
-        {
-            string pmt = $"-=PMT for program number: {ProgramNumber}=-\n";
+        //public override string ToString()
+        //{
+        //    string pmt = $"-=PMT for program number: {ProgramNumber}=-\n";
 
-            pmt+= $"{base.ToString()}";
+        //    pmt+= $"{base.ToString()}";
 
-            pmt += $"   Program number: {ProgramNumber}\n";
-            pmt += $"   PCR pid: {PcrPid}\n";
-            pmt += $"   Program info length: {ProgramInfoLength}\n";
+        //    pmt += $"   Program number: {ProgramNumber}\n";
+        //    pmt += $"   PCR pid: {PcrPid}\n";
+        //    pmt += $"   Program info length: {ProgramInfoLength}\n";
 
-            if(PmtDescriptorList is not null)
-            {
-                pmt += $"   PMT descriptor count: {PmtDescriptorList.Count}\n";
-                foreach (var desc in PmtDescriptorList)
-                {
-                    pmt += $"      {desc}\n";
-                }
-            }
+        //    if(PmtDescriptorList is not null)
+        //    {
+        //        pmt += $"   PMT descriptor count: {PmtDescriptorList.Count}\n";
+        //        foreach (var desc in PmtDescriptorList)
+        //        {
+        //            pmt += $"      {desc}\n";
+        //        }
+        //    }
 
-            if(EsInfoList is not null)
-            {
-                pmt += $"   PMT ES records count: {EsInfoList.Count}\n";
-                foreach (var es in EsInfoList)
-                {
-                    pmt += $"{es}";
-                }
-            }          
+        //    if(EsInfoList is not null)
+        //    {
+        //        pmt += $"   PMT ES records count: {EsInfoList.Count}\n";
+        //        foreach (var es in EsInfoList)
+        //        {
+        //            pmt += $"{es}";
+        //        }
+        //    }          
             
 
-            pmt += $"   PMT CRC: 0x{CRC32:X}\n";
-            return pmt;
-        }
+        //    pmt += $"   PMT CRC: 0x{CRC32:X}\n";
+        //    return pmt;
+        //}
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

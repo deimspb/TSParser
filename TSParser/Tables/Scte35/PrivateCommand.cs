@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.Service;
+
 namespace TSParser.Tables.Scte35
 {
     public record PrivateCommand : SpliceCommand
     {
         public PrivateCommand(ReadOnlySpan<byte> bytes) : base(bytes)
         {
+            Logger.Send(LogStatus.NotImplement, $"Not implement Splice Private Command");
         }
     }
 }

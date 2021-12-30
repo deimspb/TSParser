@@ -20,7 +20,7 @@ namespace TSParser.Tables.Mip
     {
         public TxPowerFunction(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            Logger.Send(LogStatus.WARNING, $"Not implement TxPower Function");
+            Logger.Send(LogStatus.NotImplement, $"Not implement TxPower Function");
         }
     }
 }

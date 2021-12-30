@@ -20,7 +20,7 @@ namespace TSParser.Tables.Mip
     {
         public TxTimeOffsetFunction(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            Logger.Send(LogStatus.WARNING, $"Not implement TxTime Offset Function");
+            Logger.Send(LogStatus.NotImplement, $"Not implement TxTime Offset Function");
         }
     }
 }

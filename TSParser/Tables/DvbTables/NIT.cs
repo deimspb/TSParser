@@ -63,31 +63,31 @@ namespace TSParser.Tables.DvbTables
             }
         }
 
-        public override string ToString()
-        {
-            var nit = $"-=NIT=-\n";
-            nit += $"   Network id: {NetworkId}\n";
-            nit += base.ToString();
-            nit += $"   Network descriptors lenght: {NetworkDescriptorsLenght}\n";
-            if(NitDescriptorList != null)
-            {
-                nit += $"   Nit Descriptor List count: {NitDescriptorList.Count}\n";
-                foreach (var desc in NitDescriptorList)
-                {
-                    nit += $"      {desc}\n";
-                }
-            }            
-            nit += $"   Transport stream loop lenght: {TransportStreamLoopLenght}\n";
-            if (TransportStreamLoops != null)
-            {
-                nit += $"   Transport Stream Loops count: {TransportStreamLoops.Count}\n";
-                foreach (var loop in TransportStreamLoops)
-                {
-                    nit += $"{loop}\n";
-                }
-            }
-            return nit;
-        }
+        //public override string ToString()
+        //{
+        //    var nit = $"-=NIT=-\n";
+        //    nit += $"   Network id: {NetworkId}\n";
+        //    nit += base.ToString();
+        //    nit += $"   Network descriptors lenght: {NetworkDescriptorsLenght}\n";
+        //    if(NitDescriptorList != null)
+        //    {
+        //        nit += $"   Nit Descriptor List count: {NitDescriptorList.Count}\n";
+        //        foreach (var desc in NitDescriptorList)
+        //        {
+        //            nit += $"      {desc}\n";
+        //        }
+        //    }            
+        //    nit += $"   Transport stream loop lenght: {TransportStreamLoopLenght}\n";
+        //    if (TransportStreamLoops != null)
+        //    {
+        //        nit += $"   Transport Stream Loops count: {TransportStreamLoops.Count}\n";
+        //        foreach (var loop in TransportStreamLoops)
+        //        {
+        //            nit += $"{loop}\n";
+        //        }
+        //    }
+        //    return nit;
+        //}
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);
