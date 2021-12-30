@@ -23,10 +23,10 @@ namespace TSParser.Descriptors.AitDescriptors
         public AitDescriptor(ReadOnlySpan<byte> bytes) : base(bytes)
         {
         }
-        public override string ToString()
-        {
-            return $"       AIT descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Length: {DescriptorLength}\n";
-        }
+        //public override string ToString()
+        //{
+        //    return $"       AIT descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Length: {DescriptorLength}\n";
+        //}
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

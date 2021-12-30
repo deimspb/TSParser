@@ -20,7 +20,7 @@ namespace TSParser.Tables.Scte35
     {
         public TimeSignal(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            Logger.Send(LogStatus.Warning, $"Unimpement Time Signal command");
+            Logger.Send(LogStatus.WARNING, $"Unimpement Time Signal command");
         }
     }
 }

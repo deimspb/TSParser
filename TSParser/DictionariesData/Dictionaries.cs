@@ -3928,7 +3928,7 @@ namespace TSParser.DictionariesData
                 }
                 else
                 {
-                    Logger.Send(LogStatus.Warning, $"Can't find value in coding table on position 0x{i:X}");
+                    Logger.Send(LogStatus.WARNING, $"Can't find value in coding table on position 0x{i:X}");
                 }
             }
 

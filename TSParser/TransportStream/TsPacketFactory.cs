@@ -25,13 +25,13 @@ namespace TSParser.TransportStream
         {
             if (packetLength < 188)
             {
-                Logger.Send(LogStatus.Exception, $"Byte array is too small");
+                Logger.Send(LogStatus.EXCEPTION, $"Byte array is too small");
                 throw new Exception("Invalid packet length!");
             }
 
             if (bytes.Length % packetLength > 0)
             {
-                Logger.Send(LogStatus.Warning, $"Invalid array length! array.len % packet len shall be 0 {bytes.Length}");                
+                Logger.Send(LogStatus.WARNING, $"Invalid array length! array.len % packet len shall be 0 {bytes.Length}");                
             }
 
             var packetCount = bytes.Length / packetLength;
@@ -74,7 +74,7 @@ namespace TSParser.TransportStream
             }
             catch (Exception ex)
             {
-                Logger.Send(LogStatus.Exception, $"Exception in GetTsPacket Method",ex);
+                Logger.Send(LogStatus.EXCEPTION, $"Exception in GetTsPacket Method",ex);
                 return default(TsPacket); // if something goes wrong return default tspacket with pid 0xFFFF
             }
         }

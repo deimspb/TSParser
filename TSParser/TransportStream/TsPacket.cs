@@ -102,7 +102,7 @@ namespace TSParser.TransportStream
             }
             catch (Exception ex)
             {
-                Logger.Send(LogStatus.Exception, $"Exception while parsing packet: {PacketNumber}, pid: {pid}, {ex}");
+                Logger.Send(LogStatus.EXCEPTION, $"Exception while parsing packet: {PacketNumber}, pid: {pid}, {ex}");
                 throw new Exception($"Exception while parsing packet: {PacketNumber}, pid: {pid}, {ex}");
             }
         }

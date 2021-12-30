@@ -56,7 +56,7 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (Pmt != null && Pmt.VersionNumber != CurrentPmt.VersionNumber)
             {
-                Logger.Send(LogStatus.Info, $"PMT version changed from {Pmt.VersionNumber} to {CurrentPmt.VersionNumber}");
+                Logger.Send(LogStatus.INFO, $"PMT version changed from {Pmt.VersionNumber} to {CurrentPmt.VersionNumber}");
             }
 
             Pmt = CurrentPmt;            

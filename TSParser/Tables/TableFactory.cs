@@ -47,7 +47,7 @@ namespace TSParser.Tables
 
                 if (Pointer > tsPacket.Payload.Length)
                 {
-                    Logger.Send(LogStatus.Warning, $"Pointer field greater than packet length for pid: {tsPacket.Pid}");
+                    Logger.Send(LogStatus.WARNING, $"Pointer field greater than packet length for pid: {tsPacket.Pid}");
                     return;
                     //throw new Exception($"Pointer field greater than packet length for pid: {tsPacket.Pid}");
                 }
@@ -74,7 +74,15 @@ namespace TSParser.Tables
                     }
                     else
                     {
-                        Buffer.BlockCopy(tsPacket.Payload, 1, TableData, TableBytes, Pointer);
+                        try
+                        {
+                            Buffer.BlockCopy(tsPacket.Payload, 1, TableData, TableBytes, Pointer);
+                        }
+                        catch 
+                        {
+                            Logger.Send(LogStatus.EXCEPTION, $"ex with packet {tsPacket.PacketNumber}");
+                        }
+                        
                         TableBytes += Pointer;
 
                         //table ready

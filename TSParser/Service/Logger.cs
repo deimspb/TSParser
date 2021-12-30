@@ -17,17 +17,37 @@ using System.Diagnostics;
 
 namespace TSParser.Service
 {
+    public class LogMessage
+    {
+        public LogStatus LogStatus { get; }
+        public DateTime EventDateTime => DateTime.Now;
+        public string? Message { get; }
+        public Exception? Exception { get; }
+        public LogMessage(LogStatus status, string? message, Exception? exception = null)
+        {
+            LogStatus = status;
+            Message = message;
+            Exception = exception;
+        }
+        public override string ToString()
+        {
+            if (Exception is not null)
+                return $"[{EventDateTime:dd.MM.yyy HH:mm:ss.fff}] [{LogStatus}] [{Message}] [{Exception?.TargetSite?.DeclaringType}] [{Exception?.TargetSite?.Name}] [{Exception?.Message}] \r\n";
+            return $"[{EventDateTime:dd.MM.yyy HH:mm:ss.fff}] [{LogStatus}] [{Message}] \r\n";
+        }
+    }
     public enum LogStatus
     {
-        Info,
-        Warning,
-        Exception,
-        Fatal,
-        ETSI        
+        INFO,
+        NotImplement,
+        ETSI,
+        WARNING,
+        EXCEPTION,
+        FATAL                
     }
     public class Logger
     {
-        public delegate void LogHandler(string msg);
+        public delegate void LogHandler(LogMessage message);
         public static event LogHandler OnLogMessage = null!;
 
         public static ObservableCollection<string> Log = new ObservableCollection<string>();
@@ -36,41 +56,7 @@ namespace TSParser.Service
         {
             try
             {
-                switch (status)
-                {
-                    case LogStatus.Info:
-                        {
-                            string fulltext = $"[{DateTime.Now:dd.MM.yyy HH:mm:ss.fff}] [INFO] [{ additionalInfo}] \r\n";
-                            PrintLog(fulltext);
-                        }
-                        break;
-                    case LogStatus.Warning:
-                        {
-                            string fulltext = $"[{DateTime.Now:dd.MM.yyy HH:mm:ss.fff}] [WARNING] [{additionalInfo}] \r\n";
-                            PrintLog(fulltext);
-                        }
-                        break;
-                    case LogStatus.Exception:
-                        {
-                            string fulltext = $"[{DateTime.Now:dd.MM.yyy HH:mm:ss.fff}] [EXCEPTION] in [{additionalInfo}] [{ex?.TargetSite?.DeclaringType}] [{ex?.TargetSite?.Name}] [{ex?.Message}] \r\n";
-                            PrintLog(fulltext);
-                        }
-                        break;
-                    case LogStatus.Fatal:
-                        {
-                            string fulltext = $"[{DateTime.Now:dd.MM.yyy HH:mm:ss.fff}] [FATAL] in [{additionalInfo}] [{ex?.TargetSite?.DeclaringType}] [{ex?.TargetSite?.Name}] [{ex?.Message}] \r\n";
-                            PrintLog(fulltext);
-                        }
-                        break;
-                    case LogStatus.ETSI:
-                        {
-                            string fulltext = $"[{DateTime.Now:dd.MM.yyy HH:mm:ss.fff}] [ETSI EN 101290] [{additionalInfo}] \r\n";
-                            PrintLog(fulltext);
-                            break;
-                        }
-                    default:
-                        break;
-                }
+                PrintLog(new LogMessage(status, additionalInfo, ex));                
             }
             catch
             {
@@ -82,7 +68,12 @@ namespace TSParser.Service
         {
             Debug.Write($"{fulltext}");
             Log.Add(fulltext);
-            OnLogMessage?.Invoke(fulltext);
+            
+        }
+        private static void PrintLog(LogMessage message)
+        {
+            Debug.Write(message);
+            OnLogMessage?.Invoke(message);
         }
     }
 }

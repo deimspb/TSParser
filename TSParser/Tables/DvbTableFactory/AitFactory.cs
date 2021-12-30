@@ -57,7 +57,7 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (Ait != null && Ait.VersionNumber != CurrentAit.VersionNumber)
             {
-                Logger.Send(LogStatus.Info, $"AIT version changed from {Ait.VersionNumber} to {CurrentAit.VersionNumber}");
+                Logger.Send(LogStatus.INFO, $"AIT version changed from {Ait.VersionNumber} to {CurrentAit.VersionNumber}");
             }
 
             Ait = CurrentAit;

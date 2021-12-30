@@ -56,7 +56,7 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (Pat != null && Pat.VersionNumber != CurrentPat.VersionNumber)
             {
-                Logger.Send(LogStatus.Info, $"Pat version changed from {Pat.VersionNumber} to {CurrentPat.VersionNumber}");
+                Logger.Send(LogStatus.INFO, $"Pat version changed from {Pat.VersionNumber} to {CurrentPat.VersionNumber}");
             }            
 
             Pat = CurrentPat;

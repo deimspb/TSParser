@@ -89,7 +89,7 @@ namespace TSParser.Descriptors
                         {
                             if (!m_unknownDescriptorListId.Contains(bytes[0]))
                             {
-                                Logger.Send(LogStatus.Info, $"Not specified descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
+                                Logger.Send(LogStatus.INFO, $"Not specified descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
                                 m_unknownDescriptorListId.Add(bytes[0]);
                             }
 
@@ -99,7 +99,7 @@ namespace TSParser.Descriptors
             }
             catch (Exception ex)
             {
-                Logger.Send(LogStatus.Exception, $"While creating descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
+                Logger.Send(LogStatus.EXCEPTION, $"While creating descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
                 return new Descriptor(bytes);
             }
         }
@@ -120,7 +120,7 @@ namespace TSParser.Descriptors
                         {
                             if (!m_unknownAitDescList.Contains(bytes[0]))
                             {
-                                Logger.Send(LogStatus.Info, $"Not specified AIT descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
+                                Logger.Send(LogStatus.INFO, $"Not specified AIT descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
                                 m_unknownAitDescList.Add(bytes[0]);
                             }
 
@@ -130,7 +130,7 @@ namespace TSParser.Descriptors
             }
             catch(Exception ex)
             {
-                Logger.Send(LogStatus.Exception, $"While creating AIT descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
+                Logger.Send(LogStatus.EXCEPTION, $"While creating AIT descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
                 return new AitDescriptor(bytes);
             }
             
@@ -147,7 +147,7 @@ namespace TSParser.Descriptors
                         {
                             if (!m_unknownExtensionDescList.Contains(bytes[2]))
                             {
-                                Logger.Send(LogStatus.Info, $"Not specified extension descriptor with tag: 0x{bytes[2]:X2}, descriptor location: {descAllocation}");
+                                Logger.Send(LogStatus.INFO, $"Not specified extension descriptor with tag: 0x{bytes[2]:X2}, descriptor location: {descAllocation}");
                                 m_unknownExtensionDescList.Add(bytes[2]);
                             }
 
@@ -157,7 +157,7 @@ namespace TSParser.Descriptors
             }
             catch (Exception ex)
             {
-                Logger.Send(LogStatus.Exception, $"While creating extension descriptor tag: 0x{bytes[1]:X2} descriptor location: {descAllocation}", ex);
+                Logger.Send(LogStatus.EXCEPTION, $"While creating extension descriptor tag: 0x{bytes[1]:X2} descriptor location: {descAllocation}", ex);
                 return new ExtendedDescriptor(bytes);
             }
         }
@@ -172,7 +172,7 @@ namespace TSParser.Descriptors
                         {
                             if (!m_unknownSpliceDescList.Contains(bytes[0]))
                             {
-                                Logger.Send(LogStatus.Info, $"Not specified Splice descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
+                                Logger.Send(LogStatus.INFO, $"Not specified Splice descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
                                 m_unknownSpliceDescList.Add(bytes[0]);
                             }
                             return new Scte35Descriptor(bytes);
@@ -181,7 +181,7 @@ namespace TSParser.Descriptors
             }
             catch(Exception ex)
             {
-                Logger.Send(LogStatus.Exception, $"While creating Splice descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
+                Logger.Send(LogStatus.EXCEPTION, $"While creating Splice descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
                 return new Scte35Descriptor(bytes);
             }
         }

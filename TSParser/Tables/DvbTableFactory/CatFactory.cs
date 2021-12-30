@@ -56,7 +56,7 @@ namespace TSParser.Tables.DvbTableFactory
 
             if(Cat!=null && Cat.VersionNumber != CurrentCat.VersionNumber)
             {
-                Logger.Send(LogStatus.Info, $"Cat version changed from {Cat.VersionNumber} to {CurrentCat.VersionNumber}");
+                Logger.Send(LogStatus.INFO, $"Cat version changed from {Cat.VersionNumber} to {CurrentCat.VersionNumber}");
             }
 
             Cat = CurrentCat;

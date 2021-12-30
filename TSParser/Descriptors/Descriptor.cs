@@ -36,7 +36,7 @@ namespace TSParser.Descriptors
             }
             else
             {
-                Logger.Send(LogStatus.Warning, $"Pointer out of descriptor tag 0x{DescriptorTag:X}");
+                Logger.Send(LogStatus.WARNING, $"Pointer out of descriptor tag 0x{DescriptorTag:X}");
             }
         }
 

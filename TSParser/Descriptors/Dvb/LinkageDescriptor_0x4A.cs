@@ -37,15 +37,15 @@ namespace TSParser.Descriptors.Dvb
             LinkageType = bytes[pointer];
             if(LinkageType == 0x08)
             {
-                Logger.Send(LogStatus.Info, $"mobile_hand-over_info not implement");//TODO: mobile_hand-over_info
+                Logger.Send(LogStatus.INFO, $"mobile_hand-over_info not implement");//TODO: mobile_hand-over_info
             }
             else if(LinkageType == 0x0D)
             {
-                Logger.Send(LogStatus.Info, $"event_linkage_info not implement");//TODO: event_linkage_info
+                Logger.Send(LogStatus.INFO, $"event_linkage_info not implement");//TODO: event_linkage_info
             }
             else if(LinkageType >=0x0E && LinkageType <= 0x1F)
             {
-                Logger.Send(LogStatus.Info, $"extended_event_linkage_info not implement");//TODO: extended_event_linkage_info
+                Logger.Send(LogStatus.INFO, $"extended_event_linkage_info not implement");//TODO: extended_event_linkage_info
             }
             if (pointer < DescriptorLength)
             {

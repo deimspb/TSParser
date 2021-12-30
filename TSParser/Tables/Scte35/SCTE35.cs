@@ -72,7 +72,7 @@ namespace TSParser.Tables.DvbTables
             pointer += 2;
             if(bytes.Length<pointer + DescriptorLoopLength)
             {
-                Logger.Send(LogStatus.Warning, $"SCTE35 pid: {scte35Pid}, Descriptor Loop Length is greate than table length, desc loop length: {DescriptorLoopLength}, pointer: {pointer}, bytes length: {bytes.Length}");
+                Logger.Send(LogStatus.WARNING, $"SCTE35 pid: {scte35Pid}, Descriptor Loop Length is greate than table length, desc loop length: {DescriptorLoopLength}, pointer: {pointer}, bytes length: {bytes.Length}");
                 CRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]); // return with crc to prevent duplicates outgoing tables
                 return;
             }
@@ -150,14 +150,14 @@ namespace TSParser.Tables.DvbTables
                     case 0xFF: return new PrivateCommand(bytes);
                     default:
                         {
-                            Logger.Send(LogStatus.Warning, $"Unknown Splice command type: 0x{bt:X} return base command");
+                            Logger.Send(LogStatus.WARNING, $"Unknown Splice command type: 0x{bt:X} return base command");
                             return new SpliceCommand(bytes);
                         }
                 }
             }
             catch(Exception ex)
             {
-                Logger.Send(LogStatus.Exception, $"Ecxeption while deserelise splice command",ex);
+                Logger.Send(LogStatus.EXCEPTION, $"Ecxeption while deserelise splice command",ex);
                 return new SpliceCommand(bytes);
             }
             

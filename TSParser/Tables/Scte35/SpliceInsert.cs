@@ -50,6 +50,7 @@ namespace TSParser.Tables.Scte35
                 if(ProgramSpliceFlag && !SpliceImmediateFlag)
                 {
                     spliceTime = new SpliceTime(bytes.Slice(pointer,5));
+                    pointer += 5;
                 }
                 if (!ProgramSpliceFlag)
                 {
@@ -140,7 +141,7 @@ namespace TSParser.Tables.Scte35
             TimeSpecificFlag = (bytes[0] & 0x80) != 0;
             if (TimeSpecificFlag)
             {
-                PtsTime = (ulong)((bytes[0] & 0x01) << 32 | bytes[1] << 24 | bytes[2] << 16 | bytes[3] << 8 | bytes[4]);
+                PtsTime = (ulong)(bytes[0] & 0x01) << 32 | (ulong)(bytes[1]) << 24 | (ulong)(bytes[2]) << 16 | (ulong)(bytes[3]) << 8 | (ulong)(bytes[4]);
             }
             else
             {
@@ -150,7 +151,7 @@ namespace TSParser.Tables.Scte35
         public string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
-            return $"{headerPrefix}Splice time, time specific flag: {TimeSpecificFlag}, pts time: 0x{PtsTime:X}\n";
+            return $"{headerPrefix}Splice time, time specific flag: {TimeSpecificFlag}, pts time: {Utils.GetPtsDtsValue(PtsTime)}\n";
         }
     }
     public struct BreakDuration
@@ -160,12 +161,12 @@ namespace TSParser.Tables.Scte35
         public BreakDuration(ReadOnlySpan<byte> bytes)
         {
             AutoReturn = (bytes[0] & 0x80) != 0;
-            Duration = (ulong)((bytes[0] & 0x01) << 32 | bytes[1] << 24 | bytes[2] << 16 | bytes[3] << 8 | bytes[4]);
+            Duration = (ulong)(bytes[0] & 0x01) << 32 | (ulong)(bytes[1]) << 24 | (ulong)(bytes[2]) << 16 | (ulong)(bytes[3]) << 8 | (ulong)(bytes[4]);
         }
         public string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
-            return $"{headerPrefix}Break duration, auto return: {AutoReturn}, duration: 0x{Duration:X}\n";
+            return $"{headerPrefix}Break duration, auto return: {AutoReturn}, duration: {Utils.GetPtsDtsValue(Duration)}\n";
         }
     }
 }

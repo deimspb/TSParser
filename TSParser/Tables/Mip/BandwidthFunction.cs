@@ -20,7 +20,7 @@ namespace TSParser.Tables.Mip
     {
         public BandwidthFunction(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            Logger.Send(LogStatus.Warning, $"Not implement Bandwidth Function");
+            Logger.Send(LogStatus.WARNING, $"Not implement Bandwidth Function");
         }
     }
 }

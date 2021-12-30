@@ -20,7 +20,7 @@ namespace TSParser.Tables.Scte35
     {
         public BandwidthReservation(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            Logger.Send(LogStatus.Warning, $"Unimpement Bandwidth Reservation command");
+            Logger.Send(LogStatus.WARNING, $"Unimpement Bandwidth Reservation command");
         }
     }
 }

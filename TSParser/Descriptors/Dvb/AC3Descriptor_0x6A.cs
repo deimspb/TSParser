@@ -53,7 +53,7 @@ namespace TSParser.Descriptors.Dvb
             }
             if (DescriptorLength > pointer)
             {
-                Logger.Send(LogStatus.Info, $"Additional info in AC-3 Descriptor");
+                Logger.Send(LogStatus.INFO, $"Additional info in AC-3 Descriptor");
             }
         }
         public override string ToString()

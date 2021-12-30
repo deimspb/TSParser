@@ -20,7 +20,7 @@ namespace TSParser.Tables.Mip
     {
         public TxFrequencyOffsetFunction(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            Logger.Send(LogStatus.Warning, $"Not implement TxFrequency Offset Function");
+            Logger.Send(LogStatus.WARNING, $"Not implement TxFrequency Offset Function");
         }
     }
 }

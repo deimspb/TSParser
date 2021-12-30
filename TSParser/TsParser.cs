@@ -168,7 +168,7 @@ namespace TSParser
             {
                 foreach (var ex in ae.InnerExceptions)
                 {
-                    Logger.Send(LogStatus.Exception, $"Innser exception while Run parser async", ex);
+                    Logger.Send(LogStatus.EXCEPTION, $"Innser exception while Run parser async", ex);
                 }
             }
         }
@@ -359,7 +359,7 @@ namespace TSParser
                     }
                 case (ushort)ReservedPids.RST:
                     {
-                        Logger.Send(LogStatus.Info, $"Not implement RST table");
+                        Logger.Send(LogStatus.INFO, $"Not implement RST table");
                         break;
                     }
                 case (ushort)ReservedPids.TDT:
@@ -374,27 +374,27 @@ namespace TSParser
                     }
                 case (ushort)ReservedPids.RNT:
                     {
-                        Logger.Send(LogStatus.Info, $"Not implement RNT table");
+                        Logger.Send(LogStatus.INFO, $"Not implement RNT table");
                         break;
                     }
                 case (ushort)ReservedPids.LLinbandSignalink:
                     {
-                        Logger.Send(LogStatus.Info, $"Not implement L lindband signal link table");
+                        Logger.Send(LogStatus.INFO, $"Not implement L lindband signal link table");
                         break;
                     }
                 case (ushort)ReservedPids.Measurement:
                     {
-                        Logger.Send(LogStatus.Info, $"Not implement Measurmrnt table");
+                        Logger.Send(LogStatus.INFO, $"Not implement Measurmrnt table");
                         break;
                     }
                 case (ushort)ReservedPids.DIT:
                     {
-                        Logger.Send(LogStatus.Info, $"Not implement DIT table");
+                        Logger.Send(LogStatus.INFO, $"Not implement DIT table");
                         break;
                     }
                 case (ushort)ReservedPids.SIT:
                     {
-                        Logger.Send(LogStatus.Info, $"Not implement SIT table");
+                        Logger.Send(LogStatus.INFO, $"Not implement SIT table");
                         break;
                     }
                 default:
@@ -480,7 +480,7 @@ namespace TSParser
         }
         private void RunFileParser()
         {
-            Logger.Send(LogStatus.Info, $"Start ts file {m_tsFileName} parsing");
+            Logger.Send(LogStatus.INFO, $"Start ts file {m_tsFileName} parsing");            
             using FileStream fileStream = new FileStream(m_tsFileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 348 * 188, FileOptions.SequentialScan);
             using BinaryReader binaryReader = new BinaryReader(fileStream);
 
@@ -519,7 +519,7 @@ namespace TSParser
             }
             catch (Exception ex)
             {
-                Logger.Send(LogStatus.Exception, $"Exception catch in file reader method {ex}", ex);
+                Logger.Send(LogStatus.EXCEPTION, $"Exception catch in file reader method {ex}", ex);
             }
             finally
             {
@@ -556,7 +556,7 @@ namespace TSParser
                     }
                     catch (Exception ex)
                     {
-                        Logger.Send(LogStatus.Exception, $"Receive exception attempts left: {m_connectionAttempts}", ex);
+                        Logger.Send(LogStatus.EXCEPTION, $"Receive exception attempts left: {m_connectionAttempts}", ex);
                         m_connectionAttempts--;
                     }
                 }
@@ -573,7 +573,7 @@ namespace TSParser
                     packetLen = 204;
                 }
 
-                Logger.Send(LogStatus.Info, $"Start with network {m_multicastGroup}:{m_multicastPort} ts packet length: {packetLen}, network packet lenght: {bytesCount}");
+                Logger.Send(LogStatus.INFO, $"Start with network {m_multicastGroup}:{m_multicastPort} ts packet length: {packetLen}, network packet lenght: {bytesCount}");
 
                 m_bufferReaderTask = Task.Run(() => ReadFromBuffer(packetLen), m_ct);
 
@@ -588,7 +588,7 @@ namespace TSParser
                     }
                     catch (Exception ex)
                     {
-                        Logger.Send(LogStatus.Exception, $"Receive exception attempts left: {m_connectionAttempts}", ex);
+                        Logger.Send(LogStatus.EXCEPTION, $"Receive exception attempts left: {m_connectionAttempts}", ex);
                         m_connectionAttempts--;
                     }
 
@@ -598,7 +598,7 @@ namespace TSParser
             }
             catch (Exception ex)
             {
-                Logger.Send(LogStatus.Exception, $"Exception in Run UDP parser", ex);
+                Logger.Send(LogStatus.EXCEPTION, $"Exception in Run UDP parser", ex);
             }
         }
         private void ReadFromBuffer(int packetLen)
@@ -610,7 +610,7 @@ namespace TSParser
         }
         private void AfterParserComplete(Task task)
         {
-            Logger.Send(LogStatus.Info, $"Parser complete working");
+            Logger.Send(LogStatus.INFO, $"Parser complete working");
 
             m_cts = new CancellationTokenSource();
 

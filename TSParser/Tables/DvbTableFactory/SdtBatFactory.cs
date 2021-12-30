@@ -101,7 +101,7 @@ namespace TSParser.Tables.DvbTableFactory
             {
                 if (m_sdtList[idx].VersionNumber != CurrentSdt.VersionNumber)
                 {
-                    Logger.Send(LogStatus.Info, $"SDT table version changed for ts id: {m_sdtList[idx].TransportStreamId}");
+                    Logger.Send(LogStatus.INFO, $"SDT table version changed for ts id: {m_sdtList[idx].TransportStreamId}");
                     m_sdtList.RemoveAt(idx);
                 }
                 else
@@ -138,7 +138,7 @@ namespace TSParser.Tables.DvbTableFactory
             {
                 if (m_batList[idx].VersionNumber != CurrentBAT.VersionNumber)
                 {
-                    Logger.Send(LogStatus.Info, $"Bat version changed for bouquet id:{CurrentBAT.BouquetId}");
+                    Logger.Send(LogStatus.INFO, $"Bat version changed for bouquet id:{CurrentBAT.BouquetId}");
                     m_batList.RemoveAt(idx);
                 }
                 else

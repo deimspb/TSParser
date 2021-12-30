@@ -262,7 +262,7 @@ namespace TSParser.Tables.Mip
             catch(Exception ex)
             {
                 //if something goes wrong create base function to get func length
-                Logger.Send(LogStatus.Exception,$"Ecxeption while deserialise Tx Function",ex);
+                Logger.Send(LogStatus.EXCEPTION,$"Ecxeption while deserialise Tx Function",ex);
                 return new Function(bytes);
             }            
         }

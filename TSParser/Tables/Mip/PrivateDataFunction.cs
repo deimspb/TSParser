@@ -20,7 +20,7 @@ namespace TSParser.Tables.Mip
     {
         public PrivateDataFunction(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            Logger.Send(LogStatus.Warning, $"Not implement Private Data Function");
+            Logger.Send(LogStatus.WARNING, $"Not implement Private Data Function");
         }
     }
 }

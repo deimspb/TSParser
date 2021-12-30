@@ -20,7 +20,7 @@ namespace TSParser.Tables.Scte35
     {
         public SpliceSchedule(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            Logger.Send(LogStatus.Warning, $"Unimpement Splice Schedule command");
+            Logger.Send(LogStatus.WARNING, $"Unimpement Splice Schedule command");
         }
     }
 }

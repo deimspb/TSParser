@@ -20,7 +20,7 @@ namespace TSParser.Tables.Mip
     {
         public EnableFunction(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            Logger.Send(LogStatus.Warning, $"Not implement Enable Function");
+            Logger.Send(LogStatus.WARNING, $"Not implement Enable Function");
         }
     }
 }
