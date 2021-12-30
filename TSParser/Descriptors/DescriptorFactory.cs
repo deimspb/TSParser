@@ -89,7 +89,7 @@ namespace TSParser.Descriptors
                         {
                             if (!m_unknownDescriptorListId.Contains(bytes[0]))
                             {
-                                Logger.Send(LogStatus.INFO, $"Not specified descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
+                                Logger.Send(LogStatus.NotImplement, $"Not specified descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
                                 m_unknownDescriptorListId.Add(bytes[0]);
                             }
 
@@ -120,7 +120,7 @@ namespace TSParser.Descriptors
                         {
                             if (!m_unknownAitDescList.Contains(bytes[0]))
                             {
-                                Logger.Send(LogStatus.INFO, $"Not specified AIT descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
+                                Logger.Send(LogStatus.NotImplement, $"Not specified AIT descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
                                 m_unknownAitDescList.Add(bytes[0]);
                             }
 
@@ -147,7 +147,7 @@ namespace TSParser.Descriptors
                         {
                             if (!m_unknownExtensionDescList.Contains(bytes[2]))
                             {
-                                Logger.Send(LogStatus.INFO, $"Not specified extension descriptor with tag: 0x{bytes[2]:X2}, descriptor location: {descAllocation}");
+                                Logger.Send(LogStatus.NotImplement, $"Not specified extension descriptor with tag: 0x{bytes[2]:X2}, descriptor location: {descAllocation}");
                                 m_unknownExtensionDescList.Add(bytes[2]);
                             }
 
@@ -172,7 +172,7 @@ namespace TSParser.Descriptors
                         {
                             if (!m_unknownSpliceDescList.Contains(bytes[0]))
                             {
-                                Logger.Send(LogStatus.INFO, $"Not specified Splice descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
+                                Logger.Send(LogStatus.NotImplement, $"Not specified Splice descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
                                 m_unknownSpliceDescList.Add(bytes[0]);
                             }
                             return new Scte35Descriptor(bytes);
@@ -206,42 +206,7 @@ namespace TSParser.Descriptors
                     }
             }
         }
-        internal static List<Descriptor> GetSpliceDescriptorsList(ReadOnlySpan<byte> bytes, string descAllocation = "")
-        {
-            var pointer = 0;
-            List<Descriptor> descriptors = new List<Descriptor>();
-            while (pointer < bytes.Length)
-            {
-                var desc = GetSpliceDescriptor(bytes[pointer..], descAllocation);
-                descriptors.Add(desc);
-                pointer += desc.DescriptorLength + 2;
-            }
-            return descriptors;
-        }
-        internal static List<Descriptor> GetDvbDescriptorList(ReadOnlySpan<byte> bytes, string descAllocation = "")
-        {
-            var pointer = 0;
-            List<Descriptor> descriptors = new List<Descriptor>();
-            while (pointer < bytes.Length)
-            {
-                var desc = GetDescriptor(bytes[pointer..], descAllocation);
-                descriptors.Add(desc);
-                pointer += desc.DescriptorLength + 2;
-            }
-            return descriptors;
-        }
-        internal static List<Descriptor> GetAitDescriptorList(ReadOnlySpan<byte> bytes, string descAllocation = "")
-        {
-            var pointer = 0;
-            List<Descriptor> descriptors = new List<Descriptor>();
-            while (pointer < bytes.Length)
-            {
-                var desc = GetAitDescriptor(bytes[pointer..], descAllocation);
-                descriptors.Add(desc);
-                pointer += desc.DescriptorLength + 2;
-            }
-            return descriptors;
-        }
+        
         internal static List<Descriptor> GetDescList(ReadOnlySpan<byte> bytes, string descAllocation = "")
         {
             var pointer = 0;

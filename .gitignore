@@ -401,4 +401,5 @@ FodyWeavers.xsd
 TSParser/Descriptors/Custom/
 TSParser/AppTest/
 AppTest/
-
+StreamParser/
+TSParser/StreamParser/

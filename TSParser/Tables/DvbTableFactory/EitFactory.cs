@@ -31,7 +31,7 @@ namespace TSParser.Tables.DvbTableFactory
         private EIT CurrentEit = null!;
         private List<EIT> eitList = new List<EIT>(100);
         internal override void PushTable(TsPacket tsPacket)
-        {
+        {            
             AddData(tsPacket);
             if (!IsAllTable) return;
             ParseEit();
