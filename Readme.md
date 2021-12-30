@@ -100,12 +100,12 @@ where 239.1.1.27 udp multicast destination address
 1234 udp multicast destination port
 192.168.99.239 your network adapter address 
 
-# Parser Modes:
+### Parser Modes:
 * DVB
 * ISDB (not implement yet)
 * ATSC (not implement yet)
 
-# Decoder Modes:
+### Decoder Modes:
 * Table
 in this mode you can get decoded tables via events
 
