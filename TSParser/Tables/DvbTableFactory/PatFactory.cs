@@ -48,7 +48,9 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
+            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);           
+
+            if (Pat?.CRC32 == CurrentCRC32) return; // if we already have pat table and its crc32 equal curent table crc drop it. because it is the same pat            
 
             if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) //
             {
@@ -56,8 +58,6 @@ namespace TSParser.Tables.DvbTableFactory
                 ResetFactory();
                 return;
             }
-
-            if (Pat?.CRC32 == CurrentCRC32) return; // if we already have pat table and its crc32 equal curent table crc drop it. because it is the same pat            
 
             CurrentPat = new PAT(bytes);            
 

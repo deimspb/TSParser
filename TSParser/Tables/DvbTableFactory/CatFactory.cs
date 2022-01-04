@@ -42,7 +42,9 @@ namespace TSParser.Tables.DvbTableFactory
         {
             ReadOnlySpan<byte> bytes = TableData.AsSpan();
 
-            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
+            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);            
+
+            if (Cat?.CRC32 == CurrentCRC32) return; // if we already have cat table and its crc32 equal curent table crc drop it. because it is the same cat 
 
             if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) // drop invalid ts packet
             {
@@ -50,8 +52,6 @@ namespace TSParser.Tables.DvbTableFactory
                 ResetFactory();
                 return;
             }
-
-            if (Cat?.CRC32 == CurrentCRC32) return; // if we already have cat table and its crc32 equal curent table crc drop it. because it is the same cat 
 
             CurrentCat = new(bytes);
 

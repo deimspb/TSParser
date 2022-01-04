@@ -49,7 +49,9 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
+            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);            
+
+            if (Ait?.CRC32 == CurrentCRC32) return; //// if we already have ait table and its crc32 equal curent table crc drop it. because it is the same ait
 
             if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) // drop invalid ts packet
             {
@@ -57,8 +59,6 @@ namespace TSParser.Tables.DvbTableFactory
                 ResetFactory();
                 return;
             }
-
-            if (Ait?.CRC32 == CurrentCRC32) return; //// if we already have ait table and its crc32 equal curent table crc drop it. because it is the same ait            
 
             CurrentAit = new AIT(bytes, CurrentPid);
 

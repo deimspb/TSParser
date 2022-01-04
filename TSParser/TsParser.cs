@@ -14,6 +14,7 @@
 
 using System.Net;
 using System.Net.Sockets;
+using TSParser.Analysis;
 using TSParser.Buffers;
 using TSParser.Descriptors;
 using TSParser.Enums;
@@ -115,14 +116,13 @@ namespace TSParser
         private int m_connectionAttempts = 5;
         private int m_socketTimeOut = 5000;
         private int? m_parserRunTimeIn_ms = null;
-        private System.Timers.Timer m_timer = null!;
-
-        private List<ushort> m_pids = new List<ushort>(50);
+        private System.Timers.Timer m_timer = null!;        
         public List<ushort> PidList
         {
-            get => m_pids;
-            set => m_pids = value;
+            get => m_analyzer.PidList;            
         }
+
+        private Analyzer m_analyzer = new Analyzer();
         #endregion
         #region Public methods
         /// <summary>
@@ -397,6 +397,7 @@ namespace TSParser
                 m_pmtFactories[i].CurrentPid = m_pmtPids[i];
                 m_pmtFactories[i].OnPmtReady += PmtFactory_OnPmtReady;
             }
+
         }
         private void PmtFactory_OnPmtReady(PMT pmt)
         {
@@ -440,9 +441,8 @@ namespace TSParser
             OnAitReady?.Invoke(ait); 
         }
         private void DvbTableFactory(TsPacket tsPacket)
-        {
-            if(PidList.IndexOf(tsPacket.Pid)<0) PidList.Add(tsPacket.Pid);
-            // analyzer shall be here
+        {            
+            m_analyzer.PushPacket(tsPacket);
 
             if (tsPacket.TransportErrorIndicator) return; // drop tei packets
             if (tsPacket.Pid == (short)ReservedPids.NullPacket) return;  // drop null packets 
@@ -536,7 +536,7 @@ namespace TSParser
             if (idx >= 0)
             {
                 m_pmtFactories[idx].PushTable(tsPacket);
-            }
+            }            
         }
         private void GetAit(TsPacket tsPacket)
         {
@@ -639,8 +639,7 @@ namespace TSParser
                 while ((BytesRead = fileStream.Read(Buffer, 0, MAX_BUFFER)) != 0 && !m_ct.IsCancellationRequested)
                 {
                     ReadOnlySpan<byte> BufferSpan = new ReadOnlySpan<byte>(Buffer);
-
-                    ParserModeDel(BufferSpan[0..BytesRead], packLen);
+                    ParserModeDel(BufferSpan[0..BytesRead], packLen);                    
                 }
 
 
@@ -746,7 +745,7 @@ namespace TSParser
             OnParserComplete?.Invoke();
             m_timer?.Dispose();
 
-        }
+        }        
         #endregion
     }
 }

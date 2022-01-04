@@ -46,7 +46,9 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            var crc32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
+            var crc32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);            
+
+            if (eitList.FindIndex(e => e.CRC32 == crc32) >= 0) return; // find index on crc32 base. if we have table with the same crc32, we shall drop curent table to prevent push outside duplicate tables 
 
             if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
             {
@@ -54,8 +56,6 @@ namespace TSParser.Tables.DvbTableFactory
                 ResetFactory();
                 return;
             }
-
-            if (eitList.FindIndex(e => e.CRC32 == crc32) >= 0) return; // find index on crc32 base. if we have table with the same crc32, we shall drop curent table to prevent push outside duplicate tables 
 
             CurrentEit = new EIT(bytes);
             // next find index on table id, service id, section number and last section number based.

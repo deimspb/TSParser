@@ -43,7 +43,9 @@ namespace TSParser.Tables.DvbTableFactory
             tsPacket.PacketHeader.CopyTo(fulltable, 0);
             tsPacket.Payload[0..(packetlength + 2)].CopyTo(fulltable, 4);
 
-            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
+            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);           
+
+            if (Mip?.CRC32 == CurrentCRC32) return;
 
             if (Utils.GetCRC32(fulltable[..^4]) != CurrentCRC32) // drop invalid ts packet
             {
@@ -51,8 +53,6 @@ namespace TSParser.Tables.DvbTableFactory
                 ResetFactory();
                 return;
             }
-
-            if (Mip?.CRC32 == CurrentCRC32) return;
 
             CurrentMip = new MIP(bytes);
 

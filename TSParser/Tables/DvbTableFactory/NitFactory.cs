@@ -67,7 +67,9 @@ namespace TSParser.Tables.DvbTableFactory
         {
             ReadOnlySpan<byte> bytes = TableData.AsSpan();
 
-            var crc32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
+            var crc32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);           
+
+            if (m_nitList.FindIndex(s => s.CRC32 == crc32) >= 0) return; // already push this table outside
 
             if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
             {
@@ -75,8 +77,6 @@ namespace TSParser.Tables.DvbTableFactory
                 ResetFactory();
                 return;
             }
-
-            if (m_nitList.FindIndex(s => s.CRC32 == crc32) >= 0) return; // already push this table outside
 
             CurrentNit = new(bytes);
 
