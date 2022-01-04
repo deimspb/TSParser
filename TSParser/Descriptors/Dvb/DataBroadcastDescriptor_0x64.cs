@@ -42,19 +42,6 @@ namespace TSParser.Descriptors.Dvb
             TextLength = bytes[pointer++];
             TextChar = Dictionaries.BytesToString(bytes.Slice(pointer,TextLength));
         }
-
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            str += $"         Data Broadcast Id: 0x{DataBroadcastId}\n";
-            str += $"         Component Tag: {ComponentTag}\n";
-            str += $"         Selector Length: {SelectorLength}\n";
-            str += $"         Selector Byte: {BitConverter.ToString(SelectorByte):X}\n";
-            str += $"         Iso639 Language Code: {Iso639LanguageCode}\n";
-            str += $"         Text Length: {TextLength}\n";
-            str += $"         Text Char: {TextChar}\n";
-            return str;
-        }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

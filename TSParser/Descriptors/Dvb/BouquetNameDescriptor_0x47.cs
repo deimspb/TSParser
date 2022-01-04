@@ -24,10 +24,6 @@ namespace TSParser.Descriptors.Dvb
         {
             BouquetName = Dictionaries.BytesToString(bytes.Slice(2, DescriptorLength));
         }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {BouquetName}\n";
-        }
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);

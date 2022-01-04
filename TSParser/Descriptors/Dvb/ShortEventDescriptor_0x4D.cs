@@ -39,11 +39,6 @@ namespace TSParser.Descriptors.Dvb
             Text = Dictionaries.BytesToString(bytes.Slice(pointer, TextLength));
 
         }
-
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {EventName}, {Text}";
-        }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

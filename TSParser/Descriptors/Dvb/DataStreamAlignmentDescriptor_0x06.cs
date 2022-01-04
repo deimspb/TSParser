@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
@@ -28,11 +23,7 @@ namespace TSParser.Descriptors.Dvb
         public DataStreamAlignmentDescriptor_0x06(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             AlignmentType = bytes[2];
-        }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Alignment Type: {AlignmentTypeName}";
-        }
+        }        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -47,7 +38,7 @@ namespace TSParser.Descriptors.Dvb
                 case 0x02: return "Video access unit";
                 case 0x03: return "GOP, or SEQ";
                 case 0x04: return "SEQ";
-                    default: return "Reserved";
+                default: return "Reserved";
             }
         }
     }

@@ -12,12 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.DictionariesData;
 using TSParser.Service;
 
@@ -28,21 +23,12 @@ namespace TSParser.Descriptors.Dvb
         public Subtitle[] Subtitles { get; } = null!;
         public SubtitlingDescriptor_0x59(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            Subtitles = new Subtitle[DescriptorLength/8];
+            Subtitles = new Subtitle[DescriptorLength / 8];
             for (int i = 0; i < Subtitles.Length; i++)
             {
                 Subtitles[i] = new Subtitle(bytes.Slice(2 + i * 8));
             }
-        }
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            foreach(Subtitle subtitle in Subtitles)
-            {
-                str += $"         {subtitle}\n";
-            }
-            return str;
-        }
+        }        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -66,11 +52,7 @@ namespace TSParser.Descriptors.Dvb
             SubtitlingType = bytes[3];
             CompositionPageId = BinaryPrimitives.ReadUInt16BigEndian(bytes[4..]);
             AncillaryPageId = BinaryPrimitives.ReadUInt16BigEndian(bytes[6..]);
-        }
-        public override string ToString()
-        {
-            return $"Subtitle language: {Iso639LanguageCode}, Type: {SubtitlingType}, Composition Page Id: {CompositionPageId}, Ancillary Page Id: {AncillaryPageId}";
-        }
+        }        
         public string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

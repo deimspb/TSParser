@@ -22,11 +22,7 @@ namespace TSParser.Descriptors.Dvb
         public StdDescriptor_0x11(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             LeakValidFlag = (bytes[2] & 0x01) != 0;
-        }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Leak Valid Flag: {LeakValidFlag}\n";
-        }
+        }        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

@@ -47,10 +47,6 @@ namespace TSParser.Descriptors.Dvb
             Avc24HourPictureFlag = (bytes[pointer] & 0x40) != 0;
             FramePackingSeiNotPresentFlag = (bytes[pointer] & 0x20) != 0;
         }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Profile Idc: {ProfileIdc}, Level Idc: {LevelIdc}";
-        }
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);

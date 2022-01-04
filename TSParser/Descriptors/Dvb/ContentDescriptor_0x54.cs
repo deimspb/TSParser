@@ -27,16 +27,6 @@ namespace TSParser.Descriptors.Dvb
                 ContentNibbles[i] = new ContentNibble(bytes.Slice(i * 2, 2));
             }
         }
-
-        public override string ToString()
-        {
-            string str= $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            foreach(var b in ContentNibbles)
-            {
-                str += $"         {b}";
-            }
-            return str;
-        }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -59,11 +49,6 @@ namespace TSParser.Descriptors.Dvb
             ContentNibble1 = (byte)(bytes[0] >> 4);
             ContentNibble2 = (byte)(bytes[0] & 0x0F);
             UserByte = bytes[1];
-        }
-
-        public override string ToString()
-        {
-            return $"            {GetContentString()}";
         }
         public string Print(int prefixLen)
         {

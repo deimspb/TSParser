@@ -28,17 +28,7 @@ namespace TSParser.Descriptors.Dvb
             {
                 iso639Records[i] = new Iso639Record(bytes[(2 + i * 4)..]);
             }
-        }
-
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            foreach (var ir in iso639Records)
-            {
-                str += $"{ir}";
-            }
-            return str;
-        }
+        }        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -63,11 +53,6 @@ namespace TSParser.Descriptors.Dvb
             Iso639LanguageCode = new byte[3];
             bytes[0..3].CopyTo(Iso639LanguageCode);
             AudioType = bytes[3];
-        }
-
-        public override string ToString()
-        {
-            return $"            Language code: {LanguageCode}, Audio type: {AudioTypeName}";
         }
         public string Print(int prefixLen)
         {

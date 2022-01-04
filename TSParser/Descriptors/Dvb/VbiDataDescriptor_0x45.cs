@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
@@ -28,21 +23,12 @@ namespace TSParser.Descriptors.Dvb
         {
             DataServices = new List<DataService>();
             var pointer = 2;
-            while(pointer < DescriptorLength)
+            while (pointer < DescriptorLength)
             {
                 DataService ds = new DataService(bytes[pointer..]);
                 pointer += ds.DataServiceDescriptorLength + 2;
                 DataServices.Add(ds);
             }
-        }
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";            
-            foreach(DataService ds in DataServices)
-            {
-                str += $"{ds}";
-            }
-            return str;
         }
         public override string Print(int prefixLen)
         {
@@ -67,12 +53,12 @@ namespace TSParser.Descriptors.Dvb
             var pointer = 0;
             DataServiceId = bytes[pointer++];
             DataServiceDescriptorLength = bytes[pointer++];
-            if(DataServiceId == 0x01 || DataServiceId == 0x02 ||
+            if (DataServiceId == 0x01 || DataServiceId == 0x02 ||
                 DataServiceId == 0x04 || DataServiceId == 0x05 ||
                 DataServiceId == 0x06 || DataServiceId == 0x07)
             {
                 VbiLines = new VbiLine[DataServiceDescriptorLength];
-                for(int i = 0; i < DataServiceDescriptorLength; i++)
+                for (int i = 0; i < DataServiceDescriptorLength; i++)
                 {
                     VbiLines[i] = new VbiLine(bytes[pointer++]);
                 }
@@ -81,16 +67,6 @@ namespace TSParser.Descriptors.Dvb
             {
                 //reserved
             }
-        }
-        public override string ToString()
-        {
-            string str = $"            Data Service Id: {DataServiceId}\n";
-            str += $"            Data Service name: {DataServiceName}\n";
-            foreach(var item in VbiLines)
-            {
-                str += $"               {item}";
-            }
-            return str;
         }
         public string Print(int prefixLen)
         {
@@ -118,7 +94,7 @@ namespace TSParser.Descriptors.Dvb
                 case 0x06: return "Closed Caption";
                 case 0x07: return "monochrome 4:2:2 samples";
                 case byte n when n >= 0x08 && n <= 0xEF: return "reserved for future use";
-                    default: return "user defined";
+                default: return "user defined";
             }
         }
     }
@@ -131,10 +107,6 @@ namespace TSParser.Descriptors.Dvb
             //reserved 2 bits
             FieldParity = (bt & 0x20) != 0;
             LineOffset = (byte)(bt & 0x1F);
-        }
-        public override string ToString()
-        {
-            return $"Field parity: {FieldParity}, Line offset: {LineOffset}\n";
         }
         public string Print(int prefixLen)
         {

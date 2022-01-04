@@ -74,10 +74,6 @@ namespace TSParser.Descriptors.Dvb
             }
 
         }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Carousel Id: {CarouselId}, {FormatIdName}";
-        }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

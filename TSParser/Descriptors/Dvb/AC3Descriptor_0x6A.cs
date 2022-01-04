@@ -56,12 +56,6 @@ namespace TSParser.Descriptors.Dvb
                 Logger.Send(LogStatus.INFO, $"Additional info in AC-3 Descriptor");
             }
         }
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName},\n";
-            str += $"            Compenent type:{ComponentTypeFlag}, component: {ComponentType}, Bsid flag: {BsidFlag}, Bsid: {Bsid}, Main id Flag: {MainIdFlag}, MainId: {MainId}, ASCV flag: {AsvcFlag}, ASVC: {Asvc}";
-            return str;
-        }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

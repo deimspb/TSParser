@@ -25,10 +25,6 @@ namespace TSParser.Descriptors.Dvb
             var pointer = 1;
             MaximumBitrate = BinaryPrimitives.ReadUInt32BigEndian(bytes[pointer..]) & 0x00FFFFFF;
         }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Maximum bitrate: {MaximumBitrate * 50} bytes/sec";
-        }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

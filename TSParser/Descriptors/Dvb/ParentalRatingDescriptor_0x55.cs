@@ -28,15 +28,6 @@ namespace TSParser.Descriptors.Dvb
                 ParentalRatingItems[i] = new ParentalRationgItem(bytes.Slice(2 + i * 4, 4));
             }
         }
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            foreach (var item in ParentalRatingItems)
-            {
-                str += $"         {item}";
-            }
-            return str;
-        }
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);
@@ -57,11 +48,6 @@ namespace TSParser.Descriptors.Dvb
         {
             Country = Dictionaries.BytesToString(bytes.Slice(0, 3));
             Rating = bytes[3];
-        }
-
-        public override string ToString()
-        {
-            return $"            {Country}, {RatingAge}";
         }
         public string Print(int prefixLen)
         {

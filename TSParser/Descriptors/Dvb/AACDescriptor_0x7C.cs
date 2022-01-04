@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.DictionariesData;
 using TSParser.Service;
 
@@ -25,7 +20,7 @@ namespace TSParser.Descriptors.Dvb
     public record AACDescriptor_0x7C : Descriptor
     {
         public byte ProfileAndLevel { get; }
-        public string ProfileName =>Dictionaries.GetMpeg4AudioProfileAndLevelValue(ProfileAndLevel);
+        public string ProfileName => Dictionaries.GetMpeg4AudioProfileAndLevelValue(ProfileAndLevel);
         public bool AacTypeFlag { get; }
         public bool SaocDeFlag { get; }
         public byte AacType { get; }
@@ -45,17 +40,10 @@ namespace TSParser.Descriptors.Dvb
                 }
                 if (DescriptorLength - pointer > 0)
                 {
-                    AdditionalInfoByte = new byte[DescriptorLength-pointer];
-                    bytes.Slice(pointer,AdditionalInfoByte.Length).CopyTo(AdditionalInfoByte);
+                    AdditionalInfoByte = new byte[DescriptorLength - pointer];
+                    bytes.Slice(pointer, AdditionalInfoByte.Length).CopyTo(AdditionalInfoByte);
                 }
             }
-        }
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            str += $"            Profile And Level: {ProfileName}\n";
-            str += $"            Aac Type Flag: {AacTypeFlag}\n";
-            return str;
         }
         public override string Print(int prefixLen)
         {

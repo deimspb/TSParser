@@ -12,12 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
@@ -26,21 +21,12 @@ namespace TSParser.Descriptors.Dvb
     {
         public AitItem[] AitItems { get; } = null!;
         public ApplicationSignallingDescriptor_0x6F(ReadOnlySpan<byte> bytes) : base(bytes)
-        {            
+        {
             AitItems = new AitItem[DescriptorLength / 3];
-            for(int i = 0; i < AitItems.Length; i++)
+            for (int i = 0; i < AitItems.Length; i++)
             {
                 AitItems[i] = new AitItem(bytes.Slice(2 + i * 3));
             }
-        }
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            foreach(var item in AitItems)
-            {
-                str += $"            {item}";
-            }
-            return str;
         }
         public override string Print(int prefixLen)
         {
@@ -62,15 +48,11 @@ namespace TSParser.Descriptors.Dvb
             ApplicationType = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes) & 0x7FFF);
             AitVersion = (byte)(bytes[2] & 0x3F);
         }
-        public override string ToString()
-        {
-            return $"Application type: {ApplicationType}, AIT version: {AitVersion}";
-        }
         public string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
             return $"{headerPrefix}Application type: {ApplicationType}, AIT version: {AitVersion}\n";
-        } 
+        }
     }
 
 }

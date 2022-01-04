@@ -12,12 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
@@ -31,15 +26,12 @@ namespace TSParser.Descriptors.Dvb
         {
             var pointer = 2;
             BoundValidFlag = (bytes[pointer] & 0x80) != 0;
-            LtwOffsetLowerBound = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..])&0x7FFF);
+            LtwOffsetLowerBound = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x7FFF);
             //reserved 1 bit
-            pointer+=2;
+            pointer += 2;
             LtwOffsetUpperBound = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x7FFF);
         }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Bound Valid Flag: {BoundValidFlag}, LtwOffsetLowerBound: {LtwOffsetLowerBound}, LtwOffsetUpperBound: {LtwOffsetUpperBound}";
-        }
+        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

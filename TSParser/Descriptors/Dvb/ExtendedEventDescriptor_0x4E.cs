@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.DictionariesData;
 using TSParser.Service;
 
@@ -60,19 +55,7 @@ namespace TSParser.Descriptors.Dvb
             }
             return items;
         }
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            if (EventItems != null)
-            {
-                foreach(var item in EventItems)
-                {
-                    str += $"            {item}\n";
-                }
-            }
-            str += $"                     {Text}";
-            return str;
-        }
+        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -107,11 +90,6 @@ namespace TSParser.Descriptors.Dvb
             ItemLength = bytes[pointer++];
             ItemText = Dictionaries.BytesToString(bytes.Slice(pointer, ItemLength));
 
-        }
-
-        public override string ToString()
-        {
-            return $"            {ItemDescription}, {ItemText}";
         }
         public string Print(int prefixLen)
         {

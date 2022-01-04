@@ -17,16 +17,12 @@ using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
 {
-    internal record NetworkNameDescriptor_0x40 : Descriptor
+    public record NetworkNameDescriptor_0x40 : Descriptor
     {
         public string NetworkName { get; }
         public NetworkNameDescriptor_0x40(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             NetworkName = Dictionaries.BytesToString(bytes.Slice(2, DescriptorLength));
-        }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {NetworkName}";
         }
         public override string Print(int prefixLen)
         {

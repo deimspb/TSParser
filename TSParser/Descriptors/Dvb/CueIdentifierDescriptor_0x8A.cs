@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
@@ -24,14 +19,10 @@ namespace TSParser.Descriptors.Dvb
     public record CueIdentifierDescriptor_0x8A : Descriptor
     {
         public byte CueStreamType { get; }
-        public string CueStreamTypeName =>GetCueStreamTypeName(CueStreamType);
+        public string CueStreamTypeName => GetCueStreamTypeName(CueStreamType);
         public CueIdentifierDescriptor_0x8A(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             CueStreamType = bytes[2];
-        }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName} Cue stream type: {CueStreamTypeName}\n";
         }
         public override string Print(int prefixLen)
         {
@@ -48,7 +39,7 @@ namespace TSParser.Descriptors.Dvb
                 case 0x03: return "Tiered Splicing";
                 case 0x04: return "Tiered Segmentation";
                 case byte n when n >= 0x05 && n <= 0x7F: return "Reserved";
-                    default: return "User Defined";
+                default: return "User Defined";
 
             }
         }

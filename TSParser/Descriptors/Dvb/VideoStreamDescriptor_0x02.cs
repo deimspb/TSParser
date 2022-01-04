@@ -27,7 +27,6 @@ namespace TSParser.Descriptors.Dvb
         public byte ProfileAndLevelIndication { get; }
         public byte ChromaFormat { get; }
         public bool FrameRateExtensionFlag { get; }
-
         public VideoStreamDescriptor_0x02(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             var pointer = 2;
@@ -44,11 +43,7 @@ namespace TSParser.Descriptors.Dvb
                 //reserved 5 bits
             }
 
-        }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Mpeg1 Only Flag: {Mpeg1OnlyFlag}, Frame Rate Code: {FrameRateCode}, Profile And Level Indication: {ProfileAndLevelIndication}\n";
-        }
+        }        
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);

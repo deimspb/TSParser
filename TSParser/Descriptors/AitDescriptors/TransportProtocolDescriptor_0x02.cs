@@ -31,11 +31,6 @@ namespace TSParser.Descriptors.AitDescriptors
             SelectorByte = new byte[DescriptorLength - pointer + 2];
             bytes.Slice(pointer, SelectorByte.Length).CopyTo(SelectorByte);
         }
-
-        public override string ToString()
-        {
-            return $"       AIT descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Protocol id: {ProtocolId}, selector bytes: {BitConverter.ToString(SelectorByte):X}\n";
-        }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

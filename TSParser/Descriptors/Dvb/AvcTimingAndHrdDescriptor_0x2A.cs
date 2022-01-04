@@ -52,10 +52,6 @@ namespace TSParser.Descriptors.Dvb
             PictureToDisplayConversionFlag = (bytes[pointer] & 0x20) != 0;
             //reserved 5 bits
         }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Hrd Management Valid Flag: {HrdManagementValidFlag}, Picture And Timing Info Present: {PictureAndTimingInfoPresent}\n";
-        }
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);

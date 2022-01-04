@@ -29,11 +29,6 @@ namespace TSParser.Descriptors.Dvb
             PrivateDateBytes = new byte[DescriptorLength - 4];
             bytes.Slice(6, PrivateDateBytes.Length).CopyTo(PrivateDateBytes);
         }
-
-        public override string ToString()
-        {
-            return $"         CA system id: {CaSystemId}, CA pid: {CaPid}, private data: {BitConverter.ToString(PrivateDateBytes):X}";           
-        }
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);

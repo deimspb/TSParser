@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.DictionariesData;
 using TSParser.Service;
 
@@ -33,17 +28,12 @@ namespace TSParser.Descriptors.Dvb
         public ServiceDescriptor_0x48(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             var pointer = 2;
-            ServiceType=bytes[pointer++];
-            ServiceProviderNameLength=bytes[pointer++];
-            ServiceProviderName = Dictionaries.BytesToString(bytes.Slice(pointer,ServiceProviderNameLength));
+            ServiceType = bytes[pointer++];
+            ServiceProviderNameLength = bytes[pointer++];
+            ServiceProviderName = Dictionaries.BytesToString(bytes.Slice(pointer, ServiceProviderNameLength));
             pointer += ServiceProviderNameLength;
             ServiceNameLenght = bytes[pointer++];
-            ServiceName = Dictionaries.BytesToString(bytes.Slice(pointer,ServiceNameLenght));
-        }
-
-        public override string ToString()
-        {
-            return $"         Service type: {ServiceTypeName}, Service provider: {ServiceProviderName}, Service name: {ServiceName}\n";
+            ServiceName = Dictionaries.BytesToString(bytes.Slice(pointer, ServiceNameLenght));
         }
         public override string Print(int prefixLen)
         {

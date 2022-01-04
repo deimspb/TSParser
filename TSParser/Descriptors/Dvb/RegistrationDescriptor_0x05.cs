@@ -31,11 +31,7 @@ namespace TSParser.Descriptors.Dvb
                 AdditionalIdentificationInfo = new byte[DescriptorLength - pointer];
                 bytes.Slice(pointer, DescriptorLength - pointer).CopyTo(AdditionalIdentificationInfo);
             }
-        }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Format identifier: 0x{FormatIdentifier:X}\n";
-        }
+        }        
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);

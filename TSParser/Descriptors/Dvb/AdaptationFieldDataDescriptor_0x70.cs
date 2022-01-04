@@ -23,14 +23,9 @@ namespace TSParser.Descriptors.Dvb
         {
             AdaptationFieldDataIdentifier = bytes[2];
         }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Adaptation Field Data Identifier: {AdaptationFieldDataIdentifier}\n";
-        }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
-
             return $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Adaptation Field Data Identifier: {AdaptationFieldDataIdentifier}\n";
         }
     }

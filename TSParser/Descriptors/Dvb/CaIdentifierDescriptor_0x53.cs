@@ -12,12 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
@@ -29,10 +24,6 @@ namespace TSParser.Descriptors.Dvb
         {
             var pointer = 2;
             CaIdentifier = BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]);
-        }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, 0x{CaIdentifier:X}\n";
         }
         public override string Print(int prefixLen)
         {

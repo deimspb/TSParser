@@ -46,34 +46,6 @@ namespace TSParser.Descriptors.AitDescriptors
                 TransportProtocolLabels[i] = new TransportProtocolLabelItem(bytes[pointer++]);
             }
         }
-        public override string ToString()
-        {
-            string str = $"       AIT Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            str += $"                  Application Profiles Length: {ApplicationProfilesLength}\n";
-
-            if(ApplicationProfileItems is not null)
-            {
-                str += $"                  Application Profile Items count: {ApplicationProfileItems.Length}\n";
-                foreach(var item in ApplicationProfileItems)
-                {
-                    str += $"                  {item}\n";
-                }
-            }
-
-            str += $"                  Service Bound Flag: {ServiceBoundFlag}\n";
-            str += $"                  Visibility: {Visibility}\n";
-            str += $"                  Application Priority: {ApplicationPriority}\n";
-
-            if(TransportProtocolLabels is not null)
-            {
-                str += $"                  Transport Protocol Labels count: {TransportProtocolLabels.Length}\n";
-                foreach(var item in TransportProtocolLabels)
-                {
-                    str += $"                  {item}\n";
-                }
-            }
-            return str;
-        }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -119,10 +91,6 @@ namespace TSParser.Descriptors.AitDescriptors
             VersionMinor = bytes[3];
             VersionMicro = bytes[4];
         }
-        public override string ToString()
-        {
-            return $"Application Profile: {ApplicationProfile}, Version Major: {VersionMajor}, Version Minor: {VersionMinor}, Version Micro: {VersionMicro}";
-        }
         public string Print(int prefixLen)
         {
             string headerPrefix = new string(' ', prefixLen);
@@ -135,10 +103,6 @@ namespace TSParser.Descriptors.AitDescriptors
         public TransportProtocolLabelItem(Byte bt)
         {
             TransportProtocolLabel = bt;
-        }
-        public override string ToString()
-        {
-            return $"Transport Protocol Label: {TransportProtocolLabel}";
         }
         public string Print(int prefixLen)
         {

@@ -49,24 +49,7 @@ namespace TSParser.Descriptors.Dvb
             TransmissionMode = (byte)((bytes[pointer] & 0x06)>>1);
             OtherFrequencyFlag = (bytes[pointer] & 0x01) != 0;
             //reserved 32 bit
-        }
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            str += $"                   Centre Frequency:{CentreFrequency} Hz\n";
-            str += $"                   Bandwidth: {GetBw(Bandwidth)}\n";
-            str += $"                   Priority: {Priority}\n";
-            str += $"                   TimeSlicing Indicator: {TimeSlicingIndicator}\n";
-            str += $"                   MpeFec Indicator: {MpeFecIndicator}\n";
-            str += $"                   Constellation: {GetConstellation(Constellation)}\n";
-            str += $"                   Hierarchy Information: {GetConstellation(Constellation)}\n";
-            str += $"                   Code Rate HpStream: {GetCodeRateHpStream(CodeRateHpStream)}\n";
-            str += $"                   Code Rate LpStream: {GetCodeRateHpStream(CodeRateLpStream)}\n";
-            str += $"                   Guard Interval: {GetGuardInterval(GuardInterval)}\n";
-            str += $"                   Transmission Mode: {GetTransmissionMode(TransmissionMode)}\n";
-            str += $"                   OthervFrequency Flag: {OtherFrequencyFlag}";
-            return str;
-        }
+        }       
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);

@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.DictionariesData;
 using TSParser.Service;
 
@@ -28,12 +23,7 @@ namespace TSParser.Descriptors.AitDescriptors
         public SimpleApplicationLocationDescriptor_0x15(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             InitialPathBytes = new byte[DescriptorLength];
-            bytes.Slice(2,InitialPathBytes.Length).CopyTo(InitialPathBytes);
-        }
-
-        public override string ToString()
-        {
-            return $"       AIT descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, path: {Dictionaries.BytesToString(InitialPathBytes)}\n";
+            bytes.Slice(2, InitialPathBytes.Length).CopyTo(InitialPathBytes);
         }
         public override string Print(int prefixLen)
         {

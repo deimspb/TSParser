@@ -30,10 +30,6 @@ namespace TSParser.Descriptors.Dvb
             Layer = (byte)((bytes[pointer]&0x30)>> 4);
             VariableRateAudioIndicator = (bytes[pointer] & 0x8) != 0;
         }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, layer: {Layer}";
-        }
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);

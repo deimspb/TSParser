@@ -27,15 +27,9 @@ namespace TSParser.Descriptors.Dvb
             IdSelectorByte = new byte[DescriptorLength - 2];
             bytes.Slice(4, DescriptorLength - 2).CopyTo(IdSelectorByte);
         }
-
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, data broadcast id: {DataBroadcastId}, {BitConverter.ToString(IdSelectorByte):X}";
-        }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
-
             return $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, data broadcast id: {DataBroadcastId}, id selector bytes: {BitConverter.ToString(IdSelectorByte):X}\n";
         }
     }

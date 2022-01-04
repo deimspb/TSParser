@@ -39,14 +39,9 @@ namespace TSParser.Descriptors
                 Logger.Send(LogStatus.WARNING, $"Pointer out of descriptor tag 0x{DescriptorTag:X}");
             }
         }
-
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Length: {DescriptorLength}\n";
-        }
         public virtual string Print(int prefixLen)
         {
-            string headerPrefix = new string(' ', prefixLen);
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
             return $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Length: {DescriptorLength}\n";
         }
     }

@@ -53,10 +53,6 @@ namespace TSParser.Descriptors.Dvb
                 bytes.Slice(pointer,DescriptorLength-pointer).CopyTo(PrivateDataBytes);
             }            
         }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Tsid: {TransportStreamId}, Onid: {OriginalNetworkId}, Sid: {ServiceId}, type: {LinkageTypeName}";
-        }
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);

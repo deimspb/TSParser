@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
@@ -27,13 +21,13 @@ namespace TSParser.Descriptors.Dvb
         public uint Frequency { get; }
         public string FrequencyStr => $"{Frequency / 10} Khz";
         public byte FecOuter { get; }
-        public string FecOuterStr=>GetFecOuter(FecOuter);
+        public string FecOuterStr => GetFecOuter(FecOuter);
         public byte Modulation { get; }
-        public string ModulationStr =>GetModulationStr(Modulation);
+        public string ModulationStr => GetModulationStr(Modulation);
         public uint SymbolRate { get; }
         public string SymbolRateStr => $"{SymbolRate} Sym/sec";
         public byte FecInner { get; }
-        public string FecInnerStr=>GetInnerFec(FecInner);
+        public string FecInnerStr => GetInnerFec(FecInner);
         public CableDeliverySystemDescriptor_0x44(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             var pointer = 2;
@@ -46,10 +40,6 @@ namespace TSParser.Descriptors.Dvb
                           (bytes[pointer + 2] >> 4) * 10 + (bytes[pointer + 2] & 0xf));
             pointer += 3;
             FecInner = (byte)(bytes[pointer] & 0xF);
-        }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {FrequencyStr}, {FecInnerStr}, {ModulationStr}, {SymbolRateStr}, {FecInnerStr}";
         }
         public override string Print(int prefixLen)
         {
@@ -64,7 +54,7 @@ namespace TSParser.Descriptors.Dvb
                 case 0: return "not defined";
                 case 1: return "no outer FEC coding";
                 case 2: return "RS(204/188)";
-                    default: return "reserved for future use";
+                default: return "reserved for future use";
             }
         }
         private string GetModulationStr(byte bt)
@@ -96,7 +86,7 @@ namespace TSParser.Descriptors.Dvb
                 case 0b1001: return "9/10 conv. code rate";
                 case byte n when n >= 0b1010 && n <= 0b1110: return "reserved for future use";
                 case 0b1111: return "no conv. Coding";
-                    default : return "Incorrect coding";
+                default: return "Incorrect coding";
             }
         }
 

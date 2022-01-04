@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.DictionariesData;
 using TSParser.Service;
 
@@ -28,7 +23,7 @@ namespace TSParser.Descriptors.AitDescriptors
         public string BaseDirectory { get; }
         public byte ClasspathExtensionLength { get; }
         public string ClasspathExtension { get; }
-        public string InitialClass { get; } 
+        public string InitialClass { get; }
 
         public DvbJApplicationLocationDescriptor_0x04(ReadOnlySpan<byte> bytes) : base(bytes)
         {
@@ -39,7 +34,7 @@ namespace TSParser.Descriptors.AitDescriptors
             ClasspathExtensionLength = bytes[pointer++];
             ClasspathExtension = Dictionaries.BytesToString(bytes.Slice(pointer, ClasspathExtensionLength));
             pointer += ClasspathExtensionLength;
-            InitialClass = Dictionaries.BytesToString(bytes.Slice(pointer,DescriptorLength - pointer + 2));
+            InitialClass = Dictionaries.BytesToString(bytes.Slice(pointer, DescriptorLength - pointer + 2));
         }
         public override string Print(int prefixLen)
         {

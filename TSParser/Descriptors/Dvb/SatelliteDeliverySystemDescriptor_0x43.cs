@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Buffers.Binary;
 using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
@@ -54,10 +53,6 @@ namespace TSParser.Descriptors.Dvb
                           (bytes[pointer + 2] >> 4) * 10 + (bytes[pointer + 2] & 0xf));
             pointer += 3;
             FecInner = (byte)(bytes[pointer] & 0xF);
-        }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {FrequencyStr}, {SymbolRateStr} {OrbitalPositionStr}, {WestEastStr}, {PolarizationStr}, {ModualtionSystemStr}, {RollOffStr}, {ModulationTypeStr}, {FecInnerStr}";
         }
         public override string Print(int prefixLen)
         {

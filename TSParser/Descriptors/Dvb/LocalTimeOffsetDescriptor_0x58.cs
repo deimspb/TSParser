@@ -29,15 +29,6 @@ namespace TSParser.Descriptors.Dvb
                 LocalTimes[i] = new LocalTime(bytes.Slice(2+i*13));
             }
         }
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            foreach (var i in LocalTimes)
-            {
-                str += $"            {i}\n";
-            }
-            return str;
-        }
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);
@@ -71,10 +62,6 @@ namespace TSParser.Descriptors.Dvb
             TimeOfChange = Utils.GetDateTimeFromMJD_UTC(bytes.Slice(pointer, 5));
             pointer += 5;
             NextTimeOffset = Utils.GetTimeOffset(bytes.Slice(pointer, 2));
-        }
-        public override string ToString()
-        {
-            return $"Country: {CountryCode}, region id: {CountryRegionId}, polarity: {LocalTimeOffsetPolarity}, time offset: {LocalTimeOffset}, time of change: {TimeOfChange}, next time offset: {NextTimeOffset}";
         }
         public string Print(int prefixLen)
         {

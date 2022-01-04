@@ -30,17 +30,7 @@ namespace TSParser.Descriptors.Dvb
             }
 
         }
-
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-
-            foreach (var ln in Languages)
-            {
-                str += $"{ln}\n";
-            }
-            return str;
-        }
+        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -60,7 +50,6 @@ namespace TSParser.Descriptors.Dvb
         public string TeletextTypeName => Dictionaries.GetTeletextTypeStr(TeletextType);
         public byte TeletextMagazinNumber { get; }
         public byte TeletextPageNumber { get; }
-
         public Language(ReadOnlySpan<byte> bytes)
         {
             LanguageCode = new byte[3];
@@ -68,11 +57,6 @@ namespace TSParser.Descriptors.Dvb
             TeletextType = (byte)(bytes[3] >> 3);
             TeletextMagazinNumber = (byte)(bytes[3] & 0x7);
             TeletextPageNumber = bytes[4];
-        }
-
-        public override string ToString()
-        {
-            return $"            Language: {LanguageName}, Teletext type: {TeletextTypeName}, Page number: {TeletextPageNumber}";
         }
         public string Print(int prefixLen)
         {

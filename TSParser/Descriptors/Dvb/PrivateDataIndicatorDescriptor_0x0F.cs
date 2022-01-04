@@ -12,12 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
@@ -28,10 +23,6 @@ namespace TSParser.Descriptors.Dvb
         public PrivateDataIndicatorDescriptor_0x0F(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             PrivateDataIndicator = BinaryPrimitives.ReadUInt32BigEndian(bytes[2..]);
-        }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, Private data indicator: 0x{PrivateDataIndicator:X}";
         }
         public override string Print(int prefixLen)
         {

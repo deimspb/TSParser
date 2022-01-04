@@ -27,8 +27,7 @@ namespace TSParser.Tables.Scte35
         }
         public virtual string Print(int prefixLen)
         {
-            string headerPrefix = Utils.HeaderPrefix(prefixLen);            
-
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
             return $"{headerPrefix}Splice command length: {SpliceCommandBytes.Length}\n";
         }
     }

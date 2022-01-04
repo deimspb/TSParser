@@ -29,11 +29,6 @@ namespace TSParser.Descriptors.Dvb
             SelectorByte = new byte[DescriptorLength - 1];
             bytes.Slice(pointer, SelectorByte.Length).CopyTo(SelectorByte);
         }
-
-        public override string ToString()
-        {
-            return $"            Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, {ExtensionDescriptorName}, selector bytes length: {SelectorByte.Length}";
-        }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

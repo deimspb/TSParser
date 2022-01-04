@@ -32,22 +32,13 @@ namespace TSParser.Descriptors.AitDescriptors
                 ApplicationNames.Add(item);
             }
         }
-        public override string ToString()
-        {
-            string str = $"         AIT descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            foreach (var applicationName in ApplicationNames)
-            {
-                str += $"                  {applicationName}\n";
-            }
-            return str;
-        }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
             string str = $"{headerPrefix}AIT descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
             foreach (var applicationName in ApplicationNames)
             {
-                str += applicationName.Print(prefixLen+2);
+                str += applicationName.Print(prefixLen + 2);
             }
             return str;
         }
@@ -64,10 +55,6 @@ namespace TSParser.Descriptors.AitDescriptors
             pointer += 3;
             ApplicationNameLength = bytes[pointer++];
             ApplicationNameChar = Dictionaries.BytesToString(bytes.Slice(pointer, ApplicationNameLength));
-        }
-        public override string ToString()
-        {
-            return $"Language code: {Iso639LanguageCode}, Application name: {ApplicationNameChar}";
         }
         public string Print(int prefixLen)
         {

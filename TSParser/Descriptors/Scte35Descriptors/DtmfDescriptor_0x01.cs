@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.DictionariesData;
 using TSParser.Service;
 
@@ -35,9 +29,9 @@ namespace TSParser.Descriptors.Scte35Descriptors
             Identifier = Dictionaries.BytesToString(bytes.Slice(pointer, 4));
             pointer += 4;
             Preroll = bytes[pointer++];
-            DtmfCount = (byte)((bytes[pointer++] & 0xE0)>>5);
+            DtmfCount = (byte)((bytes[pointer++] & 0xE0) >> 5);
             //reserved 5 bits
-            DtmfChar = Dictionaries.BytesToString(bytes.Slice(pointer,DtmfCount));
+            DtmfChar = Dictionaries.BytesToString(bytes.Slice(pointer, DtmfCount));
         }
         public override string Print(int prefixLen)
         {

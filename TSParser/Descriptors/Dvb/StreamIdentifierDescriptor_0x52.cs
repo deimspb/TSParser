@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TSParser.Service;
 
 namespace TSParser.Descriptors.Dvb
@@ -27,10 +22,6 @@ namespace TSParser.Descriptors.Dvb
         public StreamIdentifierDescriptor_0x52(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             ComponentTag = bytes[2];
-        }
-        public override string ToString()
-        {
-            return $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName},tag: 0x{ComponentTag:X2}";
         }
         public override string Print(int prefixLen)
         {
