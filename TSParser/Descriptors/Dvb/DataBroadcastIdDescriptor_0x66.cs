@@ -36,7 +36,7 @@ namespace TSParser.Descriptors.Dvb
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
 
-            return $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, data broadcast id: {DataBroadcastId}, {BitConverter.ToString(IdSelectorByte):X}\n";
+            return $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}, data broadcast id: {DataBroadcastId}, id selector bytes: {BitConverter.ToString(IdSelectorByte):X}\n";
         }
     }
 }

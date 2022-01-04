@@ -48,6 +48,7 @@ namespace TSParser.Tables.DvbTableFactory
             if (Utils.GetCRC32(fulltable[..^4]) != CurrentCRC32) // drop invalid ts packet
             {
                 Logger.Send(LogStatus.ETSI, $"MIP CRC incorrect!");
+                ResetFactory();
                 return;
             }
 

@@ -33,11 +33,6 @@ namespace TSParser.Tables.DvbTables
         public List<Event> EventList { get; }
         public EIT(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            if (TableId != 0x4F && TableId != 0x4E && !(0x50 <= TableId && TableId <= 0x5F) && !(0x60 <= TableId && TableId <= 0x6F)) // check eit table id
-            {
-                Logger.Send(LogStatus.ETSI, $"Invalid table id: {TableId} for EIT table");                
-            }
-
             ServiceId = BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]);
             TransportStreamId = BinaryPrimitives.ReadUInt16BigEndian(bytes[8..]);
             OriginalNetworkId = BinaryPrimitives.ReadUInt16BigEndian(bytes[10..]);
@@ -61,32 +56,7 @@ namespace TSParser.Tables.DvbTables
 
             return events;
         }
-        //public override string ToString()
-        //{
-        //    var eit = $"-=EIT=-\n";
-
-        //    eit += $"   Service id: {ServiceId}\n";
-
-        //    eit += $"{base.ToString()}";             
-
-        //    eit += $"   Transport stream id: {TransportStreamId}\n";
-        //    eit += $"   Original network id: {OriginalNetworkId}\n";
-        //    eit += $"   Segment last section number: {SegmentLastSectionNumber}\n";
-        //    eit += $"   Last table id: {LastTableId}\n";
-
-        //    if(EventList != null)
-        //    {
-        //        eit += $"   Event List count: {EventList.Count}\n";
-        //        foreach (var ev in EventList)
-        //        {
-        //            eit += $"      {ev}\n";
-        //        }
-        //    }            
-        //    eit += $"   CRC: 0x{CRC32:X}\n";
-
-        //    return eit;
-        //}
-
+        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -103,7 +73,7 @@ namespace TSParser.Tables.DvbTables
             eit += $"{prefix}Segment last section number: {SegmentLastSectionNumber}\n";
             eit += $"{prefix}Last table id: {LastTableId}\n";
 
-            if (EventList != null)
+            if (EventList?.Count>0)
             {
                 eit += $"{prefix}Event List count: {EventList.Count}\n";
                 foreach (var ev in EventList)
@@ -161,22 +131,7 @@ namespace TSParser.Tables.DvbTables
             var allocation = $"Table: EIT, Service id: {serviceId}, Event id: {EventId}";
             EventDescriptors = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, DescriptorLoopLength), allocation);
 
-        }
-
-        public override string ToString()
-        {
-            var evnt = $"      Event id: {EventId}\n";
-            evnt += $"      Event start time: {StartDateTime}\n";
-            evnt += $"      Event duration: {DurationTimeSpan}\n";
-            evnt += $"      Running status: {RunningStatus}\n";
-            evnt += $"      Free CA mode: {FreeCAmode}\n";
-            evnt += $"      Descriptor loop length: {DescriptorLoopLength}\n";
-            foreach (var desc in EventDescriptors)
-            {
-                evnt += $"         {desc}\n";
-            }
-            return evnt;
-        }
+        }        
         public string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -188,10 +143,15 @@ namespace TSParser.Tables.DvbTables
             evnt += $"{prefix}Running status: {RunningStatus}\n";
             evnt += $"{prefix}Free CA mode: {FreeCAmode}\n";
             evnt += $"{prefix}Descriptor loop length: {DescriptorLoopLength}\n";
-            foreach (var desc in EventDescriptors)
+
+            if (DescriptorLoopLength > 0)
             {
-                evnt += desc.Print(prefixLen + 4);
+                foreach (var desc in EventDescriptors)
+                {
+                    evnt += desc.Print(prefixLen + 4);
+                }
             }
+            
             return evnt;
         }
     }

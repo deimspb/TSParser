@@ -27,16 +27,7 @@ namespace TSParser.Descriptors.Dvb
             {
                 LcnItems[i] = new LcnItem(bytes.Slice(2 + i * 4));
             }
-        }
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            foreach(var item in LcnItems)
-            {
-                str += $"           {item}\n";
-            }
-            return str;
-        }
+        }        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -59,11 +50,7 @@ namespace TSParser.Descriptors.Dvb
             ServiceID = BinaryPrimitives.ReadUInt16BigEndian(bytes);
             VisisbleServiceDlag = (bytes[2] & 0x80) != 0;
             LogicalChannelNumber = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[2..]) & 0x03ff);
-        }
-        public override string ToString()
-        {
-            return $"Service id:{ServiceID}, visible:{VisisbleServiceDlag}, lcn: {LogicalChannelNumber}";
-        }
+        }        
         public string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

@@ -132,5 +132,18 @@ namespace TSParser.TransportStream
 
             pointer = AdaptationFieldLength + 1;
         }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str = $"{headerPrefix}Adaptation field\n";
+            str += $"{prefix}Discontinuity Indicator: {DiscontinuityIndicator}\n";
+            str += $"{prefix}Random Access Indicator: {RandomAccessIndicator}\n";
+            str += $"{prefix}Elementary Stream Priority Indicator: {ElementaryStreamPriorityIndicator}\n";
+
+            return str;
+
+        }
     }
 }

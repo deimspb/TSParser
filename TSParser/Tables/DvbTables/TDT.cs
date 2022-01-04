@@ -28,13 +28,7 @@ namespace TSParser.Tables.DvbTables
             UtcDateTime = Utils.GetDateTimeFromMJD_UTC(bytes.Slice(3, 5));
             TableBytes = bytes;
         }
-
-        //public override string ToString()
-        //{
-        //    var tdt = $"-=TDT=-\n";
-        //    tdt += $"   UTC date time: {UtcDateTime}";
-        //    return tdt;
-        //}
+       
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);

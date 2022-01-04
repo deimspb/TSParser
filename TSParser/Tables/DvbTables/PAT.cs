@@ -22,13 +22,7 @@ namespace TSParser.Tables.DvbTables
         public ushort TransportStreamId { get; }
         public PatRecord[] PatRecords { get; } = null!;
         public PAT(ReadOnlySpan<byte> bytes) : base(bytes)
-        {
-            if (TableId != 0x00)
-            {
-                Logger.Send(LogStatus.ETSI, $"Invalid table id: {TableId} for PMT");
-                return;
-            }
-
+        { 
             TransportStreamId = BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(4, 2));
 
             PatRecords = new PatRecord[(SectionLength - 8) / 4];
@@ -38,25 +32,7 @@ namespace TSParser.Tables.DvbTables
                 ReadOnlySpan<byte> span = bytes[(8 + i * 4)..]; // 12 bytes 
                 PatRecords[i] = new PatRecord(span);
             }
-        }
-
-        //public override string ToString()
-        //{
-        //    string pat = $"-=PAT=-\n";
-
-        //    pat += $"{base.ToString()}";
-
-        //    pat += $"   Transport stream id: {TransportStreamId}\n";
-        //    foreach (var pr in PatRecords)
-        //    {
-        //        pat += $"      {pr}\n";
-        //    }
-
-        //    pat += $"   PAT CRC: 0x{CRC32:X}";
-
-        //    return pat;
-        //}
-
+        }        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -100,12 +76,7 @@ namespace TSParser.Tables.DvbTables
         {
             ProgramNumber = BinaryPrimitives.ReadUInt16BigEndian(bytes[0..2]);
             Pid = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[2..]) & 0x1FFF);
-        }
-
-        public override string ToString()
-        {
-            return $"Program number: {ProgramNumber}, Pid: {Pid}";
-        }
+        }        
         public string Print(int prefixLen)
         {            
             string prefix = Utils.HeaderPrefix(prefixLen);

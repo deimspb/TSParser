@@ -29,15 +29,15 @@ namespace TSParser.Descriptors.Dvb
                 ServiceItems[i] = new ServiceItem(bytes.Slice(2 + i * 3));
             }
         }
-        public override string ToString()
-        {
-            string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            foreach(ServiceItem item in ServiceItems)
-            {
-                str += $"            {item}\n";
-            }
-            return str;
-        }
+        //public override string ToString()
+        //{
+        //    string str = $"         Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
+        //    foreach(ServiceItem item in ServiceItems)
+        //    {
+        //        str += $"            {item}\n";
+        //    }
+        //    return str;
+        //}
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);

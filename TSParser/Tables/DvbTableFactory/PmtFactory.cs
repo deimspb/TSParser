@@ -42,11 +42,18 @@ namespace TSParser.Tables.DvbTableFactory
         {
             ReadOnlySpan<byte> bytes = TableData.AsSpan();
 
+            if (bytes[0] != 0x02)
+            {
+                Logger.Send(LogStatus.ETSI, $"Invalid table id: {bytes[0]} for PMT table");
+                return;
+            }
+
             CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
 
             if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) // drop invalid ts packet
             {
                 Logger.Send(LogStatus.ETSI, $"PMT pid {CurrentPid} CRC incorrect!");
+                ResetFactory();
                 return;
             }
 

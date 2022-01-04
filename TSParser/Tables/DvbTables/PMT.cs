@@ -28,12 +28,7 @@ namespace TSParser.Tables.DvbTables
         public List<EsInfo> EsInfoList { get; } = default!;
         public PMT(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            if (TableId != 0x02)
-            {
-                Logger.Send(LogStatus.ETSI, $"Invalid table id: {TableId} for PMT table");
-                return;
-            }
-
+            
             ProgramNumber = BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]);
             PcrPid = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[8..]) & 0x1FFF);
             ProgramInfoLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[10..]) & 0x0FFF);
@@ -63,39 +58,7 @@ namespace TSParser.Tables.DvbTables
                 esList.Add(es);
             }
             return esList;
-        }
-        //public override string ToString()
-        //{
-        //    string pmt = $"-=PMT for program number: {ProgramNumber}=-\n";
-
-        //    pmt+= $"{base.ToString()}";
-
-        //    pmt += $"   Program number: {ProgramNumber}\n";
-        //    pmt += $"   PCR pid: {PcrPid}\n";
-        //    pmt += $"   Program info length: {ProgramInfoLength}\n";
-
-        //    if(PmtDescriptorList is not null)
-        //    {
-        //        pmt += $"   PMT descriptor count: {PmtDescriptorList.Count}\n";
-        //        foreach (var desc in PmtDescriptorList)
-        //        {
-        //            pmt += $"      {desc}\n";
-        //        }
-        //    }
-
-        //    if(EsInfoList is not null)
-        //    {
-        //        pmt += $"   PMT ES records count: {EsInfoList.Count}\n";
-        //        foreach (var es in EsInfoList)
-        //        {
-        //            pmt += $"{es}";
-        //        }
-        //    }          
-            
-
-        //    pmt += $"   PMT CRC: 0x{CRC32:X}\n";
-        //    return pmt;
-        //}
+        }       
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -109,7 +72,7 @@ namespace TSParser.Tables.DvbTables
             pmt += $"{prefix}PCR pid: {PcrPid}\n";
             pmt += $"{prefix}Program info length: {ProgramInfoLength}\n";
 
-            if (PmtDescriptorList is not null)
+            if (ProgramInfoLength>0)
             {
                 pmt += $"{prefix}PMT descriptor count: {PmtDescriptorList.Count}\n";
                 foreach (var desc in PmtDescriptorList)
@@ -118,7 +81,7 @@ namespace TSParser.Tables.DvbTables
                 }
             }
 
-            if (EsInfoList is not null)
+            if (EsInfoList?.Count>0)
             {
                 pmt += $"{prefix}PMT ES records count: {EsInfoList.Count}\n";
                 foreach (var es in EsInfoList)
@@ -164,21 +127,7 @@ namespace TSParser.Tables.DvbTables
             pointer += 2;
             var descAllocation = $"Table: PMT, Program: {programId}, Es pid: {ElementaryPid}";
             EsDescriptorList = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, EsInfoLength), descAllocation);
-        }
-
-        public override string ToString()
-        {
-            string es = $"      ES PID: {ElementaryPid}\n";
-            es += $"         Stream type: {StreamType}\n";
-            es += $"         Stream type name: {StreamTypeName}\n";
-            es += $"         ES info legth: {EsInfoLength}\n";
-            es += $"         ES descriptor count: {EsDescriptorList.Count} \n";
-            foreach (var desc in EsDescriptorList)
-            {
-                es += $"{desc}\n";
-            }
-            return es;
-        }
+        }        
         public string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -188,11 +137,16 @@ namespace TSParser.Tables.DvbTables
             es += $"{prefix}Stream type: {StreamType}\n";
             es += $"{prefix}Stream type name: {StreamTypeName}\n";
             es += $"{prefix}ES info legth: {EsInfoLength}\n";
-            es += $"{prefix}ES descriptor count: {EsDescriptorList.Count} \n";
-            foreach (var desc in EsDescriptorList)
+            
+            if(EsInfoLength > 0)
             {
-                es += desc.Print(prefixLen + 4);
+                es += $"{prefix}ES descriptor count: {EsDescriptorList.Count} \n";
+                foreach (var desc in EsDescriptorList)
+                {
+                    es += desc.Print(prefixLen + 4);
+                }
             }
+            
             return es;
         }
     }

@@ -55,30 +55,7 @@ namespace TSParser.Tables.DvbTables
             {
                 return (int)CRC32;
             }
-        }
-
-        //public override string ToString()
-        //{
-        //    string sdt = $"-=SDT=-\n";
-
-        //    sdt += base.ToString();
-
-        //    sdt += $"   Transport stream id: {TransportStreamId}\n";
-        //    sdt += $"   Original network id: {OriginalNetworkId}\n";
-
-        //    if (SdtItemsList != null)
-        //    {
-        //        sdt += $"   SDT item list count: {SdtItemsList.Count}\n";
-        //        foreach (var item in SdtItemsList)
-        //        {
-        //            sdt += $"{item}\n";
-        //        }
-        //    }
-
-
-        //    sdt += $"   SDT CRC 0x{CRC32:X}\n";
-        //    return sdt;
-        //}
+        }        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -91,7 +68,7 @@ namespace TSParser.Tables.DvbTables
             sdt += $"{prefix}Transport stream id: {TransportStreamId}\n";
             sdt += $"{prefix}Original network id: {OriginalNetworkId}\n";
 
-            if (SdtItemsList != null)
+            if (SdtItemsList?.Count>0)
             {
                 sdt += $"{prefix}SDT item list count: {SdtItemsList.Count}\n";
                 foreach (var item in SdtItemsList)
@@ -126,28 +103,7 @@ namespace TSParser.Tables.DvbTables
             var pointer = 5;
             var descAllocation = $"Table: SDT, Ts id: {tsId}, Service id: {ServiceId}";
             SdtItemDescriptorList = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, DescriptorLoopLength), descAllocation);
-        }
-        public override string ToString()
-        {
-            string sdtItem = $"      SDT item\n";
-            sdtItem += $"         Service id: {ServiceId}\n";
-
-            sdtItem += $"         EIT schedule flag: {EitScheduleFlag}\n";
-            sdtItem += $"         EIT present following flag: {EitPresentFollowingFlag}\n";
-            sdtItem += $"         Running status: {RunningStatus}\n";
-            sdtItem += $"         Free CA mode: {FreeCAMode}\n";
-            sdtItem += $"         Descriptor loop length: {DescriptorLoopLength}\n";
-
-            sdtItem += $"         SDT item descriptor count: {SdtItemDescriptorList.Count}\n";
-            foreach (var desc in SdtItemDescriptorList)
-            {
-                sdtItem += $"            {desc}";
-            }
-
-
-
-            return sdtItem;
-        }
+        }        
         public string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -161,14 +117,15 @@ namespace TSParser.Tables.DvbTables
             sdtItem += $"{prefix}Running status: {RunningStatus}\n";
             sdtItem += $"{prefix}Free CA mode: {FreeCAMode}\n";
             sdtItem += $"{prefix}Descriptor loop length: {DescriptorLoopLength}\n";
-
-            sdtItem += $"{prefix}SDT item descriptor count: {SdtItemDescriptorList.Count}\n";
-            foreach (var desc in SdtItemDescriptorList)
+            
+            if (DescriptorLoopLength > 0)
             {
-                sdtItem += desc.Print(prefixLen +4);
-            }
-
-
+                sdtItem += $"{prefix}SDT item descriptor count: {SdtItemDescriptorList.Count}\n";
+                foreach (var desc in SdtItemDescriptorList)
+                {
+                    sdtItem += desc.Print(prefixLen + 4);
+                }
+            }            
 
             return sdtItem;
         }

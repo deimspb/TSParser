@@ -28,62 +28,25 @@ namespace TSParser.Tables.DvbTables
         public List<ApplicationLoop> ApplicationLoops { get; } = default!;
 
         private ushort m_aitPid;
-        public AIT(ReadOnlySpan<byte> bytes, ushort aitPid) : base(bytes)
+        public AIT(ReadOnlySpan<byte> bytes, ushort aitPid) : this(bytes)
         {
-            m_aitPid = aitPid;
-
-            if (TableId != 0x74)
-            {
-                Logger.Send(LogStatus.ETSI, $"Invalid table id: {TableId} for AIT table");
-            }
-
+            m_aitPid = aitPid;            
+        }
+        public AIT(ReadOnlySpan<byte> bytes) : base(bytes)
+        {    
             TestApplicationFlag = (bytes[3] & 0x80) != 0;
             ApplicationType = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]) & 0x7FFF);
             CommonDescriptorsLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[8..]) & 0x0FFF);
             var pointer = 10;
-            var descAllocation = $"Table: AIT, pid: {aitPid}";
+            var descAllocation = $"Table: AIT, pid: {m_aitPid}";
             AitDescriptorsList = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer,CommonDescriptorsLength),descAllocation,TableId);
             pointer += CommonDescriptorsLength;
             ApplicationLoopLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x0FFF);
             pointer += 2;            
-            ApplicationLoops = GetAppLoopList(bytes.Slice(pointer, ApplicationLoopLength),aitPid);
+            ApplicationLoops = GetAppLoopList(bytes.Slice(pointer, ApplicationLoopLength), m_aitPid);
             pointer += ApplicationLoopLength;
 
-        }
-        //public override string ToString()
-        //{
-        //    string str = $"-=AIT pid: {m_aitPid}=-\n";
-
-        //    str+=base.ToString();
-
-        //    str += $"   Test Application Flag: {TestApplicationFlag}\n";
-        //    str += $"   Application Type: {ApplicationType}\n";
-        //    str += $"   Common Descriptors Length: {CommonDescriptorsLength}\n";
-
-        //    if(AitDescriptorsList is not null)
-        //    {
-        //        str += $"   AIT descriptors count: {AitDescriptorsList.Count}\n";
-        //        foreach(var descriptor in AitDescriptorsList)
-        //        {
-        //            str += $"      {descriptor}\n";
-        //        }
-        //    }
-
-        //    str += $"   Application Loop Length: {ApplicationLoopLength}\n";
-
-        //    if(ApplicationLoops is not null)
-        //    {
-        //        str += $"   Application Loops count: {ApplicationLoops.Count}\n";
-        //        foreach (var loop in ApplicationLoops)
-        //        {
-        //            str += $"   {loop}\n";
-        //        }
-        //    }
-
-        //    str += $"   AIT CRC: 0x{CRC32:X}\n";
-
-        //    return str;
-        //}
+        }        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -97,7 +60,7 @@ namespace TSParser.Tables.DvbTables
             str += $"{prefix}Application Type: {ApplicationType}\n";
             str += $"{prefix}Common Descriptors Length: {CommonDescriptorsLength}\n";
 
-            if (AitDescriptorsList is not null)
+            if (CommonDescriptorsLength > 0)
             {
                 str += $"{prefix}AIT descriptors count: {AitDescriptorsList.Count}\n";
                 foreach (var descriptor in AitDescriptorsList)
@@ -108,7 +71,7 @@ namespace TSParser.Tables.DvbTables
 
             str += $"{prefix}Application Loop Length: {ApplicationLoopLength}\n";
 
-            if (ApplicationLoops is not null)
+            if (ApplicationLoopLength > 0)
             {
                 str += $"{prefix}Application Loops count: {ApplicationLoops.Count}\n";
                 foreach (var loop in ApplicationLoops)
@@ -165,23 +128,7 @@ namespace TSParser.Tables.DvbTables
             var descAllocation = $"Table: AIT, pid: {aitPid}, App identifier: 0x{AppIdentifier.ApplicationId:X}";            
             ApplicationLoopDescriptors = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer,ApplicationDescriptorsLoopLength),descAllocation,0x74); // caller table id 0x74 AIT table
         }
-        public override string ToString()
-        {
-            string str = $"      Application ID: 0x{AppIdentifier.ApplicationId:X}\n";
-            str += $"         Organisation ID: 0x{AppIdentifier.OrganisationId:X}\n";
-            str += $"         Application Control Code: {ApplicationControlCode}\n";
-
-            if(ApplicationLoopDescriptors is not null)
-            {
-                str += $"         Application loop descriptors count: {ApplicationLoopDescriptors.Count}\n";
-                foreach(var descriptor in ApplicationLoopDescriptors)
-                {
-                    str += $"         {descriptor}";
-                }
-            }
-
-            return str;
-        }
+        
         public string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -191,7 +138,7 @@ namespace TSParser.Tables.DvbTables
             str += $"{prefix}Organisation ID: 0x{AppIdentifier.OrganisationId:X}\n";
             str += $"{prefix}Application Control Code: {ApplicationControlCode}\n";
 
-            if (ApplicationLoopDescriptors is not null)
+            if (ApplicationLoopDescriptors?.Count > 0)
             {
                 str += $"{prefix}Application loop descriptors count: {ApplicationLoopDescriptors.Count}\n";
                 foreach (var descriptor in ApplicationLoopDescriptors)

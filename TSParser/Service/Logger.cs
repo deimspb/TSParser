@@ -50,8 +50,6 @@ namespace TSParser.Service
         public delegate void LogHandler(LogMessage message);
         public static event LogHandler OnLogMessage = null!;
 
-        public static ObservableCollection<string> Log = new ObservableCollection<string>();
-
         public static void Send(LogStatus status, string? additionalInfo = null, Exception? ex = null)
         {
             try
@@ -62,18 +60,13 @@ namespace TSParser.Service
             {
                 // nothing to do
             }
-        }
-
-        private static void PrintLog(string fulltext)
-        {
-            Debug.Write($"{fulltext}");
-            Log.Add(fulltext);
-            
-        }
+        }       
         private static void PrintLog(LogMessage message)
         {
             Debug.Write(message);
+#if (!DEBUG)            
             OnLogMessage?.Invoke(message);
+#endif
         }
     }
 }

@@ -31,7 +31,7 @@ namespace TSParser.Tables.DvbTableFactory
         private EIT CurrentEit = null!;
         private List<EIT> eitList = new List<EIT>(100);
         internal override void PushTable(TsPacket tsPacket)
-        {            
+        {           
             AddData(tsPacket);
             if (!IsAllTable) return;
             ParseEit();
@@ -40,11 +40,18 @@ namespace TSParser.Tables.DvbTableFactory
         {
             ReadOnlySpan<byte> bytes = TableData.AsSpan();
 
+            if (bytes[0] != 0x4F && bytes[0] != 0x4E && !(0x50 <= bytes[0] && bytes[0] <= 0x5F) && !(0x60 <= bytes[0] && bytes[0] <= 0x6F)) // check eit table id
+            {
+                Logger.Send(LogStatus.ETSI, $"Invalid table id: {bytes[0]} for EIT table");
+                return;
+            }
+
             var crc32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
 
             if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
             {
                 Logger.Send(LogStatus.ETSI, $"EIT CRC incorrect!");
+                ResetFactory();
                 return;
             }
 

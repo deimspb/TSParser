@@ -22,6 +22,11 @@ namespace TSParser.Tables.DvbTables
         public List<Descriptor> CatDescriptorList { get; } = null!;
         public CAT(ReadOnlySpan<byte> bytes) : base(bytes)
         {
+            if (TableId != 0x01)
+            {
+                Logger.Send(LogStatus.ETSI, $"Invalid table id: {TableId} for CAT table");
+                return;
+            }
             var pointer = 8;
             var descAllocation = $"Table: CAT, section number: {SectionNumber}";
             CatDescriptorList = DescriptorFactory.GetDescriptorList(bytes[pointer..^4],descAllocation);
@@ -39,25 +44,7 @@ namespace TSParser.Tables.DvbTables
             {
                 return (int)CRC32;
             }
-        }
-        //public override string ToString()
-        //{
-        //    var cat = $"-=CAT=-\n";
-
-        //    cat += base.ToString();            
-
-        //    if(CatDescriptorList != null)
-        //    {
-        //        cat += $"   CAT descriptors count: {CatDescriptorList.Count}\n";
-        //        foreach (var desc in CatDescriptorList)
-        //        {
-        //            cat += $"      {desc}\n";
-        //        }
-        //    }
-            
-        //    cat += $"CRC: 0x{CRC32:X}\n";
-        //    return cat;
-        //}
+        }        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -67,7 +54,7 @@ namespace TSParser.Tables.DvbTables
 
             cat += base.Print(prefixLen+2);
 
-            if (CatDescriptorList != null)
+            if (CatDescriptorList?.Count>0)
             {
                 cat += $"{prefix}CAT descriptors count: {CatDescriptorList.Count}\n";
                 foreach (var desc in CatDescriptorList)
@@ -76,7 +63,7 @@ namespace TSParser.Tables.DvbTables
                 }
             }
 
-            cat += $"{prefix}CRC32: 0x{CRC32:X}\n";
+            cat += $"{prefix}CAT CRC32: 0x{CRC32:X}\n";
             return cat;            
         }
     }

@@ -61,33 +61,7 @@ namespace TSParser.Tables.DvbTables
             {
                 return (int)CRC32;
             }
-        }
-
-        //public override string ToString()
-        //{
-        //    var nit = $"-=NIT=-\n";
-        //    nit += $"   Network id: {NetworkId}\n";
-        //    nit += base.ToString();
-        //    nit += $"   Network descriptors lenght: {NetworkDescriptorsLenght}\n";
-        //    if(NitDescriptorList != null)
-        //    {
-        //        nit += $"   Nit Descriptor List count: {NitDescriptorList.Count}\n";
-        //        foreach (var desc in NitDescriptorList)
-        //        {
-        //            nit += $"      {desc}\n";
-        //        }
-        //    }            
-        //    nit += $"   Transport stream loop lenght: {TransportStreamLoopLenght}\n";
-        //    if (TransportStreamLoops != null)
-        //    {
-        //        nit += $"   Transport Stream Loops count: {TransportStreamLoops.Count}\n";
-        //        foreach (var loop in TransportStreamLoops)
-        //        {
-        //            nit += $"{loop}\n";
-        //        }
-        //    }
-        //    return nit;
-        //}
+        }       
         public override string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);
@@ -114,6 +88,7 @@ namespace TSParser.Tables.DvbTables
                     nit += loop.Print(prefixLen + 4);
                 }
             }
+            nit += $"{prefix}NIT CRC32: 0x{CRC32:X}\n";
             return nit;
         }
     }
@@ -130,23 +105,7 @@ namespace TSParser.Tables.DvbTables
             TransportDescriptorsLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[4..]) & 0x0FFF);
             var descAllocation = $"Table: NIT, ts loop, ts id: {TransportStreamId}";
             TransportStreamLoopDescriptors = DescriptorFactory.GetDescriptorList(bytes.Slice(6,TransportDescriptorsLength),descAllocation);
-        }
-
-        public override string ToString()
-        {
-            var loop = $"      Transport stream id: {TransportStreamId}\n";
-            loop += $"      Original network id: {OriginalNetworkId}\n";
-            loop += $"      Transport descriptors length: {TransportDescriptorsLength}\n";
-            if(TransportStreamLoopDescriptors != null)
-            {
-                foreach (var desc in TransportStreamLoopDescriptors)
-                {
-                    loop += $"         {desc}\n";
-                }
-            }
-            
-            return loop;
-        }
+        }        
         public string Print(int prefixLen)
         {
             string header = Utils.HeaderPrefix(prefixLen);
@@ -155,7 +114,7 @@ namespace TSParser.Tables.DvbTables
             var loop = $"{header}Transport stream id: {TransportStreamId}\n";
             loop += $"{prefix}Original network id: {OriginalNetworkId}\n";
             loop += $"{prefix}Transport descriptors length: {TransportDescriptorsLength}\n";
-            if (TransportStreamLoopDescriptors != null)
+            if (TransportDescriptorsLength>0)
             {
                 foreach (var desc in TransportStreamLoopDescriptors)
                 {

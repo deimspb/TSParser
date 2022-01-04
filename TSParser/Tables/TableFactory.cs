@@ -36,12 +36,23 @@ namespace TSParser.Tables
 
         internal abstract void PushTable(TsPacket tsPacket);
 
+        internal void ResetFactory()
+        {
+            isInProgresTable = false;            
+            Pointer = 0;
+            CurrentTableSectionLength = 0;            
+        }
         internal void AddData(TsPacket tsPacket)
         {
             try
             {
                 if (CurrentPid == 0xFFFF) CurrentPid = tsPacket.Pid;
                 if (CurrentPid != tsPacket.Pid) throw new Exception($"Pid changed from: {CurrentPid} to {tsPacket.Pid}");
+                if (tsPacket.TransportScramblingControl != 0x00)
+                {
+                    Logger.Send(LogStatus.WARNING, $"Atempt to bulid table from scrambled packet with pid: {tsPacket.Pid}");
+                    return;
+                }
 
                 if (tsPacket.PayloadUnitStartIndicator)
                 {

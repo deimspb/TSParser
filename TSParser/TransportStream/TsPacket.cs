@@ -36,7 +36,6 @@ namespace TSParser.TransportStream
         public readonly byte[] Payload { get; }       
         public readonly ulong PacketNumber { get; } = default;
         public readonly byte[] PacketHeader { get; }
-
         internal TsPacket(ReadOnlySpan<byte> bytes, ulong packetCounter)
         {
             var pointer = 0;
@@ -105,6 +104,28 @@ namespace TSParser.TransportStream
                 Logger.Send(LogStatus.EXCEPTION, $"Exception while parsing packet: {PacketNumber}, pid: {pid}",ex);
                 throw new Exception($"Exception while parsing packet: {PacketNumber}, pid: {pid}, {ex}");
             }
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str = $"{headerPrefix}Packet pid: {Pid}\n";
+            str += $"{prefix}Transport Error Indicator: {TransportErrorIndicator}\n";
+            str += $"{prefix}Payload Unit Start Indicator: {PayloadUnitStartIndicator}\n";
+            str += $"{prefix}Transport Priority: {TransportPriority}\n";
+            str += $"{prefix}Transport Scrambling Control: {TransportScramblingControl}\n";
+            str += $"{prefix}Adaptation Field Control: {AdaptationFieldControl}\n";
+            str += $"{prefix}Continuity Counter: {ContinuityCounter}\n";
+            if (HasAdaptationField)
+            {
+                str+=Adaptation_field.Print(prefixLen + 4);
+            }
+            if (HasPesHeader)
+            {
+                str+=Pes_header.Print(prefixLen + 4);
+            }
+            return str;
         }
     }
 }

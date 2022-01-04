@@ -43,11 +43,18 @@ namespace TSParser.Tables.DvbTableFactory
         {
             ReadOnlySpan<byte> bytes = TableData.AsSpan();
 
+            if (bytes[0] != 0x74)
+            {
+                Logger.Send(LogStatus.ETSI, $"Invalid table id: 0x{bytes[0]:X} for AIT table");
+                return;
+            }
+
             CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
 
             if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) // drop invalid ts packet
             {
                 Logger.Send(LogStatus.ETSI, $"AIT pid {CurrentPid} CRC incorrect!");
+                ResetFactory();
                 return;
             }
 

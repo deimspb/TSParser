@@ -116,6 +116,13 @@ namespace TSParser
         private int m_socketTimeOut = 5000;
         private int? m_parserRunTimeIn_ms = null;
         private System.Timers.Timer m_timer = null!;
+
+        private List<ushort> m_pids = new List<ushort>(50);
+        public List<ushort> PidList
+        {
+            get => m_pids;
+            set => m_pids = value;
+        }
         #endregion
         #region Public methods
         /// <summary>
@@ -222,8 +229,7 @@ namespace TSParser
         /// </summary>
         public void StopParser()
         {
-            m_cts.Cancel();
-            OnParserComplete?.Invoke();
+            m_cts.Cancel();            
         }
         /// <summary>
         /// Push bytes to parser from other source. Dektec or RTP stream  etc.
@@ -279,7 +285,16 @@ namespace TSParser
             switch (bytes[0])
             {
                 case 0x00: return new PAT(bytes);
-                default: throw new Exception($"Unknown table id: 0x{bytes[0]:X}");
+                case 0x01: return new CAT(bytes);
+                case 0x02: return new PMT(bytes);
+                case 0x74: return new AIT(bytes,0);//TODO: fix these
+                case 0x4A: return new BAT(bytes);
+                case 0x70: return new TDT(bytes);
+                case 0x73: return new TOT(bytes);
+                case byte n when n == 0x42 || n == 0x46: return new SDT(bytes);
+                case byte n when n == 0x40 || n == 0x41: return new NIT(bytes);
+                case byte n when n == 0x4F || n == 0x4E || (n >= 0x50 && n <= 0x5F) || (n >= 0x60 && n <= 0x6F): return new EIT(bytes);
+                default: throw new Exception($"Unknown table id: 0x{bytes[0]:X2}");
             }
         }
         /// <summary>
@@ -426,6 +441,7 @@ namespace TSParser
         }
         private void DvbTableFactory(TsPacket tsPacket)
         {
+            if(PidList.IndexOf(tsPacket.Pid)<0) PidList.Add(tsPacket.Pid);
             // analyzer shall be here
 
             if (tsPacket.TransportErrorIndicator) return; // drop tei packets
@@ -727,6 +743,8 @@ namespace TSParser
             Logger.Send(LogStatus.INFO, $"Parser complete working");
 
             m_cts = new CancellationTokenSource();
+            OnParserComplete?.Invoke();
+            m_timer?.Dispose();
 
         }
         #endregion

@@ -62,7 +62,6 @@ namespace TSParser.TransportStream
         public readonly ulong DTSHex { get; } = default;
         public readonly TimeSpan DTSTime => Utils.GetPtsDtsValue(DTSHex);
         public readonly uint ESRate { get; } = default;
-
         public PesHeader(ReadOnlySpan<byte> bytes, out int pointer)
         {
             pointer = 0;
@@ -237,6 +236,17 @@ namespace TSParser.TransportStream
             }
 
             pointer = PESHeaderDataLength; //TODO: check this
+        }
+        public string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str= $"{headerPrefix}Pes Header stream id: {StreamId}\n";
+            str += $"{prefix}Stream Id Name: {StreamIdName}\n";
+            str += $"{prefix}PES Packet Length: {PESPacketLength}\n";
+            str += $"{prefix}PES Scrambling Control: {PESScramblingControl}\n";
+            return str;
         }
     }
 }

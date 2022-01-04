@@ -31,7 +31,7 @@ namespace TSParser.Tables.DvbTables
         public ushort Tier { get; }
         public ushort SpliceCommandLength { get; }
         public byte SpliceCommandType { get; }
-        public SpliceCommand SpliceCommand { get; }
+        public SpliceCommand SpliceCommand { get; } = null!;
         public ushort DescriptorLoopLength { get; }
         public List<Descriptor> SpliceDescriptors { get; } = null!;
         public uint ECRC32 { get; }
@@ -42,6 +42,13 @@ namespace TSParser.Tables.DvbTables
             m_scte35Pid = scte35Pid;
             var pointer = 0;
             TableId = bytes[pointer++];
+
+            if (TableId != 0xFC)
+            {
+                Logger.Send(LogStatus.ETSI, $"Invalid table id: {TableId} for SCTE35 table");
+                return;
+            }
+
             SectionSyntaxIndicator = (bytes[pointer]&0x80)!= 0;
             PrivateIndicator = (bytes[pointer] & 0x40) != 0;
             //reserved 2bits
