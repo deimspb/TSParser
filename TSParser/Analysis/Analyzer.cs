@@ -19,9 +19,11 @@ using TSParser.TransportStream;
 namespace TSParser.Analysis
 {
     public delegate void TimeStampChange(ulong timeStamp);
+    public delegate void RateDelegate(ushort pid, ulong deltaPackets, ulong deltaTime);
     internal class Analyzer
     {
-        internal event TimeStampChange OnTimeStampChange = null!;        
+        internal event TimeStampChange OnTimeStampChange = null!;
+        internal event RateDelegate OnRate = null!;
 
         private ulong m_currentTimeStamp = 0;
         private ushort m_basePcrPid = 0xFFFF;
@@ -64,12 +66,16 @@ namespace TSParser.Analysis
             {
                 m_pidList.Add(packet.Pid);
                 var pm = new PidMetric(packet.Pid);
+                pm.OnRate += Pm_OnRate;
                 OnTimeStampChange += pm.TimeStampChanged;
                 pm.AddPacket(packet);
                 pidMetrics.Add(pm);
             }
+        }
 
-            
+        private void Pm_OnRate(ushort pid, ulong deltaPackets, ulong deltaTime)
+        {
+            OnRate?.Invoke(pid, deltaPackets, deltaTime);
         }
     }
 }

@@ -17,8 +17,10 @@ using TSParser.TransportStream;
 
 namespace TSParser.Analysis.Metric
 {
+    
     public class PidMetric
     {
+        public event RateDelegate OnRate = null!;
         public ushort Pid { get; }
         public ulong CurrentPacketCounter { get; private set; }
 
@@ -94,7 +96,8 @@ namespace TSParser.Analysis.Metric
                 var deltaP = (CurrentPacketCounter - m_lastPacketCounter);
                 var deltaT = timeStamp - LastTimeStamp;
                 if (deltaT < m_gate) return;
-                //Logger.Send(LogStatus.INFO, $"delta packets between pcr's: {deltaP}, delta time between pcr: {Utils.GetPcrTimeSpan(deltaT)}");
+
+                OnRate?.Invoke(Pid, deltaP, deltaT);               
             }
 
             LastTimeStamp = timeStamp;

@@ -68,6 +68,7 @@ namespace TSParser
         public event MipReady OnMipReady = null!;
         public event Scte35Ready OnScte35Ready = null!;
         public event TsPacketReady OnTsPacketReady = null!;
+        public event RateDelegate OnRate = null!;
 
         private readonly Lazy<TsPacketFactory> packetFactory = new Lazy<TsPacketFactory>();
         private readonly Lazy<TdtTotFactory> tdtTotFactory = new Lazy<TdtTotFactory>();
@@ -344,6 +345,11 @@ namespace TSParser
             m_TdtTotFactory.OnTotready += TdtTotFactory_OnTotready;
             m_SdtBatFactory.OnSdtReady += SdtBatFactory_OnSdtReady;
             m_SdtBatFactory.OnBatReady += SdtBatFactory_OnBatReady;
+            m_analyzer.OnRate += Analyzer_OnRate;
+        }
+        private void Analyzer_OnRate(ushort pid, ulong deltaPackets, ulong deltaTime)
+        {
+            OnRate?.Invoke(pid, deltaPackets, deltaTime);
         }
         private void Timer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
@@ -592,6 +598,7 @@ namespace TSParser
             {
                 if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong                
                 SelectedTableFactory(tsPackets[i]);
+                tsPackets[i].Dispose();
             }
         }
         private void ParseBytesToPackets(ReadOnlySpan<byte> bytes, int packetLength)

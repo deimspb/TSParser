@@ -17,7 +17,7 @@ using TSParser.Service;
 
 namespace TSParser.TransportStream
 {
-    public readonly struct TsPacket
+    public readonly struct TsPacket:IDisposable
     {       
 
         public const byte SYNC_BYTE = 0x47;
@@ -126,6 +126,11 @@ namespace TSParser.TransportStream
                 str+=Pes_header.Print(prefixLen + 4);
             }
             return str;
+        }
+
+        public void Dispose()
+        {
+            GC.SuppressFinalize(this);
         }
     }
 }
