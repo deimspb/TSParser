@@ -1,4 +1,6 @@
 # DVB MPEG Transport Stream Parser Library
+...project not finished
+
 Parse Transport stream packet,
 Adaptation field
 Pes header
@@ -136,17 +138,23 @@ To Get tables you need to subscribe to the events.
  ```
  ## Log output example
  ```
- [24.12.2021 13:42:29.826] [INFO] [Start ts file .....\9_scr_sync.ts parsing] 
- [24.12.2021 13:42:30.010] [INFO] [Not specified descriptor with tag: 0xC0, descriptor location: Table: NIT, table id: 64, section number: 1] 
- [24.12.2021 13:42:30.148] [INFO] [Not specified descriptor with tag: 0x89, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
- [24.12.2021 13:42:30.150] [INFO] [Not specified descriptor with tag: 0x90, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
- [24.12.2021 13:42:30.152] [INFO] [Not specified descriptor with tag: 0xB0, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
- [24.12.2021 13:42:30.157] [INFO] [Not specified descriptor with tag: 0xB1, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
- [24.12.2021 13:42:30.181] [INFO] [Not specified AIT descriptor with tag: 0x02, descriptor location: Table: AIT, pid: 1565, App identifier: 0x2778] 
- [24.12.2021 13:42:30.186] [INFO] [Not specified AIT descriptor with tag: 0x01, descriptor location: Table: AIT, pid: 1565, App identifier: 0x2778] 
- [24.12.2021 13:42:30.192] [INFO] [Not specified AIT descriptor with tag: 0x15, descriptor location: Table: AIT, pid: 1565, App identifier: 0x2778] 
- [24.12.2021 13:42:30.311] [INFO] [Not specified descriptor with tag: 0x91, descriptor location: Table: EIT, Service id: 9005, Event id: 29676] 
- [24.12.2021 13:42:33.245] [INFO] [Parser complete working] 
+[05.01.2022 20:17:46.227] [NotImplement] [Not specified descriptor with tag: 0x91, descriptor location: Table: EIT, Service id: 4, Event id: 52122] 
+[05.01.2022 20:17:46.229] [INFO] [PCR base pid selected: 271] 
+[05.01.2022 20:17:46.270] [NotImplement] [Not specified descriptor with tag: 0xFE, descriptor location: Table: PMT, Program: 27120, Es pid: 1101] 
+[05.01.2022 20:17:46.281] [NotImplement] [Not specified descriptor with tag: 0xC0, descriptor location: Table: NIT, table id: 64, section number: 1] 
+[05.01.2022 20:17:46.299] [NotImplement] [Not specified descriptor with tag: 0xB4, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
+[05.01.2022 20:17:46.302] [NotImplement] [Not specified descriptor with tag: 0x87, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
+[05.01.2022 20:17:46.304] [NotImplement] [Not specified descriptor with tag: 0xB2, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
+[05.01.2022 20:17:46.307] [NotImplement] [Not specified descriptor with tag: 0x89, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
+[05.01.2022 20:17:46.309] [NotImplement] [Not specified descriptor with tag: 0x90, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
+[05.01.2022 20:17:46.311] [NotImplement] [Not specified descriptor with tag: 0xB0, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
+[05.01.2022 20:17:46.313] [NotImplement] [Not specified descriptor with tag: 0xB1, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
+[05.01.2022 20:17:46.315] [NotImplement] [Not specified descriptor with tag: 0x88, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
+[05.01.2022 20:17:46.317] [NotImplement] [Not specified descriptor with tag: 0xB3, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
+[05.01.2022 20:17:46.367] [NotImplement] [Not specified descriptor with tag: 0x86, descriptor location: Table: BAT, bouquet id: 16, section number: 0] 
+[05.01.2022 20:17:46.691] [ETSI] [CC detect om pid: 2004, Total CC for this pid: 1] 
+[05.01.2022 20:17:48.834] [ETSI] [CC detect om pid: 5899, Total CC for this pid: 1] 
+[05.01.2022 20:17:48.837] [INFO] [Parser complete working]  
  ```
  ##
 
@@ -154,9 +162,12 @@ To Get tables you need to subscribe to the events.
 
  * Logger send info about not implement descriptors, but do it only one time for each not specified descriptor.
 
+ ## Simple analyzer
+ * Check all pids in transport stream for CC errors
+ * Calculate rate for all pids. For this calculation selected first PID with adaptation field and PCR value. Rate calculate packets between PCR
+ rate = (delta_packets)*188 * 8 / (Current_PCR - Last_PCR). Use gate > 100 ms.
 
- ## TODO list:
- * Add simple TR 101 290 first priority errors logs
+ ## TODO list: 
  * Add NAL unit parsing
  * Add ISDB support
  * Add ATSC support
