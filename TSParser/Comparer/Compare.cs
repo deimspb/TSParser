@@ -14,6 +14,7 @@
 
 using System.Collections;
 using System.Reflection;
+using TSParser.Service;
 using TSParser.Tables;
 
 namespace TSParser.Comparer
@@ -46,7 +47,7 @@ namespace TSParser.Comparer
                 }
             }
 
-
+            Check(t1, t2);
 
             return m_difference;
         }
@@ -103,9 +104,11 @@ namespace TSParser.Comparer
 
             foreach (PropertyInfo propertyInfo in objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead))
             {
-
-                object valueA = propertyInfo.GetValue(objectA, null)!;
-                object valueB = propertyInfo.GetValue(objectB, null)!;
+                if (propertyInfo.PropertyType.Name == "ReadOnlySpan`1") continue;
+                
+                object valueA = propertyInfo.GetValue(objectA);
+                object valueB = propertyInfo.GetValue(objectB);
+               
                 //drop byte[]
                 if ((valueA != null && valueA.GetType().Name == "Byte[]") || (valueB != null && valueB.GetType().Name == "Byte[]"))
                 {
@@ -209,9 +212,9 @@ namespace TSParser.Comparer
 
                         for (int i = 0; i < maxCount; i++)
                         {
-                            object collectionItem1 = (i > collectionItemsCount1 - 1 ? null : collectionItems1.ElementAt(i))!;
-                            object collectionItem2 = (i > collectionItemsCount2 - 1 ? null : collectionItems2.ElementAt(i))!;
-                            Type collectionItemType = (collectionItem1?.GetType() ?? collectionItem2?.GetType())!;
+                            object collectionItem1 = i > collectionItemsCount1 - 1 ? null : collectionItems1.ElementAt(i);
+                            object collectionItem2 = i > collectionItemsCount2 - 1 ? null : collectionItems2.ElementAt(i);
+                            Type collectionItemType = collectionItem1?.GetType() ?? collectionItem2?.GetType();
 
                             if (CanDirectlyCompare(collectionItemType))
                             {
@@ -238,7 +241,7 @@ namespace TSParser.Comparer
                 else if (propertyInfo.PropertyType.IsClass)
                 {
                     m_difference.Add($"Property is class: {propertyInfo.Name}");
-                    Check(propertyInfo.GetValue(objectA, null)!, propertyInfo.GetValue(objectB, null)!);
+                    Check(propertyInfo.GetValue(objectA, null), propertyInfo.GetValue(objectB, null));
                 }
                 else
                 {
@@ -262,7 +265,7 @@ namespace TSParser.Comparer
             bool result;
             IComparable selfValueComparer;
 
-            selfValueComparer = (valueA as IComparable)!;
+            selfValueComparer = valueA as IComparable;
 
             if (selfValueComparer != null && selfValueComparer.CompareTo(valueB) != 0)
                 result = false; // the comparison using IComparable failed
