@@ -113,7 +113,7 @@ namespace TSParser.Tables.DvbTables
     public struct ApplicationLoop
     {
         public ApplicationIdentifier AppIdentifier { get; } //48 bit
-        public byte ApplicationControlCode { get; }//TODO: implement names with table 3 ETSI TS 102 809 v1.3.1
+        public byte ApplicationControlCode { get; }
         public ushort ApplicationDescriptorsLoopLength { get; }
         public List<Descriptor> ApplicationLoopDescriptors { get; } = default!;
         public ApplicationLoop(ReadOnlySpan<byte> bytes, ushort aitPid)
@@ -136,7 +136,7 @@ namespace TSParser.Tables.DvbTables
 
             string str = $"{headerPrefix}Application ID: 0x{AppIdentifier.ApplicationId:X}\n";
             str += $"{prefix}Organisation ID: 0x{AppIdentifier.OrganisationId:X}\n";
-            str += $"{prefix}Application Control Code: {ApplicationControlCode}\n";
+            str += $"{prefix}Application Control Code: {GetApplicationCodeName(ApplicationControlCode)}\n";
 
             if (ApplicationLoopDescriptors?.Count > 0)
             {
@@ -148,7 +148,20 @@ namespace TSParser.Tables.DvbTables
             }
 
             return str;
-        }
+        }        
+        private string GetApplicationCodeName(byte bt) => bt switch
+        {
+            0x00 => "reserved_future_use",
+            0x01 => "AUTOSTART",
+            0x02 => "PRESENT",
+            0x03 => "DESTROY",
+            0x04 => "KILL",
+            0x05 => "PREFETCH",
+            0x06 => "REMOTE",
+            0x07 => "DISABLED",
+            0x08 => "PLAYBACK_AUTOSTART",
+            _ => "reserved_future_use"
+        };
 
     }
     public struct ApplicationIdentifier

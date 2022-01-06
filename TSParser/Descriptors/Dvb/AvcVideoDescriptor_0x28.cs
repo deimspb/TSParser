@@ -18,7 +18,7 @@ namespace TSParser.Descriptors.Dvb
 {
     public record AvcVideoDescriptor_0x28 : Descriptor
     {
-        //TODO: implement beter with Rec. ITU-T H.264 | ISO/IEC 14496-10.
+        //TODO: implement beter with Rec. ITU-T H.264 (08/2021) 7.3.2.1 Sequence parameter set RBSP syntax
         public byte ProfileIdc { get; }
         public bool ConstraintSet0Flag { get; }
         public bool ConstraintSet1Flag { get; }

@@ -17,8 +17,8 @@ using TSParser.Service;
 
 namespace TSParser.TransportStream
 {
-    public readonly struct TsPacket:IDisposable
-    {       
+    public readonly struct TsPacket
+    {
 
         public const byte SYNC_BYTE = 0x47;
         public readonly bool TransportErrorIndicator { get; }
@@ -128,9 +128,5 @@ namespace TSParser.TransportStream
             return str;
         }
 
-        public void Dispose()
-        {
-            GC.SuppressFinalize(this);
-        }
     }
 }

@@ -1,41 +1,29 @@
-// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
-//  
-// Licensed under the Apache License, Version 2.0 (the "License")
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at 
-//
-//     http://www.apache.org/licenses/LICENSE-2.0 
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 using System.IO;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using TSParser;
+using NUnit.Framework;
 using TSParser.TransportStream;
 
-namespace TestTsParser
+namespace TSParser.Tests
 {
-    [TestClass]
-    public class Test_TsPacket
+    [TestFixture]
+    public class Tests
     {
-
-        private TsPacket GetPacket(string fileName)
+        private TsPacket GetTsPacket(string fileName)
         {
-            TsParser parser = new();
-            byte[] bytes = File.ReadAllBytes(fileName);
-
+            TsParser parser = new ();
+            var filePath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"..\..\..\",fileName);
+            byte[] bytes= File.ReadAllBytes(filePath);
             return parser.GetOneTsPacketFromBytes(bytes, 188);
         }
+        [SetUp]
+        public void Setup()
+        {
+            
+        }
 
-        [TestMethod]
+        [Test]
         public void Test_TSpacket_adaptationField()
         {
-            var packet = GetPacket(@"E:\dvb\dll_tests\hb_ts6000.pkt");
-
+            var packet = GetTsPacket(@"TestResources\TsPackets\hb_ts6000.pkt");
             //ts packet header
             Assert.AreEqual(false, packet.TransportErrorIndicator);
             Assert.AreEqual(false, packet.PayloadUnitStartIndicator);
@@ -60,11 +48,10 @@ namespace TestTsParser
             Assert.AreEqual((ulong)0x1CB2976C2, af.ProgramClockReferenceBase);
             Assert.AreEqual(0xB6, af.ProgramClockReferenceExtension);
         }
-
-        [TestMethod]
+        [Test]
         public void Test_TsPacket_PesHeader()
         {
-            var packet = GetPacket(@"E:\dvb\dll_tests\pes_hdr.pkt");
+            var packet = GetTsPacket(@"TestResources\TsPackets\pes_hdr.pkt");
 
             //tspacket
             Assert.AreEqual(false, packet.TransportErrorIndicator);

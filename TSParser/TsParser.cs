@@ -78,6 +78,7 @@ namespace TSParser
         private readonly Lazy<PatFactory> patFactory = new Lazy<PatFactory>();
         private readonly Lazy<EitFactory> eitFactory = new Lazy<EitFactory>();
         private readonly Lazy<MipFactory> mipFactory = new Lazy<MipFactory> ();
+        private readonly Lazy<Analyzer> analyzer = new Lazy<Analyzer>();
         private TsPacketFactory m_tsPacketFactory => packetFactory.Value;
         private TdtTotFactory m_TdtTotFactory => tdtTotFactory.Value;
         private SdtBatFactory m_SdtBatFactory => sdtBatFactory.Value;
@@ -86,6 +87,7 @@ namespace TSParser
         private PatFactory m_PatFactory => patFactory.Value;
         private EitFactory m_EitFactory => eitFactory.Value;
         private MipFactory m_MipFactory => mipFactory.Value;
+        private Analyzer m_analyzer => analyzer.Value;
 
         public readonly byte[] PacketSize = new byte[] { 188, 204 };
 
@@ -117,15 +119,19 @@ namespace TSParser
         private int m_connectionAttempts = 5;
         private int m_socketTimeOut = 5000;
         private int? m_parserRunTimeIn_ms = null;
-        private System.Timers.Timer m_timer = null!;        
-        public List<ushort> PidList
-        {
-            get => m_analyzer.PidList;            
-        }
+        private System.Timers.Timer m_timer = null!;
 
-        private Analyzer m_analyzer = new Analyzer();
+
         #endregion
         #region Public methods
+        public bool AllowAnalyzer;
+        /// <summary>
+        /// Return pid list from analyzer
+        /// </summary>
+        public List<ushort> PidList
+        {
+            get => m_analyzer.PidList;
+        }
         /// <summary>
         /// Maximum run time for parser in milliseconds. minimum value 100 ms.
         /// </summary>
@@ -288,7 +294,7 @@ namespace TSParser
                 case 0x00: return new PAT(bytes);
                 case 0x01: return new CAT(bytes);
                 case 0x02: return new PMT(bytes);
-                case 0x74: return new AIT(bytes,0);//TODO: fix these
+                case 0x74: return new AIT(bytes);
                 case 0x4A: return new BAT(bytes);
                 case 0x70: return new TDT(bytes);
                 case 0x73: return new TOT(bytes);
@@ -447,9 +453,7 @@ namespace TSParser
             OnAitReady?.Invoke(ait); 
         }
         private void DvbTableFactory(TsPacket tsPacket)
-        {            
-            m_analyzer.PushPacket(tsPacket);
-
+        { 
             if (tsPacket.TransportErrorIndicator) return; // drop tei packets
             if (tsPacket.Pid == (short)ReservedPids.NullPacket) return;  // drop null packets 
 
@@ -596,9 +600,9 @@ namespace TSParser
 
             for (int i = 0; i < tsPackets.Length; i++)
             {
-                if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong                
-                SelectedTableFactory(tsPackets[i]);
-                tsPackets[i].Dispose();
+                if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
+                if(AllowAnalyzer) m_analyzer.PushPacket(tsPackets[i]);
+                SelectedTableFactory(tsPackets[i]);                
             }
         }
         private void ParseBytesToPackets(ReadOnlySpan<byte> bytes, int packetLength)
@@ -608,6 +612,7 @@ namespace TSParser
             for (int i = 0; i < tsPackets.Length; i++)
             {
                 if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
+                if(AllowAnalyzer) m_analyzer.PushPacket(tsPackets[i]);
                 OnTsPacketReady?.Invoke(tsPackets[i]);                
             }
         }
