@@ -16,6 +16,7 @@ using System.Net;
 using System.Net.Sockets;
 using TSParser.Analysis;
 using TSParser.Buffers;
+using TSParser.Comparer;
 using TSParser.Descriptors;
 using TSParser.Enums;
 using TSParser.Service;
@@ -79,6 +80,7 @@ namespace TSParser
         private readonly Lazy<EitFactory> eitFactory = new Lazy<EitFactory>();
         private readonly Lazy<MipFactory> mipFactory = new Lazy<MipFactory> ();
         private readonly Lazy<Analyzer> analyzer = new Lazy<Analyzer>();
+        private readonly Lazy<Compare> compare = new Lazy<Compare>();
         private TsPacketFactory m_tsPacketFactory => packetFactory.Value;
         private TdtTotFactory m_TdtTotFactory => tdtTotFactory.Value;
         private SdtBatFactory m_SdtBatFactory => sdtBatFactory.Value;
@@ -88,6 +90,7 @@ namespace TSParser
         private EitFactory m_EitFactory => eitFactory.Value;
         private MipFactory m_MipFactory => mipFactory.Value;
         private Analyzer m_analyzer => analyzer.Value;
+        private Compare m_compare => compare.Value;
 
         public readonly byte[] PacketSize = new byte[] { 188, 204 };
 
@@ -312,6 +315,16 @@ namespace TSParser
         public Descriptor GetOneDescriptorFromBytes(ReadOnlySpan<byte> bytes)
         {
             return DescriptorFactory.GetDescriptor(bytes);
+        }
+        /// <summary>
+        /// Compare two table and return difference between them as ienumerable<string>
+        /// </summary>
+        /// <param name="t1"></param>
+        /// <param name="t2"></param>
+        /// <returns></returns>
+        public IEnumerable<string> CompareTables(Table t1, Table t2)
+        {
+            return m_compare.AreEqual(t1, t2);
         }
         #endregion
         #region Private methods
