@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Collections.Generic;
 using TSParser.Service;
 
 namespace TSParser.Descriptors.AitDescriptors
 {
-    
+
     public record DvbJApplicationDescriptor_0x03 : AitDescriptor
     {
         public List<Parameter> Parameters { get; }
@@ -25,7 +24,7 @@ namespace TSParser.Descriptors.AitDescriptors
         {
             var pointer = 2;
             Parameters = new List<Parameter>();
-            while(pointer<DescriptorLength - 2)
+            while (pointer < DescriptorLength - 2)
             {
                 var param = new Parameter(bytes[pointer..]);
                 pointer += param.ParameterLength + 1;
@@ -39,11 +38,11 @@ namespace TSParser.Descriptors.AitDescriptors
 
             string str = $"{headerPrefix}AIT Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
             str += $"{prefix}Parameters count: {Parameters.Count}\n";
-            if(Parameters.Count > 0)
+            if (Parameters.Count > 0)
             {
-                foreach(var param in Parameters)
+                foreach (var param in Parameters)
                 {
-                    str+=param.Print(prefixLen + 4);
+                    str += param.Print(prefixLen + 4);
                 }
             }
             return str;
@@ -57,7 +56,7 @@ namespace TSParser.Descriptors.AitDescriptors
         {
             ParameterLength = bytes[0];
             ParameterBytes = new byte[ParameterLength];
-            bytes.Slice(0,ParameterLength).CopyTo(ParameterBytes);
+            bytes[..ParameterLength].CopyTo(ParameterBytes);
         }
         public string Print(int prefixLen)
         {

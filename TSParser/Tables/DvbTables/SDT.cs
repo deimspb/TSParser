@@ -35,7 +35,7 @@ namespace TSParser.Tables.DvbTables
         private List<ServiceDescriptionItem> GetSdtItemList(ReadOnlySpan<byte> bytes)
         {
             var pointer = 0;
-            List<ServiceDescriptionItem> items = new List<ServiceDescriptionItem>();
+            List<ServiceDescriptionItem> items = new();
             while (pointer < bytes.Length)
             {
                 ServiceDescriptionItem item = new(bytes[pointer..],TransportStreamId);

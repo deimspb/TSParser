@@ -71,16 +71,16 @@ namespace TSParser
         public event TsPacketReady OnTsPacketReady = null!;
         public event RateDelegate OnRate = null!;
 
-        private readonly Lazy<TsPacketFactory> packetFactory = new Lazy<TsPacketFactory>();
-        private readonly Lazy<TdtTotFactory> tdtTotFactory = new Lazy<TdtTotFactory>();
-        private readonly Lazy<SdtBatFactory> sdtBatFactory = new Lazy<SdtBatFactory>();
-        private readonly Lazy<CatFactory> catFactory = new Lazy<CatFactory>();
-        private readonly Lazy<NitFactory> nitFactory = new Lazy<NitFactory>();
-        private readonly Lazy<PatFactory> patFactory = new Lazy<PatFactory>();
-        private readonly Lazy<EitFactory> eitFactory = new Lazy<EitFactory>();
-        private readonly Lazy<MipFactory> mipFactory = new Lazy<MipFactory> ();
-        private readonly Lazy<Analyzer> analyzer = new Lazy<Analyzer>();
-        private readonly Lazy<Compare> compare = new Lazy<Compare>();
+        private readonly Lazy<TsPacketFactory> packetFactory = new();
+        private readonly Lazy<TdtTotFactory> tdtTotFactory = new();
+        private readonly Lazy<SdtBatFactory> sdtBatFactory = new();
+        private readonly Lazy<CatFactory> catFactory = new();
+        private readonly Lazy<NitFactory> nitFactory = new();
+        private readonly Lazy<PatFactory> patFactory = new();
+        private readonly Lazy<EitFactory> eitFactory = new();
+        private readonly Lazy<MipFactory> mipFactory = new();
+        private readonly Lazy<Analyzer> analyzer = new();
+        private readonly Lazy<Compare> compare = new();
         private TsPacketFactory m_tsPacketFactory => packetFactory.Value;
         private TdtTotFactory m_TdtTotFactory => tdtTotFactory.Value;
         private SdtBatFactory m_SdtBatFactory => sdtBatFactory.Value;
@@ -100,7 +100,7 @@ namespace TSParser
         private int m_multicastPort;
         private Socket socket = null!;
 
-        private static CancellationTokenSource m_cts = new CancellationTokenSource();
+        private static CancellationTokenSource m_cts = new();
         private CancellationToken m_ct = m_cts.Token;
 
         private CircularBuffer buffer = null!;        
@@ -111,13 +111,13 @@ namespace TSParser
         private PmtFactory[] m_pmtFactories = null!;
         private ushort[] m_pmtPids = null!;
 
-        private readonly Lazy<List<AitFactory>> aitFactories = new Lazy<List<AitFactory>>();
+        private readonly Lazy<List<AitFactory>> aitFactories = new();
         private List<AitFactory> m_aitFactories => aitFactories.Value;
-        private List<ushort> m_aitPids = new List<ushort>();
+        private List<ushort> m_aitPids = new();
 
-        private readonly Lazy<List<Scte35Factory>> scte35Factories = new Lazy<List<Scte35Factory>>();
+        private readonly Lazy<List<Scte35Factory>> scte35Factories = new();
         private List<Scte35Factory> m_scte35Factories=>scte35Factories.Value;
-        private List<ushort> m_scte35Pids = new List<ushort>();
+        private List<ushort> m_scte35Pids = new();
 
         private int m_connectionAttempts = 5;
         private int m_socketTimeOut = 5000;
@@ -292,20 +292,20 @@ namespace TSParser
         /// <exception cref="Exception"></exception>
         public Table GetOneTableFromBytes(ReadOnlySpan<byte> bytes)
         {
-            switch (bytes[0])
+            return bytes[0] switch
             {
-                case 0x00: return new PAT(bytes);
-                case 0x01: return new CAT(bytes);
-                case 0x02: return new PMT(bytes);
-                case 0x74: return new AIT(bytes);
-                case 0x4A: return new BAT(bytes);
-                case 0x70: return new TDT(bytes);
-                case 0x73: return new TOT(bytes);
-                case byte n when n == 0x42 || n == 0x46: return new SDT(bytes);
-                case byte n when n == 0x40 || n == 0x41: return new NIT(bytes);
-                case byte n when n == 0x4F || n == 0x4E || (n >= 0x50 && n <= 0x5F) || (n >= 0x60 && n <= 0x6F): return new EIT(bytes);
-                default: throw new Exception($"Unknown table id: 0x{bytes[0]:X2}");
-            }
+                0x00 => new PAT(bytes),
+                0x01 => new CAT(bytes),
+                0x02 => new PMT(bytes),
+                0x74 => new AIT(bytes),
+                0x4A => new BAT(bytes),
+                0x70 => new TDT(bytes),
+                0x73 => new TOT(bytes),
+                byte n when n == 0x42 || n == 0x46 => new SDT(bytes),
+                byte n when n == 0x40 || n == 0x41 => new NIT(bytes),
+                byte n when n == 0x4F || n == 0x4E || (n >= 0x50 && n <= 0x5F) || (n >= 0x60 && n <= 0x6F) => new EIT(bytes),
+                _ => throw new Exception($"Unknown table id: 0x{bytes[0]:X2}"),
+            };
         }
         /// <summary>
         /// Return ONE descriptor from incoming bytes. Bytes length shall be less than 255 bytes. use for tests or in lab
@@ -332,11 +332,13 @@ namespace TSParser
         {
             if (m_parserRunTimeIn_ms != null)
             {
-                m_timer = new System.Timers.Timer();
-                m_timer.Interval = (double)m_parserRunTimeIn_ms;
+                m_timer = new System.Timers.Timer
+                {
+                    Interval = (double)m_parserRunTimeIn_ms,
+                    AutoReset = true,
+                    Enabled = true
+                };
                 m_timer.Elapsed += Timer_Elapsed;
-                m_timer.AutoReset = true;
-                m_timer.Enabled = true;
             }
         }
         private void SetTableFactory(TsMode mode, DecodeMode parserMode)
@@ -632,8 +634,8 @@ namespace TSParser
         private void RunFileParser()
         {
             Logger.Send(LogStatus.INFO, $"Start ts file {m_tsFileName} parsing");            
-            using FileStream fileStream = new FileStream(m_tsFileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 348 * 188, FileOptions.SequentialScan);
-            using BinaryReader binaryReader = new BinaryReader(fileStream);
+            using FileStream fileStream = new(m_tsFileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 348 * 188, FileOptions.SequentialScan);
+            using BinaryReader binaryReader = new(fileStream);
 
             try
             {
@@ -663,7 +665,7 @@ namespace TSParser
 
                 while ((BytesRead = fileStream.Read(Buffer, 0, MAX_BUFFER)) != 0 && !m_ct.IsCancellationRequested)
                 {
-                    ReadOnlySpan<byte> BufferSpan = new ReadOnlySpan<byte>(Buffer);
+                    ReadOnlySpan<byte> BufferSpan = new(Buffer);
                     ParserModeDel(BufferSpan[0..BytesRead], packLen);                    
                 }
 
@@ -688,7 +690,7 @@ namespace TSParser
                 
                 var bytesCount = 0;
                 socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                IPEndPoint endPoint = new IPEndPoint(m_incomingIpInterface, m_multicastPort);
+                IPEndPoint endPoint = new(m_incomingIpInterface, m_multicastPort);
                 socket.Bind(endPoint);
                 socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(m_multicastGroup, m_incomingIpInterface));
                 socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);

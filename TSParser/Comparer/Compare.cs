@@ -38,9 +38,9 @@ namespace TSParser.Comparer
             }
 
 
-            Type t1Type = t1.GetType();
+            Type t1Type = t1!.GetType();
 
-            if (t1Type != t2.GetType())
+            if (t1Type != t2!.GetType())
             {
                 m_difference.Add("Can't compare different types");
                 return m_difference;
@@ -60,7 +60,7 @@ namespace TSParser.Comparer
             return m_difference;
         }
 
-        private void Check(object objectA, object objectB, string callCollection = null)
+        private void Check(object objectA, object objectB, string? callCollection = null)
         {
             if (objectA == null && objectB == null)
             {
@@ -114,8 +114,8 @@ namespace TSParser.Comparer
             {
                 if (propertyInfo.PropertyType.Name == "ReadOnlySpan`1") continue;
 
-                object valueA = propertyInfo.GetValue(objectA);
-                object valueB = propertyInfo.GetValue(objectB);
+                object valueA = propertyInfo.GetValue(objectA)!;
+                object valueB = propertyInfo.GetValue(objectB)!;
 
                 //drop byte[]
                 if ((valueA != null && valueA.GetType().Name == "Byte[]") || (valueB != null && valueB.GetType().Name == "Byte[]"))
@@ -127,7 +127,7 @@ namespace TSParser.Comparer
 
                 if (CanDirectlyCompare(propertyInfo.PropertyType))
                 {
-                    if (AreValueEqual(valueA, valueB))
+                    if (AreValueEqual(valueA!, valueB!))
                     {
 
                     }
@@ -220,9 +220,9 @@ namespace TSParser.Comparer
 
                         for (int i = 0; i < maxCount; i++)
                         {
-                            object collectionItem1 = i > collectionItemsCount1 - 1 ? null : collectionItems1.ElementAt(i);
-                            object collectionItem2 = i > collectionItemsCount2 - 1 ? null : collectionItems2.ElementAt(i);
-                            Type collectionItemType = collectionItem1?.GetType() ?? collectionItem2?.GetType();
+                            object? collectionItem1 = i > collectionItemsCount1 - 1 ? null : collectionItems1.ElementAt(i);
+                            object? collectionItem2 = i > collectionItemsCount2 - 1 ? null : collectionItems2.ElementAt(i);
+                            Type collectionItemType = (collectionItem1?.GetType() ?? collectionItem2?.GetType())!;
 
                             if (CanDirectlyCompare(collectionItemType))
                             {
@@ -249,7 +249,7 @@ namespace TSParser.Comparer
                 else if (propertyInfo.PropertyType.IsClass)
                 {
                     m_difference.Add($"Property is class: {propertyInfo.Name}");
-                    Check(propertyInfo.GetValue(objectA, null), propertyInfo.GetValue(objectB, null));
+                    Check(propertyInfo.GetValue(objectA, null)!, propertyInfo.GetValue(objectB, null)!);
                 }
                 else
                 {
@@ -273,7 +273,7 @@ namespace TSParser.Comparer
             bool result;
             IComparable selfValueComparer;
 
-            selfValueComparer = valueA as IComparable;
+            selfValueComparer = (valueA as IComparable)!;
 
             if (selfValueComparer != null && selfValueComparer.CompareTo(valueB) != 0)
                 result = false; // the comparison using IComparable failed

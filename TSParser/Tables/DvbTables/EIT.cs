@@ -49,7 +49,7 @@ namespace TSParser.Tables.DvbTables
         }
         private List<Event> GetEvents(ReadOnlySpan<byte> bytes)
         {
-            List<Event> events = new List<Event>();
+            List<Event> events = new();
             var pointer = 0;
             while (pointer < bytes.Length)
             {

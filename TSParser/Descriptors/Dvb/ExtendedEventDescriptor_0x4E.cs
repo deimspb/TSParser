@@ -45,11 +45,11 @@ namespace TSParser.Descriptors.Dvb
 
         private List<EventItem> GetEventList(ReadOnlySpan<byte> bytes)
         {
-            List<EventItem> items = new List<EventItem>();
+            List<EventItem> items = new();
             var pointer = 0;
             while (pointer < bytes.Length)
             {
-                EventItem item = new(bytes.Slice(pointer));
+                EventItem item = new(bytes[pointer..]);
                 pointer += item.ItemDescriptionLength + item.ItemLength + 2;
                 items.Add(item);
             }

@@ -26,7 +26,7 @@ namespace TSParser.Descriptors.Dvb
             ServiceItems = new ServiceItem[DescriptorLength / 3];
             for (int i = 0;i< ServiceItems.Length; i++)
             {
-                ServiceItems[i] = new ServiceItem(bytes.Slice(2 + i * 3));
+                ServiceItems[i] = new ServiceItem(bytes[(2 + i * 3)..]);
             }
         }
         

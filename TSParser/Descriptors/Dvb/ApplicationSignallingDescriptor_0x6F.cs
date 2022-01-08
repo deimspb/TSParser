@@ -25,7 +25,7 @@ namespace TSParser.Descriptors.Dvb
             AitItems = new AitItem[DescriptorLength / 3];
             for (int i = 0; i < AitItems.Length; i++)
             {
-                AitItems[i] = new AitItem(bytes.Slice(2 + i * 3));
+                AitItems[i] = new AitItem(bytes[(2 + i * 3)..]);
             }
         }
         public override string Print(int prefixLen)
@@ -34,7 +34,7 @@ namespace TSParser.Descriptors.Dvb
             string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
             foreach (var item in AitItems)
             {
-                str += $"{item.Print(prefixLen + 2)}";
+                str += item.Print(prefixLen + 2);
             }
             return str;
         }

@@ -42,10 +42,10 @@ namespace TSParser.Tables.DvbTables
         private List<BatItem> GetBatItems(ReadOnlySpan<byte> bytes)
         {
             var pointer = 0;
-            List<BatItem> items = new List<BatItem>();
+            List<BatItem> items = new();
             while(pointer < bytes.Length)
             {
-                BatItem item = new BatItem(bytes[pointer..],BouquetId);
+                BatItem item = new(bytes[pointer..],BouquetId);
                 pointer += item.TransportDescriptorsLength + 6;
                 items.Add(item);
             }

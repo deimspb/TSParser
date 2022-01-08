@@ -89,52 +89,52 @@ namespace TSParser.Descriptors.ExtendedDvb
         }
         private string GetSisoMiso(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0b00: return "SISO";
-                case 0b01: return "MISO";
-                default: return "reserved for future use";
-            }
+                0b00 => "SISO",
+                0b01 => "MISO",
+                _ => "reserved for future use",
+            };
         }
         private string GetBw(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0b0000: return "8 MHz";
-                case 0b0001: return "7 MHz";
-                case 0b0010: return "6 MHz";
-                case 0b0011: return "5 MHz";
-                case 0b0100: return "10 MHz";
-                case 0b0101: return "1,712 MHz";
-                    default : return "reserved for future use";
-            }
+                0b0000 => "8 MHz",
+                0b0001 => "7 MHz",
+                0b0010 => "6 MHz",
+                0b0011 => "5 MHz",
+                0b0100 => "10 MHz",
+                0b0101 => "1,712 MHz",
+                _ => "reserved for future use",
+            };
         }
         private string GetGuardInterval(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0b000: return "1/32";
-                case 0b001: return "1/16";
-                case 0b010: return "1/8";
-                case 0b011: return "1/4";
-                case 0b100: return "1/128";
-                case 0b101: return "19/128";
-                case 0b110: return "19/256";
-                default: return "reserved for future use";
-            }
+                0b000 => "1/32",
+                0b001 => "1/16",
+                0b010 => "1/8",
+                0b011 => "1/4",
+                0b100 => "1/128",
+                0b101 => "19/128",
+                0b110 => "19/256",
+                _ => "reserved for future use",
+            };
         }
         private string GetTrMode(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0b000: return "2k mode";
-                case 0b001: return "8k mode";
-                case 0b010: return "4k mode";
-                case 0b011: return "1k mode";
-                case 0b100: return "16k mode";
-                case 0b101: return "32k mode";
-                default: return "reserved for future use";
-            }
+                0b000 => "2k mode",
+                0b001 => "8k mode",
+                0b010 => "4k mode",
+                0b011 => "1k mode",
+                0b100 => "16k mode",
+                0b101 => "32k mode",
+                _ => "reserved for future use",
+            };
         }
     }
     public struct CellFrq

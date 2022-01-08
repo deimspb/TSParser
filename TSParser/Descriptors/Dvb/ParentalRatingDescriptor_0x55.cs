@@ -46,7 +46,7 @@ namespace TSParser.Descriptors.Dvb
         public string RatingAge => $"Minimum age: {Rating + 3}";
         public ParentalRationgItem(ReadOnlySpan<byte> bytes)
         {
-            Country = Dictionaries.BytesToString(bytes.Slice(0, 3));
+            Country = Dictionaries.BytesToString(bytes[..3]);
             Rating = bytes[3];
         }
         public string Print(int prefixLen)

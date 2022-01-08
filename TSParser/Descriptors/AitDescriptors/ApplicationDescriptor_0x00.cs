@@ -93,14 +93,14 @@ namespace TSParser.Descriptors.AitDescriptors
         }
         public string Print(int prefixLen)
         {
-            string headerPrefix = new string(' ', prefixLen);
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
             return $"{headerPrefix}Application Profile: {ApplicationProfile}, Version Major: {VersionMajor}, Version Minor: {VersionMinor}, Version Micro: {VersionMicro}\n";
         }
     }
     public struct TransportProtocolLabelItem
     {
         public byte TransportProtocolLabel { get; }
-        public TransportProtocolLabelItem(Byte bt)
+        public TransportProtocolLabelItem(byte bt)
         {
             TransportProtocolLabel = bt;
         }

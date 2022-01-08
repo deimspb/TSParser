@@ -42,10 +42,10 @@ namespace TSParser.Tables.DvbTables
         private List<TransportStreamLoop> GetTransportStreamLoops(ReadOnlySpan<byte> bytes)
         {
             var pointer = 0;
-            List<TransportStreamLoop> items = new List<TransportStreamLoop>();
+            List<TransportStreamLoop> items = new();
             while(pointer < bytes.Length)
             {
-                TransportStreamLoop item = new TransportStreamLoop(bytes[pointer..]);
+                TransportStreamLoop item = new(bytes[pointer..]);
                 pointer += item.TransportDescriptorsLength + 6;
                 items.Add(item);
             }

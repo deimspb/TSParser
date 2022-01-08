@@ -19,14 +19,14 @@ namespace TSParser.Descriptors.Dvb
 {
     public record Iso639LanguageDescriptor_0x0A : Descriptor
     {
-        public Iso639Record[] iso639Records { get; }
+        public Iso639Record[] Iso639Records { get; }
         public Iso639LanguageDescriptor_0x0A(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            iso639Records = new Iso639Record[DescriptorLength / 4];
+            Iso639Records = new Iso639Record[DescriptorLength / 4];
 
-            for (int i = 0; i < iso639Records.Length; i++)
+            for (int i = 0; i < Iso639Records.Length; i++)
             {
-                iso639Records[i] = new Iso639Record(bytes[(2 + i * 4)..]);
+                Iso639Records[i] = new Iso639Record(bytes[(2 + i * 4)..]);
             }
         }        
         public override string Print(int prefixLen)
@@ -34,7 +34,7 @@ namespace TSParser.Descriptors.Dvb
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
 
             string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            foreach (var ir in iso639Records)
+            foreach (var ir in Iso639Records)
             {
                 str += ir.Print(prefixLen+2);
             }

@@ -26,7 +26,7 @@ namespace TSParser.Descriptors.Dvb
             Subtitles = new Subtitle[DescriptorLength / 8];
             for (int i = 0; i < Subtitles.Length; i++)
             {
-                Subtitles[i] = new Subtitle(bytes.Slice(2 + i * 8));
+                Subtitles[i] = new Subtitle(bytes[(2 + i * 8)..]);
             }
         }        
         public override string Print(int prefixLen)
@@ -48,7 +48,7 @@ namespace TSParser.Descriptors.Dvb
         public ushort AncillaryPageId { get; }
         public Subtitle(ReadOnlySpan<byte> bytes)
         {
-            Iso639LanguageCode = Dictionaries.BytesToString(bytes.Slice(0, 3));
+            Iso639LanguageCode = Dictionaries.BytesToString(bytes[..3]);
             SubtitlingType = bytes[3];
             CompositionPageId = BinaryPrimitives.ReadUInt16BigEndian(bytes[4..]);
             AncillaryPageId = BinaryPrimitives.ReadUInt16BigEndian(bytes[6..]);

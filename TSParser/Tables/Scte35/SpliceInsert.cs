@@ -25,10 +25,10 @@ namespace TSParser.Tables.Scte35
         public bool ProgramSpliceFlag { get; }
         public bool DurationFlag { get; }
         public bool SpliceImmediateFlag { get; }
-        public SpliceTime spliceTime { get; }
+        public SpliceTime SpliceTime { get; }
         public byte ComponentCount { get; }
         public SpliceComponent[] SpliceComponents { get; } = null!;
-        public BreakDuration breakDuration { get; }
+        public BreakDuration BreakDuration { get; }
         public ushort UniqueProgramId { get; }
         public byte AvailNum { get; }
         public byte AvailsExpected { get; }
@@ -45,26 +45,26 @@ namespace TSParser.Tables.Scte35
                 OutOfNetworkIndicator = (bytes[pointer] & 0x80) != 0;
                 ProgramSpliceFlag = (bytes[pointer] & 0x40) != 0;
                 DurationFlag = (bytes[pointer] & 0x20) != 0;
-                SpliceImmediateFlag = (bytes[pointer++]&0x10)!= 0;
+                SpliceImmediateFlag = (bytes[pointer++] & 0x10) != 0;
                 //reserved 4 bits
-                if(ProgramSpliceFlag && !SpliceImmediateFlag)
+                if (ProgramSpliceFlag && !SpliceImmediateFlag)
                 {
-                    spliceTime = new SpliceTime(bytes.Slice(pointer,5));
+                    SpliceTime = new SpliceTime(bytes.Slice(pointer, 5));
                     pointer += 5;
                 }
                 if (!ProgramSpliceFlag)
                 {
                     ComponentCount = bytes[pointer++];
                     SpliceComponents = new SpliceComponent[ComponentCount];
-                    for(int i = 0; i < ComponentCount; i++)
+                    for (int i = 0; i < ComponentCount; i++)
                     {
-                        SpliceComponents[i] = new SpliceComponent(bytes[pointer..],SpliceImmediateFlag);
+                        SpliceComponents[i] = new SpliceComponent(bytes[pointer..], SpliceImmediateFlag);
                         pointer += SpliceImmediateFlag ? 1 : 6;
                     }
                 }
                 if (DurationFlag)
                 {
-                    breakDuration = new(bytes.Slice(pointer, 5));
+                    BreakDuration = new(bytes.Slice(pointer, 5));
                 }
                 UniqueProgramId = BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]);
                 pointer += 2;
@@ -87,24 +87,24 @@ namespace TSParser.Tables.Scte35
                 str += $"{prefix}Program Splice Flag: {ProgramSpliceFlag}\n";
                 str += $"{prefix}Duration Flag: {DurationFlag}\n";
                 str += $"{prefix}Splice Immediate Flag: {SpliceImmediateFlag}\n";
-                if(ProgramSpliceFlag && !SpliceImmediateFlag)
+                if (ProgramSpliceFlag && !SpliceImmediateFlag)
                 {
-                    str += spliceTime.Print(prefixLen + 4);
+                    str += SpliceTime.Print(prefixLen + 4);
                 }
                 if (!ProgramSpliceFlag)
                 {
                     str += $"{prefix}Component count: {ComponentCount}\n";
-                    if(ComponentCount > 0)
+                    if (ComponentCount > 0)
                     {
-                        foreach(var component in SpliceComponents)
+                        foreach (var component in SpliceComponents)
                         {
-                            str+=component.Print(prefixLen + 4);
+                            str += component.Print(prefixLen + 4);
                         }
                     }
                 }
                 if (DurationFlag)
                 {
-                    str += breakDuration.Print(prefixLen + 4);
+                    str += BreakDuration.Print(prefixLen + 4);
                 }
 
                 str += $"{prefix}Unique Program Id: {UniqueProgramId}\n";
@@ -118,17 +118,17 @@ namespace TSParser.Tables.Scte35
     public struct SpliceComponent
     {
         public byte ComponentTag { get; }
-        public SpliceTime spliceTime { get; }
+        public SpliceTime SpliceTime { get; }
 
-        public SpliceComponent(ReadOnlySpan<byte> bytes,bool SpliceImmediateFlag)
+        public SpliceComponent(ReadOnlySpan<byte> bytes, bool SpliceImmediateFlag)
         {
             ComponentTag = bytes[0];
-            spliceTime = SpliceImmediateFlag ? new SpliceTime(bytes.Slice(1, 5)) : default;
+            SpliceTime = SpliceImmediateFlag ? new SpliceTime(bytes.Slice(1, 5)) : default;
         }
         public string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
-            return $"{headerPrefix}Component tag: {ComponentTag}, Splice time: {spliceTime.Print(prefixLen + 2)}\n";
+            return $"{headerPrefix}Component tag: {ComponentTag}, Splice time: {SpliceTime.Print(prefixLen + 2)}\n";
         }
     }
     public struct SpliceTime

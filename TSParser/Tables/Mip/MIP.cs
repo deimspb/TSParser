@@ -134,78 +134,78 @@ namespace TSParser.Tables.Mip
         }
         private string GetConstelation(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0b00: return "QPSK";
-                case 0b01: return "16-QAM";
-                case 0b10: return "64-QAM";
-                default: return "Reserved";
-            }
+                0b00 => "QPSK",
+                0b01 => "16-QAM",
+                0b10 => "64-QAM",
+                _ => "Reserved",
+            };
         }
         private string GetHierarchy(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0b000: return "Non hierarchical";
-                case 0b001: return "α = 1";
-                case 0b010: return "α = 2";
-                case 0b011: return "α = 4";
-                default : return "Not implement";
-            }
+                0b000 => "Non hierarchical",
+                0b001 => "α = 1",
+                0b010 => "α = 2",
+                0b011 => "α = 4",
+                _ => "Not implement",
+            };
         }
         private string GetCodeRate(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0b000: return "1/2";
-                case 0b001: return "2/3";
-                case 0b010: return "3/4";
-                case 0b011: return "5/6";
-                case 0b100: return "7/8";
-                default: return "Reserved";
-            }
+                0b000 => "1/2",
+                0b001 => "2/3",
+                0b010 => "3/4",
+                0b011 => "5/6",
+                0b100 => "7/8",
+                _ => "Reserved",
+            };
         }
         private string GetGuardInterval(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0b00: return "1/32";
-                case 0b01: return "1/16";
-                case 0b10: return "1/8";
-                case 0b11: return "1/4";
-                default: return "Unknown";
-            }
+                0b00 => "1/32",
+                0b01 => "1/16",
+                0b10 => "1/8",
+                0b11 => "1/4",
+                _ => "Unknown",
+            };
         }
         private string GetTransmissionMode(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0b00: return "2k mode";
-                case 0b01: return "8k mode";
-                case 0b10: return "4k mode";
-                default: return "reserved";
-            }
+                0b00 => "2k mode",
+                0b01 => "8k mode",
+                0b10 => "4k mode",
+                _ => "reserved",
+            };
         }
         private string GetDvbHSignaling(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0b00: return "Time Slicing is not used, MPE-FEC not used";
-                case 0b01: return "Time Slicing is not used, At least one elementary stream uses MPE-FEC";
-                case 0b10: return "At least one elementary stream uses Time Slicing, MPE-FEC not used";
-                case 0b11: return "At least one elementary stream uses Time Slicing, At least one elementary stream uses MPE-FEC";
-                default: return "unknown";
-            }
+                0b00 => "Time Slicing is not used, MPE-FEC not used",
+                0b01 => "Time Slicing is not used, At least one elementary stream uses MPE-FEC",
+                0b10 => "At least one elementary stream uses Time Slicing, MPE-FEC not used",
+                0b11 => "At least one elementary stream uses Time Slicing, At least one elementary stream uses MPE-FEC",
+                _ => "unknown",
+            };
         }
         private string GetBw(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0b00: return "7 MHz";
-                case 0b01: return "8 MHz";
-                case 0b10: return "6 MHz";
-                default: return "other";
-            }
+                0b00 => "7 MHz",
+                0b01 => "8 MHz",
+                0b10 => "6 MHz",
+                _ => "other",
+            };
         }
         private string GetPriority(bool pr)
         {
@@ -249,17 +249,17 @@ namespace TSParser.Tables.Mip
         {
             try
             {
-                switch (bytes[0])
+                return bytes[0] switch
                 {
-                    case 0x00: return new TxTimeOffsetFunction(bytes);
-                    case 0x01: return new TxFrequencyOffsetFunction(bytes);
-                    case 0x02: return new TxPowerFunction(bytes);
-                    case 0x03: return new PrivateDataFunction(bytes);
-                    case 0x04: return new CellIdFunction(bytes);
-                    case 0x05: return new EnableFunction(bytes);
-                    case 0x06: return new BandwidthFunction(bytes);
-                    default: return new Function(bytes);
-                }
+                    0x00 => new TxTimeOffsetFunction(bytes),
+                    0x01 => new TxFrequencyOffsetFunction(bytes),
+                    0x02 => new TxPowerFunction(bytes),
+                    0x03 => new PrivateDataFunction(bytes),
+                    0x04 => new CellIdFunction(bytes),
+                    0x05 => new EnableFunction(bytes),
+                    0x06 => new BandwidthFunction(bytes),
+                    _ => new Function(bytes),
+                };
             }
             catch(Exception ex)
             {

@@ -134,15 +134,15 @@ namespace TSParser.Tables.DvbTables
 
         private string GetEncryptionAlgo(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0: return "No encryption";
-                case 1: return "DES ECB mode";
-                case 2: return "DES CBC mode";
-                case 3: return "Triple DES EDE3-ECB mode";
-                case byte n when n >= 4 && n <= 31: return "Reserved";
-                default: return "User private";
-            }
+                0 => "No encryption",
+                1 => "DES ECB mode",
+                2 => "DES CBC mode",
+                3 => "Triple DES EDE3-ECB mode",
+                byte n when n >= 4 && n <= 31 => "Reserved",
+                _ => "User private",
+            };
         }
 
         private SpliceCommand GetCommand(byte bt, ReadOnlySpan<byte> bytes)

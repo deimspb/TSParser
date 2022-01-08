@@ -23,10 +23,10 @@ namespace TSParser.Descriptors.Dvb
 
         public LocalTimeOffsetDescriptor_0x58(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            LocalTimes = new LocalTime[DescriptorLength/13];
+            LocalTimes = new LocalTime[DescriptorLength / 13];
             for (int i = 0; i < LocalTimes.Length; i++)
             {
-                LocalTimes[i] = new LocalTime(bytes.Slice(2+i*13));
+                LocalTimes[i] = new LocalTime(bytes[(2 + i * 13)..]);
             }
         }
         public override string Print(int prefixLen)
@@ -46,7 +46,7 @@ namespace TSParser.Descriptors.Dvb
         public string CountryCode { get; }
         public byte CountryRegionId { get; }
         public bool LocalTimeOffsetPolarity { get; }
-        public TimeSpan LocalTimeOffset { get; }  
+        public TimeSpan LocalTimeOffset { get; }
         public DateTime TimeOfChange { get; }
         public TimeSpan NextTimeOffset { get; }
         public LocalTime(ReadOnlySpan<byte> bytes)

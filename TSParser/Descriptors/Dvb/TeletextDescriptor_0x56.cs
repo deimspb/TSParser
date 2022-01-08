@@ -30,7 +30,7 @@ namespace TSParser.Descriptors.Dvb
             }
 
         }
-        
+
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -60,7 +60,7 @@ namespace TSParser.Descriptors.Dvb
         }
         public string Print(int prefixLen)
         {
-            string headerPrefix = new string(' ', prefixLen);
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
             return $"{headerPrefix}Language: {LanguageName}, Teletext type: {TeletextTypeName}, Page number: {TeletextPageNumber}\n";
         }
     }

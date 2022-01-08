@@ -25,7 +25,7 @@ namespace TSParser.Descriptors.Dvb
             var pointer = 2;
             while (pointer < DescriptorLength)
             {
-                DataService ds = new DataService(bytes[pointer..]);
+                DataService ds = new(bytes[pointer..]);
                 pointer += ds.DataServiceDescriptorLength + 2;
                 DataServices.Add(ds);
             }
@@ -83,19 +83,19 @@ namespace TSParser.Descriptors.Dvb
         }
         private string GetDataServiceName(byte bt)
         {
-            switch (bt)
+            return bt switch
             {
-                case 0x00: return "reserved for future use";
-                case 0x01: return "EBU teletext (Requires additional teletext_descriptor)";
-                case 0x02: return "inverted teletext";
-                case 0x03: return "reserved";
-                case 0x04: return "VPS";
-                case 0x05: return "WSS";
-                case 0x06: return "Closed Caption";
-                case 0x07: return "monochrome 4:2:2 samples";
-                case byte n when n >= 0x08 && n <= 0xEF: return "reserved for future use";
-                default: return "user defined";
-            }
+                0x00 => "reserved for future use",
+                0x01 => "EBU teletext (Requires additional teletext_descriptor)",
+                0x02 => "inverted teletext",
+                0x03 => "reserved",
+                0x04 => "VPS",
+                0x05 => "WSS",
+                0x06 => "Closed Caption",
+                0x07 => "monochrome 4:2:2 samples",
+                byte n when n >= 0x08 && n <= 0xEF => "reserved for future use",
+                _ => "user defined",
+            };
         }
     }
     public struct VbiLine

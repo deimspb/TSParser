@@ -25,7 +25,7 @@ namespace TSParser.Descriptors.Dvb
             LcnItems = new LcnItem[DescriptorLength / 4];
             for(int i = 0; i < LcnItems.Length; i++)
             {
-                LcnItems[i] = new LcnItem(bytes.Slice(2 + i * 4));
+                LcnItems[i] = new LcnItem(bytes[(2 + i * 4)..]);
             }
         }        
         public override string Print(int prefixLen)
