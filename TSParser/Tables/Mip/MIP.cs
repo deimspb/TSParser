@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
+using TSParser.Enums;
 using TSParser.Service;
 
 namespace TSParser.Tables.Mip
@@ -27,6 +28,7 @@ namespace TSParser.Tables.Mip
         public TpsMip TpsMip { get; }
         public byte IndividualAddressingLength { get; }
         public List<TxIdFunction> TxIdFunctions { get; } = null!;
+        public override ushort TablePid => (ushort)ReservedPids.NetworkSync;
         public MIP(ReadOnlySpan<byte> bytes)
         {
             var pointer = 0;

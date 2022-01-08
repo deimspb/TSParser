@@ -14,6 +14,7 @@
 
 using System.Buffers.Binary;
 using TSParser.Descriptors;
+using TSParser.Enums;
 using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
@@ -25,6 +26,7 @@ namespace TSParser.Tables.DvbTables
         public List<Descriptor> NitDescriptorList { get; } = null!;        
         public ushort TransportStreamLoopLenght { get; }
         public List<TransportStreamLoop> TransportStreamLoops { get; } = null!;
+        public override ushort TablePid => (ushort)ReservedPids.NIT;
         public NIT(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             NetworkId = BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]);

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using TSParser.Descriptors;
+using TSParser.Enums;
 using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
@@ -20,6 +21,7 @@ namespace TSParser.Tables.DvbTables
     public record CAT : Table
     {
         public List<Descriptor> CatDescriptorList { get; } = null!;
+        public override ushort TablePid => (ushort)ReservedPids.CAT;
         public CAT(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             if (TableId != 0x01)

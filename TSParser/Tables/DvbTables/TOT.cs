@@ -14,6 +14,7 @@
 
 using System.Buffers.Binary;
 using TSParser.Descriptors;
+using TSParser.Enums;
 using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
@@ -23,6 +24,7 @@ namespace TSParser.Tables.DvbTables
         public DateTime UTCDateTime { get; }
         public ushort DescriptorLoopLength { get; }
         public List<Descriptor> TotDescriptors { get; }
+        public override ushort TablePid => (ushort)ReservedPids.TDT;
         public TOT(ReadOnlySpan<byte> bytes)
         {
             TableId = bytes[0];

@@ -322,7 +322,7 @@ namespace TSParser
         /// <param name="t1"></param>
         /// <param name="t2"></param>
         /// <returns></returns>
-        public IEnumerable<string> CompareTables(Table t1, Table t2)
+        public IEnumerable<string> CompareTables(Table? t1, Table? t2)
         {
             return m_compare.AreEqual(t1, t2);
         }

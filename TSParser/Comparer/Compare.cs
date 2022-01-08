@@ -14,21 +14,29 @@
 
 using System.Collections;
 using System.Reflection;
-using TSParser.Service;
 using TSParser.Tables;
 
 namespace TSParser.Comparer
 {
     internal class Compare
     {
-        private List<string> m_difference = new List<string>();
-        public List<string> AreEqual(Table t1, Table t2)
+        private List<string> m_difference = null!;
+        public List<string> AreEqual(Table? t1, Table? t2)
         {
-            if (t1 == null || t2 == null)
+            m_difference = new List<string>();
+
+            if (t1 == null && t2 != null)
             {
-                m_difference.Add("Try to compare null object");
+                m_difference.Add($"NULL -> {t2.GetType().Name}");
                 return m_difference;
             }
+
+            if (t1 != null && t2 == null)
+            {
+                m_difference.Add($"{t1.GetType().Name} -> NULL");
+                return m_difference;
+            }
+
 
             Type t1Type = t1.GetType();
 
@@ -105,10 +113,10 @@ namespace TSParser.Comparer
             foreach (PropertyInfo propertyInfo in objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead))
             {
                 if (propertyInfo.PropertyType.Name == "ReadOnlySpan`1") continue;
-                
+
                 object valueA = propertyInfo.GetValue(objectA);
                 object valueB = propertyInfo.GetValue(objectB);
-               
+
                 //drop byte[]
                 if ((valueA != null && valueA.GetType().Name == "Byte[]") || (valueB != null && valueB.GetType().Name == "Byte[]"))
                 {

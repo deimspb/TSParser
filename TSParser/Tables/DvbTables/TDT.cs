@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
+using TSParser.Enums;
 using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
@@ -20,6 +21,7 @@ namespace TSParser.Tables.DvbTables
     public record TDT : Table
     {
         public DateTime UtcDateTime { get; init; }
+        public override ushort TablePid => (ushort)ReservedPids.TDT;
         public TDT(ReadOnlySpan<byte> bytes)
         {
             TableId = bytes[0];

@@ -22,14 +22,14 @@ namespace TSParser.Tables.DvbTableFactory
     internal class PmtFactory : TableFactory
     {
         internal event PmtReady OnPmtReady = null!;
-        private PMT m_pmt=null!;    
+        private PMT m_pmt = null!;
         internal PMT Pmt
         {
             get { return m_pmt; }
             set { m_pmt = value; }
         }
 
-        private PMT CurrentPmt=null!;
+        private PMT CurrentPmt = null!;
         private uint CurrentCRC32;
         internal override void PushTable(TsPacket tsPacket)
         {
@@ -48,7 +48,7 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);           
+            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
 
             if (Pmt?.CRC32 == CurrentCRC32) return; // if we already have pmt table and its crc32 equal curent table crc drop it. because it is the same pmt             
 
@@ -59,14 +59,14 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentPmt = new PMT(bytes);
+            CurrentPmt = new PMT(bytes, CurrentPid);
 
             if (Pmt != null && Pmt.VersionNumber != CurrentPmt.VersionNumber)
             {
                 Logger.Send(LogStatus.INFO, $"PMT version changed from {Pmt.VersionNumber} to {CurrentPmt.VersionNumber}");
             }
 
-            Pmt = CurrentPmt;            
+            Pmt = CurrentPmt;
             OnPmtReady?.Invoke(Pmt);
         }
     }

@@ -27,10 +27,10 @@ namespace TSParser.Tables.DvbTables
         public ushort ApplicationLoopLength { get; }
         public List<ApplicationLoop> ApplicationLoops { get; } = default!;
 
-        private ushort m_aitPid;
+        public override ushort TablePid { get; }
         public AIT(ReadOnlySpan<byte> bytes, ushort aitPid) : this(bytes)
         {
-            m_aitPid = aitPid;            
+            TablePid = aitPid;            
         }
         public AIT(ReadOnlySpan<byte> bytes) : base(bytes)
         {    
@@ -38,12 +38,12 @@ namespace TSParser.Tables.DvbTables
             ApplicationType = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]) & 0x7FFF);
             CommonDescriptorsLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[8..]) & 0x0FFF);
             var pointer = 10;
-            var descAllocation = $"Table: AIT, pid: {m_aitPid}";
+            var descAllocation = $"Table: AIT, pid: {TablePid}";
             AitDescriptorsList = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer,CommonDescriptorsLength),descAllocation,TableId);
             pointer += CommonDescriptorsLength;
             ApplicationLoopLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x0FFF);
             pointer += 2;            
-            ApplicationLoops = GetAppLoopList(bytes.Slice(pointer, ApplicationLoopLength), m_aitPid);
+            ApplicationLoops = GetAppLoopList(bytes.Slice(pointer, ApplicationLoopLength), TablePid);
             pointer += ApplicationLoopLength;
 
         }        
@@ -52,7 +52,7 @@ namespace TSParser.Tables.DvbTables
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
             string prefix = Utils.Prefix(prefixLen);
 
-            string str = $"{headerPrefix}-=AIT pid: {m_aitPid}=-\n";
+            string str = $"{headerPrefix}-=AIT pid: {TablePid}=-\n";
 
             str += base.Print(prefixLen + 2);
 

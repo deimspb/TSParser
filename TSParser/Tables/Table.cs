@@ -27,6 +27,7 @@ namespace TSParser.Tables
         public bool CurrentNextIndicator { get; init; }
         public byte SectionNumber { get; init;  }
         public byte LastSectionNumber { get; init;  }
+        public abstract ushort TablePid { get; }
         public ReadOnlySpan<byte> TableBytes 
         {
             get { return m_tableBytes.AsSpan(); }

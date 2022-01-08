@@ -26,6 +26,11 @@ namespace TSParser.Tables.DvbTables
         public ushort ProgramInfoLength { get; }
         public List<Descriptor> PmtDescriptorList { get; } = default!;
         public List<EsInfo> EsInfoList { get; } = default!;
+        public override ushort TablePid { get; }
+        public PMT(ReadOnlySpan<byte> bytes, ushort pmtPid) : this(bytes)
+        {
+            TablePid = pmtPid;
+        }
         public PMT(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             

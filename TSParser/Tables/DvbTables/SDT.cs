@@ -14,6 +14,7 @@
 
 using System.Buffers.Binary;
 using TSParser.Descriptors;
+using TSParser.Enums;
 using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
@@ -23,7 +24,7 @@ namespace TSParser.Tables.DvbTables
         public ushort TransportStreamId { get; }
         public ushort OriginalNetworkId { get; }
         public List<ServiceDescriptionItem> SdtItemsList { get; } = null!;
-
+        public override ushort TablePid => (ushort)ReservedPids.SDT;
         public SDT(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             TransportStreamId = BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]);

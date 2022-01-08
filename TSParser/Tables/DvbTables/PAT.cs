@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
+using TSParser.Enums;
 using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
@@ -21,9 +22,10 @@ namespace TSParser.Tables.DvbTables
     {
         public ushort TransportStreamId { get; }
         public PatRecord[] PatRecords { get; } = null!;
+        public override ushort TablePid => (ushort)ReservedPids.PAT;
         public PAT(ReadOnlySpan<byte> bytes) : base(bytes)
         { 
-            TransportStreamId = BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(4, 2));
+            TransportStreamId = BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]);
 
             PatRecords = new PatRecord[(SectionLength - 8) / 4];
 
@@ -43,6 +45,7 @@ namespace TSParser.Tables.DvbTables
             pat += base.Print(prefixLen + 2);
 
             pat += $"{prefix}Transport stream id: {TransportStreamId}\n";
+            pat += $"{prefix}Pat records count: {PatRecords.Length}\n";
             foreach (var pr in PatRecords)
             {
                 pat += pr.Print(prefixLen + 4);

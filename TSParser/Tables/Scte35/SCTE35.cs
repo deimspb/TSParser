@@ -35,11 +35,13 @@ namespace TSParser.Tables.DvbTables
         public ushort DescriptorLoopLength { get; }
         public List<Descriptor> SpliceDescriptors { get; } = null!;
         public uint ECRC32 { get; }
-
-        private ushort m_scte35Pid;
-        public SCTE35(ReadOnlySpan<byte> bytes,ushort scte35Pid)
+        public override ushort TablePid { get; }        
+        public SCTE35(ReadOnlySpan<byte> bytes, ushort scte35Pid) : this(bytes)
         {
-            m_scte35Pid = scte35Pid;
+            TablePid = scte35Pid;
+        }
+        public SCTE35(ReadOnlySpan<byte> bytes)
+        {            
             var pointer = 0;
             TableId = bytes[pointer++];
 
@@ -49,7 +51,7 @@ namespace TSParser.Tables.DvbTables
                 return;
             }
 
-            SectionSyntaxIndicator = (bytes[pointer]&0x80)!= 0;
+            SectionSyntaxIndicator = (bytes[pointer] & 0x80) != 0;
             PrivateIndicator = (bytes[pointer] & 0x40) != 0;
             //reserved 2bits
             SectionLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x0FFF);
@@ -57,7 +59,7 @@ namespace TSParser.Tables.DvbTables
             ProtocolVersion = bytes[pointer++];
             EncryptedPacket = (bytes[pointer] & 0x80) != 0;
             EncryptionAlgorithm = (byte)((bytes[pointer] & 0x7E) >> 1);
-            PtsAdjustment = ((BinaryPrimitives.ReadUInt64BigEndian(bytes[pointer..]) & 0x01FFFFFFFF000000)>>24);
+            PtsAdjustment = ((BinaryPrimitives.ReadUInt64BigEndian(bytes[pointer..]) & 0x01FFFFFFFF000000) >> 24);
             pointer += 5;
             CwIndex = bytes[pointer++];
             Tier = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer++..]) >> 4);
@@ -74,17 +76,17 @@ namespace TSParser.Tables.DvbTables
             {
                 pointer += SpliceCommandLength;
             }
-            
+
             DescriptorLoopLength = BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]);
             pointer += 2;
-            if(bytes.Length<pointer + DescriptorLoopLength)
+            if (bytes.Length < pointer + DescriptorLoopLength)
             {
-                Logger.Send(LogStatus.WARNING, $"SCTE35 pid: {scte35Pid}, Descriptor Loop Length is greate than table length, desc loop length: {DescriptorLoopLength}, pointer: {pointer}, bytes length: {bytes.Length}");
+                Logger.Send(LogStatus.WARNING, $"SCTE35 pid: {TablePid}, Descriptor Loop Length is greate than table length, desc loop length: {DescriptorLoopLength}, pointer: {pointer}, bytes length: {bytes.Length}");
                 CRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]); // return with crc to prevent duplicates outgoing tables
                 return;
             }
-            var descAllocation = $"Table: SCTE35, table pid: {scte35Pid}";            
-            SpliceDescriptors = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, DescriptorLoopLength),descAllocation,TableId);
+            var descAllocation = $"Table: SCTE35, table pid: {TablePid}";
+            SpliceDescriptors = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, DescriptorLoopLength), descAllocation, TableId);
             pointer += DescriptorLoopLength;
 
             //alignment stuffing
@@ -93,14 +95,14 @@ namespace TSParser.Tables.DvbTables
             {
                 ECRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^8..]);
             }
-            CRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);            
+            CRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
         }
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
             string prefix = Utils.Prefix(prefixLen);
 
-            string str = $"{headerPrefix}-=SCTE35 pid: {m_scte35Pid}=-\n";
+            string str = $"{headerPrefix}-=SCTE35 pid: {TablePid}=-\n";
 
             str += $"{prefix}Section syntax indicator: {SectionSyntaxIndicator}\n";
             str += $"{prefix}Private indicator: {PrivateIndicator}\n";
@@ -117,9 +119,9 @@ namespace TSParser.Tables.DvbTables
             str += $"{prefix}Descriptor Loop Length: {DescriptorLoopLength}\n";
             if (DescriptorLoopLength > 0)
             {
-                foreach(var desc in SpliceDescriptors)
+                foreach (var desc in SpliceDescriptors)
                 {
-                    str+=desc.Print(prefixLen + 4);
+                    str += desc.Print(prefixLen + 4);
                 }
             }
             if (EncryptedPacket)
@@ -129,7 +131,7 @@ namespace TSParser.Tables.DvbTables
             str += $"{prefix}SCTE35 CRC32: 0x{CRC32:X}\n";
             return str;
         }
-        
+
         private string GetEncryptionAlgo(byte bt)
         {
             switch (bt)
@@ -162,13 +164,13 @@ namespace TSParser.Tables.DvbTables
                         }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                Logger.Send(LogStatus.EXCEPTION, $"Ecxeption while deserelise splice command",ex);
+                Logger.Send(LogStatus.EXCEPTION, $"Ecxeption while deserelise splice command", ex);
                 return new SpliceCommand(bytes);
             }
-            
+
         }
-        
+
     }
 }

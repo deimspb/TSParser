@@ -14,6 +14,7 @@
 
 using System.Buffers.Binary;
 using TSParser.Descriptors;
+using TSParser.Enums;
 using TSParser.Service;
 
 namespace TSParser.Tables.DvbTables
@@ -31,6 +32,9 @@ namespace TSParser.Tables.DvbTables
         public byte LastTableId { get; }
 
         public List<Event> EventList { get; }
+
+        public override ushort TablePid => (ushort)ReservedPids.EIT;
+
         public EIT(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             ServiceId = BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]);
