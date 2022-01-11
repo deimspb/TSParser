@@ -180,14 +180,24 @@ namespace TSParser
         }
         /// <summary>
         /// Maximum run time for parser in milliseconds. minimum value 100 ms.
-        /// </summary>
-        
+        /// </summary>        
         public TsParser(ParserConfig config)
         {
-            SetTableFactory(config.CurrentTsMode, config.CurrentDecodeMode);
+            switch (config.CurrentTsMode)
+            {
+                case TsMode.DVB: SelectedTableFactory = DvbTableFactory; break;
+                case TsMode.ATSC: SelectedTableFactory = AtscTableFactory; break;
+                case TsMode.ISDB: SelectedTableFactory = IsdbTableFactory; break;
+            }
+            switch (config.CurrentDecodeMode)
+            {
+                case DecodeMode.Packet: ParserModeDel = ParseBytesToPackets; break;
+                case DecodeMode.Table: ParserModeDel = ParseBytesToTables; break;
+            }
+
             m_allowAnalyzer = config.AllowAnalyzer;
             MaxParserRunTime = config.ParserRunTime;
-            
+
             ParserRunTimer();
 
             InitEvents();
@@ -203,7 +213,7 @@ namespace TSParser
                 UdpParser(config.MulticastGroup, config.MulticastPort, config.MulticastIncomingIp);
                 return;
             }
-        }        
+        }
         /// <summary>
         /// Run parser in synchronous mode
         /// </summary>
@@ -242,18 +252,7 @@ namespace TSParser
             {
                 ParserComplete();
             }
-        }
-        /// <summary>
-        /// Push bytes to parser from other source. Dektec or RTP stream  etc.
-        /// </summary>
-        /// <param name="bytes"></param>
-        /// <exception cref="Exception">when can not sync to stream</exception>
-        public void PushBytes(ReadOnlySpan<byte> bytes)
-        {
-            var packetLength = GetPacketLength(bytes[..2040], out int syncByteOffset);
-            if (syncByteOffset == -1) throw new Exception("Can not sync to transport stream");
-            ParserModeDel(bytes, packetLength);
-        }
+        }       
         /// <summary>
         /// Push bytes with known ts packet size. 188 or 204 bytes
         /// </summary>
@@ -261,10 +260,8 @@ namespace TSParser
         /// <param name="packetLength"></param>
         public void PushBytes(byte[] bytes, int packetLength)
         {
-            if (m_timer != null && !m_timer.Enabled)
-            {
-                m_timer.Enabled = true;
-            }
+            if (m_timer != null && !m_timer.Enabled) m_timer.Enabled = true;
+
             ParserModeDel(bytes, packetLength);
         }
         /// <summary>
@@ -370,28 +367,11 @@ namespace TSParser
             {
                 m_timer = new System.Timers.Timer
                 {
-                    Interval = (double)m_parserRunTimeIn_ms,
-                    AutoReset = true
+                    Interval = (double)m_parserRunTimeIn_ms,                    
                 };
                 m_timer.Elapsed += Timer_Elapsed;
             }
-        }
-        private void SetTableFactory(TsMode mode, DecodeMode parserMode)
-        {
-            
-            
-            switch (mode)
-            {
-                case TsMode.DVB: SelectedTableFactory = DvbTableFactory; break;
-                case TsMode.ATSC: SelectedTableFactory = AtscTableFactory; break;
-                case TsMode.ISDB: SelectedTableFactory = IsdbTableFactory; break;
-            }
-            switch (parserMode)
-            {
-                case DecodeMode.Packet: ParserModeDel = ParseBytesToPackets; break;
-                case DecodeMode.Table: ParserModeDel = ParseBytesToTables; break;
-            }
-        }
+        }        
         private void InitEvents()
         {
             m_PatFactory.OnPatReady += PatFactory_OnPatReady;
@@ -728,7 +708,6 @@ namespace TSParser
         {
             try
             {
-
                 buffer = new CircularBuffer(5000, 1500, false);
 
                 var bytesCount = 0;
@@ -741,7 +720,6 @@ namespace TSParser
                 socket.ReceiveTimeout = m_socketTimeOut;
 
                 byte[] bytes = new byte[1500];
-
 
                 while (!m_ct.IsCancellationRequested)
                 {
