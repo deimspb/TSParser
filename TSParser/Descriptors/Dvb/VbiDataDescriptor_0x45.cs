@@ -81,7 +81,7 @@ namespace TSParser.Descriptors.Dvb
             }
             return str;
         }
-        private string GetDataServiceName(byte bt)
+        private static string GetDataServiceName(byte bt)
         {
             return bt switch
             {

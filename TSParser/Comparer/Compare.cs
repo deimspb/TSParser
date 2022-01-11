@@ -123,8 +123,6 @@ namespace TSParser.Comparer
                     continue;
                 }
 
-                //Debug.WriteLine($"{propertyInfo.Name}");
-
                 if (CanDirectlyCompare(propertyInfo.PropertyType))
                 {
                     if (AreValueEqual(valueA!, valueB!))
@@ -261,13 +259,12 @@ namespace TSParser.Comparer
 
         }
 
-        private bool CanDirectlyCompare(Type type)
-        {
-            //Debug.WriteLine($"{type.Name}, {typeof(IComparable).IsAssignableFrom(type)}, {type.IsPrimitive}, {type.IsValueType}");
-            return typeof(IComparable).IsAssignableFrom(type) || type.IsPrimitive;// || type.IsValueType;
+        private static bool CanDirectlyCompare(Type type)
+        {            
+            return typeof(IComparable).IsAssignableFrom(type) || type.IsPrimitive;
         }
 
-        private bool AreValueEqual(object valueA, object valueB)
+        private static bool AreValueEqual(object valueA, object valueB)
         {
 
             bool result;

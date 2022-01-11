@@ -132,7 +132,7 @@ namespace TSParser.Tables.Mip
             str += $"{prefix}TsPriority: {GetPriority(TsPriority)}\n";
             return str;
         }
-        private string GetConstelation(byte bt)
+        private static string GetConstelation(byte bt)
         {
             return bt switch
             {
@@ -142,7 +142,7 @@ namespace TSParser.Tables.Mip
                 _ => "Reserved",
             };
         }
-        private string GetHierarchy(byte bt)
+        private static string GetHierarchy(byte bt)
         {
             return bt switch
             {
@@ -153,7 +153,7 @@ namespace TSParser.Tables.Mip
                 _ => "Not implement",
             };
         }
-        private string GetCodeRate(byte bt)
+        private static string GetCodeRate(byte bt)
         {
             return bt switch
             {
@@ -165,7 +165,7 @@ namespace TSParser.Tables.Mip
                 _ => "Reserved",
             };
         }
-        private string GetGuardInterval(byte bt)
+        private static string GetGuardInterval(byte bt)
         {
             return bt switch
             {
@@ -176,7 +176,7 @@ namespace TSParser.Tables.Mip
                 _ => "Unknown",
             };
         }
-        private string GetTransmissionMode(byte bt)
+        private static string GetTransmissionMode(byte bt)
         {
             return bt switch
             {
@@ -186,7 +186,7 @@ namespace TSParser.Tables.Mip
                 _ => "reserved",
             };
         }
-        private string GetDvbHSignaling(byte bt)
+        private static string GetDvbHSignaling(byte bt)
         {
             return bt switch
             {
@@ -197,7 +197,7 @@ namespace TSParser.Tables.Mip
                 _ => "unknown",
             };
         }
-        private string GetBw(byte bt)
+        private static string GetBw(byte bt)
         {
             return bt switch
             {
@@ -207,7 +207,7 @@ namespace TSParser.Tables.Mip
                 _ => "other",
             };
         }
-        private string GetPriority(bool pr)
+        private static string GetPriority(bool pr)
         {
             return pr ? "Non-hierarchical or High Priority TS" : "Low Priority TS";
         }
@@ -245,7 +245,7 @@ namespace TSParser.Tables.Mip
             }
             return str;
         }
-        private Function GetFunction(ReadOnlySpan<byte> bytes)
+        private static Function GetFunction(ReadOnlySpan<byte> bytes)
         {
             try
             {

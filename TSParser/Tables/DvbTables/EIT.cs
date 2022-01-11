@@ -22,19 +22,12 @@ namespace TSParser.Tables.DvbTables
     public record EIT : Table
     {
         public ushort ServiceId { get; }
-
         public ushort TransportStreamId { get; }
-
         public ushort OriginalNetworkId { get; }
-
         public byte SegmentLastSectionNumber { get; }
-
         public byte LastTableId { get; }
-
         public List<Event> EventList { get; }
-
         public override ushort TablePid => (ushort)ReservedPids.EIT;
-
         public EIT(ReadOnlySpan<byte> bytes) : base(bytes)
         {
             ServiceId = BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]);
@@ -59,8 +52,7 @@ namespace TSParser.Tables.DvbTables
             }
 
             return events;
-        }
-        
+        }        
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -89,7 +81,6 @@ namespace TSParser.Tables.DvbTables
 
             return eit;
         }
-
         public virtual bool Equals(EIT? table)
         {
             if (table == null) return false;
@@ -108,16 +99,11 @@ namespace TSParser.Tables.DvbTables
     public struct Event
     {
         public ushort EventId { get; }        
-        public DateTime StartDateTime { get; } //TODO: change to ulong       
-        
+        public DateTime StartDateTime { get; } //TODO: change to ulong  
         public TimeSpan DurationTimeSpan { get; }
-
         public byte RunningStatus { get; }
-
         public bool FreeCAmode { get; }
-
         public ushort DescriptorLoopLength { get; }
-
         public List<Descriptor> EventDescriptors { get; }
         public Event(ReadOnlySpan<byte> bytes,ushort serviceId)
         {

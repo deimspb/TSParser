@@ -32,7 +32,7 @@ namespace TSParser.Descriptors
             if (bytes.Length - pointer >= DescriptorLength)
             {
                 Data = new byte[DescriptorLength + 1];
-                bytes.Slice(0, Data.Length).CopyTo(Data);
+                bytes[..Data.Length].CopyTo(Data);
             }
             else
             {

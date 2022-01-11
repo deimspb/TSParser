@@ -87,20 +87,57 @@ SCTE35 Descriptor:
 * 0x01	DtmfDescriptor_0x01
 
 ## How to use this parser
-To read from file:
+First you need to create config instance (this examlpe for udp multicast)
 ```
-string tsFile = @"....TsFile.ts";
-parser = new TsParser(tsFile);
+var config = new ParserConfig
+{
+    MulticastGroup = sopts.MulticastAddress,
+    MulticastPort = sopts.UdpPort,
+    MulticastIncomingIp = sopts.McastInterfaceAddress,
+    ParserRunTime = sopts.runTime == 0 ? m_defaultDuration : sopts.runTime,
+};
+```
+Than create instance of parser with this config:
+```
+parser = new(config); 
+```
+next step:
+```
+parser.OnParserComplete += Parser_OnParserComplete;
+parser.OnPatReady += Parser_OnPatReady;
+parser.OnPmtReady += Parser_OnPmtReady;
+parser.OnSdtReady += Parser_OnSdtReady;
+parser.OnNitReady += Parser_OnNitReady;
+parser.OnBatReady += Parser_OnBatReady;
+parser.OnCatReady += Parser_OnCatReady;
+parser.OnAitReady += Parser_OnAitReady;
+parser.OnEitReady += Parser_OnEitReady;
+parser.OnMipReady += Parser_OnMipReady;
+parser.OnTdtReady += Parser_OnTdtReady;
+parser.OnTotready += Parser_OnTotready;
+parser.OnTsPacketReady += Parser_OnTsPacketReady;
+parser.OnScte35Ready += Parser_OnScte35Ready;
+Logger.OnLogMessage += Logger_OnLogMessage;
+```
+next:
+```
 parser.RunParser();
 ```
-To get ts pacjets from udp stream:
+
+Or you can push tables from DekTec analyzer:
 ```
-parser = new TsParser("239.1.1.27", 1234, "192.168.99.239");
-parser.RunParser();
+byte[] dataBuffer = new byte[m_packetSize * 100];
+
+m_dtInp.SetRxControl(DTAPI.RXCTRL_RCV);
+
+while (!Done)
+{
+    m_dtInp.Read(dataBuffer, dataBuffer.Length);
+    parser.PushBytes(dataBuffer, m_packetSize);
+}
 ```
-where 239.1.1.27 udp multicast destination address
-1234 udp multicast destination port
-192.168.99.239 your network adapter address 
+In this case you won't needed to call parser.RunParser() method
+just subscribe to events
 
 ### Parser Modes:
 * DVB

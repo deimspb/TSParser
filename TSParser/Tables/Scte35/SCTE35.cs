@@ -132,7 +132,7 @@ namespace TSParser.Tables.DvbTables
             return str;
         }
 
-        private string GetEncryptionAlgo(byte bt)
+        private static string GetEncryptionAlgo(byte bt)
         {
             return bt switch
             {
@@ -145,7 +145,7 @@ namespace TSParser.Tables.DvbTables
             };
         }
 
-        private SpliceCommand GetCommand(byte bt, ReadOnlySpan<byte> bytes)
+        private static SpliceCommand GetCommand(byte bt, ReadOnlySpan<byte> bytes)
         {
             try
             {

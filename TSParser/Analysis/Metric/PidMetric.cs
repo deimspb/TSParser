@@ -69,6 +69,16 @@ namespace TSParser.Analysis.Metric
 
             if (tsPacket.Pid == 0x1fff) return;
 
+            if(LastCC == tsPacket.ContinuityCounter)
+            {
+                if(tsPacket.AdaptationFieldControl == 0b01 || tsPacket.AdaptationFieldControl == 0b11)
+                {
+                    CCErrorCount++;
+                }
+
+                return;
+            }
+
             if (LastCC <= 14)
             {
                 if (LastCC + 1 != tsPacket.ContinuityCounter)

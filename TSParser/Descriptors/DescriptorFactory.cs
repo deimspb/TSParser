@@ -25,11 +25,15 @@ namespace TSParser.Descriptors
         private delegate Descriptor GetDescriptorDelegate(ReadOnlySpan<byte> bytes, string descAllocation);
         private static GetDescriptorDelegate GetDesc = null!;
 
+        private static readonly Lazy<List<byte>> unknownDescriptorListId = new();
+        private static readonly Lazy<List<byte>> unknownExtensionDescList = new();
+        private static readonly Lazy<List<byte>> unknownAitDescList = new();
+        private static readonly Lazy<List<byte>> unknownSpliceDescList = new();
 
-        private static List<byte> m_unknownDescriptorListId = new List<byte>();
-        private static List<byte> m_unknownExtensionDescList = new List<byte>();
-        private static List<byte> m_unknownAitDescList = new List<byte>();
-        private static List<byte> m_unknownSpliceDescList = new List<byte>();
+        private static List<byte> m_unknownDescriptorListId => unknownDescriptorListId.Value;
+        private static List<byte> m_unknownExtensionDescList => unknownExtensionDescList.Value;
+        private static List<byte> m_unknownAitDescList => unknownAitDescList.Value;
+        private static List<byte> m_unknownSpliceDescList => unknownSpliceDescList.Value;
 
         internal static Descriptor GetDescriptor(ReadOnlySpan<byte> bytes, string descAllocation = "")
         {
@@ -128,12 +132,12 @@ namespace TSParser.Descriptors
                         }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Logger.Send(LogStatus.EXCEPTION, $"While creating AIT descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
                 return new AitDescriptor(bytes);
             }
-            
+
         }
         internal static Descriptor GetExtensionDescriptor(ReadOnlySpan<byte> bytes, string descAllocation = "")
         {
@@ -179,7 +183,7 @@ namespace TSParser.Descriptors
                         }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Logger.Send(LogStatus.EXCEPTION, $"While creating Splice descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
                 return new Scte35Descriptor(bytes);
@@ -206,7 +210,7 @@ namespace TSParser.Descriptors
                     }
             }
         }
-        
+
         internal static List<Descriptor> GetDescList(ReadOnlySpan<byte> bytes, string descAllocation = "")
         {
             var pointer = 0;
@@ -219,6 +223,6 @@ namespace TSParser.Descriptors
             }
             return descriptors;
         }
-        
+
     }
 }

@@ -25,7 +25,7 @@ namespace TSParser.Tests
             TsParser parser = new();
             var filePath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"..\..\..\", fileName);
             byte[] bytes = File.ReadAllBytes(filePath);
-            return parser.GetOneTableFromBytes(bytes);
+            return TsParser.GetOneTableFromBytes(bytes);
         }
         [Test]
         public void Test_PAT_129_services()

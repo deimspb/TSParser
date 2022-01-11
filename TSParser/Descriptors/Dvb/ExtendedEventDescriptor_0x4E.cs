@@ -55,14 +55,14 @@ namespace TSParser.Descriptors.Dvb
             }
             return items;
         }
-        
+
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
             string prefix = Utils.Prefix(prefixLen);
 
             string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            if (EventItems is not null)
+            if (EventItems.Count > 0)
             {
                 foreach (var item in EventItems)
                 {

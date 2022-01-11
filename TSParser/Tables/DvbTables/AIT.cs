@@ -43,9 +43,7 @@ namespace TSParser.Tables.DvbTables
             pointer += CommonDescriptorsLength;
             ApplicationLoopLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x0FFF);
             pointer += 2;            
-            ApplicationLoops = GetAppLoopList(bytes.Slice(pointer, ApplicationLoopLength), TablePid);
-            pointer += ApplicationLoopLength;
-
+            ApplicationLoops = GetAppLoopList(bytes.Slice(pointer, ApplicationLoopLength), TablePid);      
         }        
         public override string Print(int prefixLen)
         {
@@ -148,21 +146,23 @@ namespace TSParser.Tables.DvbTables
             }
 
             return str;
-        }        
-        private string GetApplicationCodeName(byte bt) => bt switch
+        }
+        private static string GetApplicationCodeName(byte bt)
         {
-            0x00 => "reserved_future_use",
-            0x01 => "AUTOSTART",
-            0x02 => "PRESENT",
-            0x03 => "DESTROY",
-            0x04 => "KILL",
-            0x05 => "PREFETCH",
-            0x06 => "REMOTE",
-            0x07 => "DISABLED",
-            0x08 => "PLAYBACK_AUTOSTART",
-            _ => "reserved_future_use"
-        };
-
+            return bt switch
+            {
+                0x00 => "reserved_future_use",
+                0x01 => "AUTOSTART",
+                0x02 => "PRESENT",
+                0x03 => "DESTROY",
+                0x04 => "KILL",
+                0x05 => "PREFETCH",
+                0x06 => "REMOTE",
+                0x07 => "DISABLED",
+                0x08 => "PLAYBACK_AUTOSTART",
+                _ => "reserved_future_use"
+            };
+        }
     }
     public struct ApplicationIdentifier
     {

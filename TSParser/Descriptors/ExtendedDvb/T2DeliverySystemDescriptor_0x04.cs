@@ -87,7 +87,7 @@ namespace TSParser.Descriptors.ExtendedDvb
 
             return str;
         }
-        private string GetSisoMiso(byte bt)
+        private static string GetSisoMiso(byte bt)
         {
             return bt switch
             {
@@ -96,7 +96,7 @@ namespace TSParser.Descriptors.ExtendedDvb
                 _ => "reserved for future use",
             };
         }
-        private string GetBw(byte bt)
+        private static string GetBw(byte bt)
         {
             return bt switch
             {
@@ -109,7 +109,7 @@ namespace TSParser.Descriptors.ExtendedDvb
                 _ => "reserved for future use",
             };
         }
-        private string GetGuardInterval(byte bt)
+        private static string GetGuardInterval(byte bt)
         {
             return bt switch
             {
@@ -123,7 +123,7 @@ namespace TSParser.Descriptors.ExtendedDvb
                 _ => "reserved for future use",
             };
         }
-        private string GetTrMode(byte bt)
+        private static string GetTrMode(byte bt)
         {
             return bt switch
             {

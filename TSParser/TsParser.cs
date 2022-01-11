@@ -28,6 +28,42 @@ using TSParser.TransportStream;
 
 namespace TSParser
 {
+    public struct ParserConfig
+    {
+        /// <summary>
+        /// Allow analyze packets
+        /// </summary>
+        public bool AllowAnalyzer;
+        /// <summary>
+        /// Set parser run time. If you read big ts file or udp mcast
+        /// </summary>
+        public int? ParserRunTime;
+        /// <summary>
+        /// Current Ts Mode. Only DVB supported yet
+        /// </summary>
+        public TsMode CurrentTsMode = TsMode.DVB;
+        /// <summary>
+        /// Current decoder mode. Table or packet
+        /// </summary>
+        public DecodeMode CurrentDecodeMode = DecodeMode.Packet;
+        /// <summary>
+        /// TS file name. Length shall be > 2048 bytes
+        /// </summary>
+        public string? TsFileName;
+        /// <summary>
+        /// Mulitast group address
+        /// </summary>
+        public string? MulticastGroup;
+        /// <summary>
+        /// Multicast destination port number
+        /// </summary>
+        public int? MulticastPort;
+        /// <summary>
+        /// Interface which listen to network with multicast
+        /// </summary>
+        public string? MulticastIncomingIp;
+    }
+
     public delegate void TsPacketReady(TsPacket tsPacket);
     public delegate void PatReady(PAT pat);
     public delegate void PmtReady(PMT pmt);
@@ -81,6 +117,10 @@ namespace TSParser
         private readonly Lazy<MipFactory> mipFactory = new();
         private readonly Lazy<Analyzer> analyzer = new();
         private readonly Lazy<Compare> compare = new();
+        private readonly Lazy<List<AitFactory>> aitFactories = new();
+        private readonly Lazy<List<Scte35Factory>> scte35Factories = new();
+        private PmtFactory[] m_pmtFactories = null!;
+
         private TsPacketFactory m_tsPacketFactory => packetFactory.Value;
         private TdtTotFactory m_TdtTotFactory => tdtTotFactory.Value;
         private SdtBatFactory m_SdtBatFactory => sdtBatFactory.Value;
@@ -91,6 +131,8 @@ namespace TSParser
         private MipFactory m_MipFactory => mipFactory.Value;
         private Analyzer m_analyzer => analyzer.Value;
         private Compare m_compare => compare.Value;
+        private List<AitFactory> m_aitFactories => aitFactories.Value;
+        private List<Scte35Factory> m_scte35Factories => scte35Factories.Value;
 
         public readonly byte[] PacketSize = new byte[] { 188, 204 };
 
@@ -103,31 +145,32 @@ namespace TSParser
         private static CancellationTokenSource m_cts = new();
         private CancellationToken m_ct = m_cts.Token;
 
-        private CircularBuffer buffer = null!;        
+        private CircularBuffer buffer = null!;
 
         private Task m_parserTask = null!;
-        private Task m_bufferReaderTask = null!;        
+        private Task m_bufferReaderTask = null!;
 
-        private PmtFactory[] m_pmtFactories = null!;
+
         private ushort[] m_pmtPids = null!;
-
-        private readonly Lazy<List<AitFactory>> aitFactories = new();
-        private List<AitFactory> m_aitFactories => aitFactories.Value;
         private List<ushort> m_aitPids = new();
-
-        private readonly Lazy<List<Scte35Factory>> scte35Factories = new();
-        private List<Scte35Factory> m_scte35Factories=>scte35Factories.Value;
         private List<ushort> m_scte35Pids = new();
 
         private int m_connectionAttempts = 5;
         private int m_socketTimeOut = 5000;
         private int? m_parserRunTimeIn_ms = null;
+        private bool m_allowAnalyzer;
         private System.Timers.Timer m_timer = null!;
-
-
+        private int? MaxParserRunTime
+        {
+            get => m_parserRunTimeIn_ms;
+            set
+            {
+                if (value < 100) throw new Exception("Too short max run time for parser ");
+                m_parserRunTimeIn_ms = value;
+            }
+        }
         #endregion
-        #region Public methods
-        public bool AllowAnalyzer;
+        #region Public methods        
         /// <summary>
         /// Return pid list from analyzer
         /// </summary>
@@ -138,77 +181,34 @@ namespace TSParser
         /// <summary>
         /// Maximum run time for parser in milliseconds. minimum value 100 ms.
         /// </summary>
-        public int? MaxParserRunTime
+        
+        public TsParser(ParserConfig config)
         {
-            get => m_parserRunTimeIn_ms;
-            set
-            {
-                if (value < 100) throw new Exception("Too short max run time for parser ");
-                m_parserRunTimeIn_ms = value;
-            }
-        }
-        /// <summary>
-        /// Init parser to push bytes in it directly. Default parser mode - DVB, Decode mode - table
-        /// </summary>
-        /// <param name="mode">Parser Mode DVB, ISDB, ATSC</param>
-        /// <param name="pmode">Decode mode, return via events Tables or Packets</param>
-        public TsParser(TsMode mode = TsMode.DVB, DecodeMode pmode = DecodeMode.Table)
-        {
-            SetTableFactory(mode, pmode);
-        }
-        /// <summary>
-        /// Init parser with transport stream file. Default parser mode - DVB, Decode mode - table. File size shall be more than 2040 bytes
-        /// </summary>
-        /// <param name="tsFile">Transport stream file</param>
-        /// <param name="mode">Parser Mode DVB, ISDB, ATSC</param>
-        /// <param name="pmode">Decode mode, return via events Tables or Packets</param>
-        /// <exception cref="Exception">when file size less than 2040 bytes or invalid file name</exception>
-        public TsParser(string tsFile, TsMode mode = TsMode.DVB, DecodeMode pmode = DecodeMode.Table)
-        {
-            SetTableFactory(mode, pmode);
-            if (File.Exists(tsFile))
-            {
-                if (new FileInfo(tsFile).Length < 2040) throw new Exception("File length is less then 2040 bytes");
-                m_tsFileName = tsFile;
-                RunParserDel = RunFileParser;
-            }
-            else
-            {
-                throw new Exception($"Invalid file name: {tsFile}");
-            }
-        }
-        /// <summary>
-        /// Init parser with udp stream source. source_address,port,local_pc_address, Default parser mode - DVB, Decode mode - table, default connect attempts 5, timeout 5000 ms
-        /// </summary>
-        /// <param name="multicastGroup"></param>
-        /// <param name="multicastPort"></param>
-        /// <param name="incomingIpInterface"></param>
-        /// <param name="mode"></param>
-        /// <param name="pmode"></param>
-        /// <exception cref="Exception">when invalid network port or address</exception>
-        public TsParser(string multicastGroup, int multicastPort, string incomingIpInterface = "", TsMode mode = TsMode.DVB, DecodeMode pmode = DecodeMode.Table)
-        {
-            SetTableFactory(mode,pmode);
-            m_incomingIpInterface = string.IsNullOrEmpty(incomingIpInterface) ? IPAddress.Any : IPAddress.Parse(incomingIpInterface);
-            if (multicastPort > 1 && multicastPort < 65535)
-            {
-                m_multicastPort = multicastPort;
-            }
-            else
-            {
-                throw new Exception("Invalid port number");
-            }
-            m_multicastGroup = IPAddress.Parse(multicastGroup);
+            SetTableFactory(config.CurrentTsMode, config.CurrentDecodeMode);
+            m_allowAnalyzer = config.AllowAnalyzer;
+            MaxParserRunTime = config.ParserRunTime;
+            
+            ParserRunTimer();
 
-            RunParserDel = RunUdpParser;
+            InitEvents();
 
-        }
+            if (config.TsFileName != null)
+            {
+                FileParser(config.TsFileName);
+                return;
+            }
+
+            if (config.MulticastGroup != null && config.MulticastPort != null)
+            {
+                UdpParser(config.MulticastGroup, config.MulticastPort, config.MulticastIncomingIp);
+                return;
+            }
+        }        
         /// <summary>
         /// Run parser in synchronous mode
         /// </summary>
         public void RunParser()
         {
-            InitEvents();            
             m_parserTask = Task.Run(() => RunParserDel(), m_ct).ContinueWith(AfterParserComplete);
             m_parserTask.Wait();
         }
@@ -218,10 +218,7 @@ namespace TSParser
         /// <returns></returns>
         public async Task RunParserAsync()
         {
-            InitEvents();
-
             m_parserTask = Task.Run(() => RunParserDel(), m_ct).ContinueWith(AfterParserComplete);
-
             try
             {
                 await m_parserTask;
@@ -239,7 +236,12 @@ namespace TSParser
         /// </summary>
         public void StopParser()
         {
-            m_cts.Cancel();            
+            m_cts.Cancel();
+
+            if (m_parserTask == null)
+            {
+                ParserComplete();
+            }
         }
         /// <summary>
         /// Push bytes to parser from other source. Dektec or RTP stream  etc.
@@ -257,8 +259,12 @@ namespace TSParser
         /// </summary>
         /// <param name="bytes"></param>
         /// <param name="packetLength"></param>
-        public void PushBytes(ReadOnlySpan<byte> bytes, int packetLength)
+        public void PushBytes(byte[] bytes, int packetLength)
         {
+            if (m_timer != null && !m_timer.Enabled)
+            {
+                m_timer.Enabled = true;
+            }
             ParserModeDel(bytes, packetLength);
         }
         /// <summary>
@@ -290,7 +296,7 @@ namespace TSParser
         /// <param name="bytes"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public Table GetOneTableFromBytes(ReadOnlySpan<byte> bytes)
+        public static Table GetOneTableFromBytes(ReadOnlySpan<byte> bytes)
         {
             return bytes[0] switch
             {
@@ -312,7 +318,7 @@ namespace TSParser
         /// </summary>
         /// <param name="bytes"></param>
         /// <returns></returns>
-        public Descriptor GetOneDescriptorFromBytes(ReadOnlySpan<byte> bytes)
+        public static Descriptor GetOneDescriptorFromBytes(ReadOnlySpan<byte> bytes)
         {
             return DescriptorFactory.GetDescriptor(bytes);
         }
@@ -328,6 +334,36 @@ namespace TSParser
         }
         #endregion
         #region Private methods
+        private void FileParser(string filePath)
+        {
+            if (File.Exists(filePath))
+            {
+                if (new FileInfo(filePath).Length < 2040) throw new Exception("File length is less then 2040 bytes");
+                m_tsFileName = filePath;
+                RunParserDel = RunFileParser;
+            }
+            else
+            {
+                throw new Exception($"Invalid file name: {filePath}");
+            }
+        }
+        private void UdpParser(string multicastGroup, int? m_port, string? incomingIpInterface)
+        {
+            var multicastPort = (int)(m_port == null ? 1234 : m_port);
+            m_incomingIpInterface = incomingIpInterface == null ? IPAddress.Any : IPAddress.Parse(incomingIpInterface);
+
+            if (multicastPort > 1 && multicastPort < 65535)
+            {
+                m_multicastPort = multicastPort;
+            }
+            else
+            {
+                throw new Exception("Invalid port number");
+            }
+            m_multicastGroup = IPAddress.Parse(multicastGroup);
+
+            RunParserDel = RunUdpParser;
+        }
         private void ParserRunTimer()
         {
             if (m_parserRunTimeIn_ms != null)
@@ -335,14 +371,15 @@ namespace TSParser
                 m_timer = new System.Timers.Timer
                 {
                     Interval = (double)m_parserRunTimeIn_ms,
-                    AutoReset = true,
-                    Enabled = true
+                    AutoReset = true
                 };
                 m_timer.Elapsed += Timer_Elapsed;
             }
         }
         private void SetTableFactory(TsMode mode, DecodeMode parserMode)
         {
+            
+            
             switch (mode)
             {
                 case TsMode.DVB: SelectedTableFactory = DvbTableFactory; break;
@@ -420,8 +457,10 @@ namespace TSParser
 
             for (int i = 0; i < m_pmtPids.Length; i++)
             {
-                m_pmtFactories[i] = new PmtFactory();
-                m_pmtFactories[i].CurrentPid = m_pmtPids[i];
+                m_pmtFactories[i] = new PmtFactory
+                {
+                    CurrentPid = m_pmtPids[i]
+                };
                 m_pmtFactories[i].OnPmtReady += PmtFactory_OnPmtReady;
             }
 
@@ -438,22 +477,26 @@ namespace TSParser
                 if (!m_aitPids.Contains(aitPid))
                 {
                     m_aitPids.Add(aitPid);
-                    var aitFactory = new AitFactory();
-                    aitFactory.CurrentPid = aitPid;
+                    var aitFactory = new AitFactory
+                    {
+                        CurrentPid = aitPid
+                    };
                     aitFactory.OnAitReady += AitFactory_OnAitReady;
                     m_aitFactories.Add(aitFactory);
                 }
 
             }
-            var scte35Idx = pmt.EsInfoList.FindIndex(es => es.StreamType == 0x86);            
-            if(scte35Idx >= 0)
+            var scte35Idx = pmt.EsInfoList.FindIndex(es => es.StreamType == 0x86);
+            if (scte35Idx >= 0)
             {
                 var scte35Pid = pmt.EsInfoList[scte35Idx].ElementaryPid;
                 if (!m_scte35Pids.Contains(scte35Pid))
                 {
                     m_scte35Pids.Add(scte35Pid);
-                    var scte35Factory = new Scte35Factory();
-                    scte35Factory.CurrentPid = scte35Pid;
+                    var scte35Factory = new Scte35Factory
+                    {
+                        CurrentPid = scte35Pid
+                    };
                     scte35Factory.OnScte35Ready += Scte35Factory_OnScte35Ready;
                     m_scte35Factories.Add(scte35Factory);
                 }
@@ -465,10 +508,10 @@ namespace TSParser
         }
         private void AitFactory_OnAitReady(AIT ait)
         {
-            OnAitReady?.Invoke(ait); 
+            OnAitReady?.Invoke(ait);
         }
         private void DvbTableFactory(TsPacket tsPacket)
-        { 
+        {
             if (tsPacket.TransportErrorIndicator) return; // drop tei packets
             if (tsPacket.Pid == (short)ReservedPids.NullPacket) return;  // drop null packets 
 
@@ -551,7 +594,7 @@ namespace TSParser
             GetPmt(tsPacket);
             GetAit(tsPacket);
             GetScte35(tsPacket);
-        }        
+        }
         private void GetPmt(TsPacket tsPacket)
         {
             if (m_pmtPids == null) return;
@@ -561,7 +604,7 @@ namespace TSParser
             if (idx >= 0)
             {
                 m_pmtFactories[idx].PushTable(tsPacket);
-            }            
+            }
         }
         private void GetAit(TsPacket tsPacket)
         {
@@ -575,7 +618,7 @@ namespace TSParser
         private void GetScte35(TsPacket tsPacket)
         {
             var idx = m_scte35Pids.IndexOf(tsPacket.Pid);
-            if(idx >= 0)
+            if (idx >= 0)
             {
                 m_scte35Factories[idx].PushTable(tsPacket);
             }
@@ -588,7 +631,7 @@ namespace TSParser
         {
             throw new NotImplementedException("ISDB table factory");
         }
-        private int GetPacketLength(ReadOnlySpan<byte> byteArray, out int syncByteOffset)
+        private static int GetPacketLength(ReadOnlySpan<byte> byteArray, out int syncByteOffset)
         {
             syncByteOffset = -1;
 
@@ -616,8 +659,8 @@ namespace TSParser
             for (int i = 0; i < tsPackets.Length; i++)
             {
                 if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
-                if(AllowAnalyzer) m_analyzer.PushPacket(tsPackets[i]);
-                SelectedTableFactory(tsPackets[i]);                
+                if (m_allowAnalyzer) m_analyzer.PushPacket(tsPackets[i]);
+                SelectedTableFactory(tsPackets[i]);
             }
         }
         private void ParseBytesToPackets(ReadOnlySpan<byte> bytes, int packetLength)
@@ -627,13 +670,13 @@ namespace TSParser
             for (int i = 0; i < tsPackets.Length; i++)
             {
                 if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
-                if(AllowAnalyzer) m_analyzer.PushPacket(tsPackets[i]);
-                OnTsPacketReady?.Invoke(tsPackets[i]);                
+                if (m_allowAnalyzer) m_analyzer.PushPacket(tsPackets[i]);
+                OnTsPacketReady?.Invoke(tsPackets[i]);
             }
         }
         private void RunFileParser()
         {
-            Logger.Send(LogStatus.INFO, $"Start ts file {m_tsFileName} parsing");            
+            Logger.Send(LogStatus.INFO, $"Start ts file {m_tsFileName} parsing");
             using FileStream fileStream = new(m_tsFileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 348 * 188, FileOptions.SequentialScan);
             using BinaryReader binaryReader = new(fileStream);
 
@@ -661,12 +704,12 @@ namespace TSParser
                     fileStream.Seek(0, SeekOrigin.Begin);
                 }
 
-                ParserRunTimer();
+                if (m_timer != null) m_timer.Enabled = true;
 
                 while ((BytesRead = fileStream.Read(Buffer, 0, MAX_BUFFER)) != 0 && !m_ct.IsCancellationRequested)
                 {
                     ReadOnlySpan<byte> BufferSpan = new(Buffer);
-                    ParserModeDel(BufferSpan[0..BytesRead], packLen);                    
+                    ParserModeDel(BufferSpan[0..BytesRead], packLen);
                 }
 
 
@@ -685,9 +728,9 @@ namespace TSParser
         {
             try
             {
-                
+
                 buffer = new CircularBuffer(5000, 1500, false);
-                
+
                 var bytesCount = 0;
                 socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
                 IPEndPoint endPoint = new(m_incomingIpInterface, m_multicastPort);
@@ -698,9 +741,9 @@ namespace TSParser
                 socket.ReceiveTimeout = m_socketTimeOut;
 
                 byte[] bytes = new byte[1500];
-                
 
-                while(!m_ct.IsCancellationRequested)
+
+                while (!m_ct.IsCancellationRequested)
                 {
                     if (m_connectionAttempts <= 0) return;
                     try
@@ -727,13 +770,13 @@ namespace TSParser
                     packetLen = 204;
                 }
 
-                ParserRunTimer();
+                if (m_timer != null) m_timer.Enabled = true;
 
                 Logger.Send(LogStatus.INFO, $"Start with network {m_multicastGroup}:{m_multicastPort} ts packet length: {packetLen}, network packet lenght: {bytesCount}");
 
                 m_bufferReaderTask = Task.Run(() => ReadFromBuffer(packetLen), m_ct);
 
-                m_connectionAttempts = 5; 
+                m_connectionAttempts = 5;
                 while (!m_ct.IsCancellationRequested)
                 {
                     if (m_connectionAttempts <= 0) return;
@@ -766,13 +809,16 @@ namespace TSParser
         }
         private void AfterParserComplete(Task task)
         {
+            ParserComplete();
+        }
+        private void ParserComplete()
+        {
             Logger.Send(LogStatus.INFO, $"Parser complete working");
-
-            m_cts = new CancellationTokenSource();
             OnParserComplete?.Invoke();
+            m_cts = new CancellationTokenSource();
             m_timer?.Dispose();
-
-        }        
+            m_timer = null;
+        }
         #endregion
     }
 }
