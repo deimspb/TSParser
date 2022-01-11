@@ -29,12 +29,10 @@ namespace TSParser.Descriptors
         private static readonly Lazy<List<byte>> unknownExtensionDescList = new();
         private static readonly Lazy<List<byte>> unknownAitDescList = new();
         private static readonly Lazy<List<byte>> unknownSpliceDescList = new();
-
         private static List<byte> m_unknownDescriptorListId => unknownDescriptorListId.Value;
         private static List<byte> m_unknownExtensionDescList => unknownExtensionDescList.Value;
         private static List<byte> m_unknownAitDescList => unknownAitDescList.Value;
         private static List<byte> m_unknownSpliceDescList => unknownSpliceDescList.Value;
-
         internal static Descriptor GetDescriptor(ReadOnlySpan<byte> bytes, string descAllocation = "")
         {
             try
@@ -210,7 +208,6 @@ namespace TSParser.Descriptors
                     }
             }
         }
-
         internal static List<Descriptor> GetDescList(ReadOnlySpan<byte> bytes, string descAllocation = "")
         {
             var pointer = 0;
