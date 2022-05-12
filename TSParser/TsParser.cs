@@ -28,7 +28,7 @@ using TSParser.TransportStream;
 
 namespace TSParser
 {
-    public struct ParserConfig
+    public class ParserConfig
     {
         /// <summary>
         /// Allow analyze packets
@@ -61,7 +61,8 @@ namespace TSParser
         /// <summary>
         /// Interface which listen to network with multicast
         /// </summary>
-        public string? MulticastIncomingIp;
+        public string? MulticastIncomingIp;        
+        
     }
 
     public delegate void TsPacketReady(TsPacket tsPacket);
@@ -82,7 +83,6 @@ namespace TSParser
     public class TsParser
     {
         #region Private fields
-
         private delegate void m_currentTableFactory(TsPacket tsPacket);
         private delegate void ParserDelegate();
         private delegate void ParserModeDelefate(ReadOnlySpan<byte> bytes, int packetLen);
@@ -217,6 +217,11 @@ namespace TSParser
         /// <summary>
         /// Run parser in synchronous mode
         /// </summary>
+        
+        public TsParser()
+        {
+
+        }
         public void RunParser()
         {
             m_parserTask = Task.Run(() => RunParserDel(), m_ct).ContinueWith(AfterParserComplete);
@@ -655,11 +660,9 @@ namespace TSParser
             }
         }
         private void RunFileParser()
-        {
-            Logger.Send(LogStatus.INFO, $"Start ts file {m_tsFileName} parsing");
+        {            
             using FileStream fileStream = new(m_tsFileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 348 * 188, FileOptions.SequentialScan);
             using BinaryReader binaryReader = new(fileStream);
-
             try
             {
 
@@ -671,8 +674,10 @@ namespace TSParser
                     throw new Exception("Cannot sync with ts");
                 }
 
-                int MAX_BUFFER = 348 * packLen; // 348 packets 188 byte each it is 64kb size. imho optimal size
-                byte[] Buffer = new byte[MAX_BUFFER];
+                int MAX_BUFFER = 22 * packLen; // 348 packets 188 byte each it is 64kb size. imho optimal size
+
+                Span<byte> Buffer = new byte[MAX_BUFFER];                
+
                 int BytesRead;
 
                 if (syncByte > 0)
@@ -686,10 +691,22 @@ namespace TSParser
 
                 if (m_timer != null) m_timer.Enabled = true;
 
-                while ((BytesRead = fileStream.Read(Buffer, 0, MAX_BUFFER)) != 0 && !m_ct.IsCancellationRequested)
+                Logger.Send(LogStatus.INFO, $"Start ts file {m_tsFileName} parsing, ts packet length: {packLen}");
+
+                long gOffset = 0;
+
+                while ((BytesRead = fileStream.Read(Buffer)) > 0 && !m_ct.IsCancellationRequested)
                 {
-                    ReadOnlySpan<byte> BufferSpan = new(Buffer);
-                    ParserModeDel(BufferSpan[0..BytesRead], packLen);
+                    var offset = 0;
+                    var pl = GetPacketLength(Buffer, out offset);
+
+                    if (offset > 0)
+                    {
+                        fileStream.Seek(offset + gOffset, SeekOrigin.Begin);
+                    }
+
+                    ParserModeDel(Buffer[0..BytesRead], packLen);
+                    gOffset += BytesRead;
                 }
 
 
@@ -719,6 +736,7 @@ namespace TSParser
                 socket.ReceiveBufferSize = 1316 * 1000;
                 socket.ReceiveTimeout = m_socketTimeOut;
 
+                //Span<byte> bytes = stackalloc byte[1500];
                 byte[] bytes = new byte[1500];
 
                 while (!m_ct.IsCancellationRequested)
@@ -761,6 +779,7 @@ namespace TSParser
                     try
                     {
                         var bytesLen = socket.Receive(bytes);
+                        //ParserModeDel(bytes[0..bytesLen], packetLen);
                         buffer.Add(bytes[0..bytesLen]);
                     }
                     catch (Exception ex)
@@ -788,7 +807,7 @@ namespace TSParser
         private void AfterParserComplete(Task task)
         {
             ParserComplete();
-        }
+        }        
         private void ParserComplete()
         {
             Logger.Send(LogStatus.INFO, $"Parser complete working");

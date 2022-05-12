@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using TSParser.Descriptors.AitDescriptors;
+using TSParser.Descriptors.Custom;
 using TSParser.Descriptors.Dvb;
 using TSParser.Descriptors.ExtendedDvb;
 using TSParser.Descriptors.Scte35Descriptors;
@@ -37,6 +38,8 @@ namespace TSParser.Descriptors
         {
             try
             {
+                if (GetCustomDescriptor(bytes, descAllocation, out Descriptor descriptor)) return descriptor;
+
                 switch (bytes[0])
                 {
                     case 0x0A: return new Iso639LanguageDescriptor_0x0A(bytes);
@@ -219,6 +222,85 @@ namespace TSParser.Descriptors
                 pointer += desc.DescriptorLength + 2;
             }
             return descriptors;
+        }
+
+        private static bool GetCustomDescriptor(ReadOnlySpan<byte> bytes, string descAllocation, out Descriptor descriptor)
+        {
+            descriptor = null;
+
+            try
+            {
+                switch (bytes[0])
+                {
+                    case 0x09:
+                        {
+                            descriptor = new CaDescriptorCustom_0x09(bytes);
+                            return true;
+                        }
+                    case 0xB2:
+                        {
+                            descriptor = new ChannelListTypeDescriptor_0xB2(bytes);
+                            return true;
+                        }
+                    case 0x86:
+                        {
+                            descriptor = new GnrDescriptor_0x86(bytes);
+                            return true;
+                        }
+                    case 0x87:
+                        {
+                            descriptor = new LogicalChannelNumberDescriptorV2_0x87(bytes);
+                            return true;
+                        }
+                    case 0x88:
+                        {
+                            descriptor = new MultilingualRegionNameDescriptor_0x88(bytes);
+                            return true;
+                        }
+                    case 0x89:
+                        {
+                            descriptor=new SettingsDescriptorV1_0x89(bytes);
+                            return true;
+                        }
+                    case 0x90:
+                        {
+                            descriptor = new SettingsDescriptorV2_0x90(bytes);
+                            return true;
+                        }
+                    case 0xB0:
+                        {
+                            descriptor = new SettingsDescriptorV3_0xB0(bytes);
+                            return true;
+                        }
+                    case 0xB1:
+                        {
+                            descriptor = new SettingsDescriptorV4_0xB1(bytes);
+                            return true;
+                        }
+                    case 0xB4:
+                        {
+                            descriptor = new TimeZoneDescriptorLG_0xB4(bytes);
+                            return true;
+                        }
+                    case 0xC0:
+                        {
+                            descriptor = new WhiteListDescriptor_0xC0(bytes);
+                            return true;
+                        }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Send(LogStatus.EXCEPTION, $"While creating custom descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
+                return false;
+            }
+
+
+
+            //if (CustomDesc.GetCustomDesc(bytes, out descriptor, descAllocation)) return true;           
+
+            return false;
         }
 
     }

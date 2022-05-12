@@ -212,3 +212,6 @@ To Get tables you need to subscribe to the events.
  * Add teletext parsing
  * Add subtitling parsing
  * Add DekTec PCI/USB adapters support
+ * Add Test to all objects
+ * Add functionality to add custom descriptors
+ * Add custom exceptions

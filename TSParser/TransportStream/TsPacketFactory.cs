@@ -31,7 +31,7 @@ namespace TSParser.TransportStream
 
             if (bytes.Length % packetLength > 0)
             {
-                Logger.Send(LogStatus.WARNING, $"Invalid array length! array.len % packet len shall be 0 {bytes.Length}");                
+                Logger.Send(LogStatus.WARNING, $"Invalid array length! array.len % packet len shall be 0");                
             }
 
             var packetCount = bytes.Length / packetLength;
@@ -46,7 +46,7 @@ namespace TSParser.TransportStream
                 }
                 else
                 {
-                    Logger.Send(LogStatus.ETSI, $"Sync loss after packet: {packetCount}");                    
+                    Logger.Send(LogStatus.ETSI, $"Sync loss after packet: {m_packetCounter}");                    
                     m_syncLoss++;
                     tsPackets[i] = default(TsPacket); // if sync loss return default tspacket with pid 0xFFFF
                 }

@@ -155,5 +155,11 @@ namespace TSParser.Service
         {
             return new string(' ', prefixLen + 2);
         }
+        internal static DateTime UnixTimeStampToDateTime(uint unixTimeStamp)
+        {
+            DateTime dt = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+            dt = dt.AddSeconds(unixTimeStamp).ToLocalTime();
+            return dt;
+        }
     }
 }
