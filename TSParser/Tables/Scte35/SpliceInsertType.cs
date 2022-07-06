@@ -19,27 +19,27 @@ namespace TSParser.Tables.Scte35
 {
     public record SpliceInsert : SpliceCommand
     {
+        public bool ProgramSpliceFlag { get; }
+        public bool DurationFlag { get; }
+
+
+        public SpliceInsertBase[] SpliceInserts { get; }
+        public BreakDuration BreakDuration { get; }
         public uint SpliceEventId { get; }
         public bool SpliceEventCancelIndicator { get; }
         public bool OutOfNetworkIndicator { get; }
-        public bool ProgramSpliceFlag { get; }
-        public bool DurationFlag { get; }
         public bool SpliceImmediateFlag { get; }
-        public SpliceTime SpliceTime { get; }
-        public byte ComponentCount { get; }
-        public SpliceComponent[] SpliceComponents { get; } = null!;
-        public BreakDuration BreakDuration { get; }
         public ushort UniqueProgramId { get; }
         public byte AvailNum { get; }
         public byte AvailsExpected { get; }
-
-        public SpliceInsert(ReadOnlySpan<byte> bytes) : base(bytes)
+        public SpliceInsert(ReadOnlySpan<byte> bytes, byte spliceType) : base(bytes, spliceType)
         {
             var pointer = 0;
+
             SpliceEventId = BinaryPrimitives.ReadUInt32BigEndian(bytes[pointer..]);
             pointer += 4;
             SpliceEventCancelIndicator = (bytes[pointer++] & 0x80) != 0;
-            //reserved 7 bits
+            // reserved 7 bits
             if (!SpliceEventCancelIndicator)
             {
                 OutOfNetworkIndicator = (bytes[pointer] & 0x80) != 0;
@@ -49,29 +49,35 @@ namespace TSParser.Tables.Scte35
                 //reserved 4 bits
                 if (ProgramSpliceFlag && !SpliceImmediateFlag)
                 {
-                    SpliceTime = new SpliceTime(bytes.Slice(pointer, 5));
-                    pointer += 5;
+                    SpliceInserts = new SpliceInsertProgram[] { new SpliceInsertProgram(bytes[pointer..]) };
+                    pointer += SpliceInserts[0].SpliceInsertTypeLength;
                 }
                 if (!ProgramSpliceFlag)
                 {
-                    ComponentCount = bytes[pointer++];
-                    SpliceComponents = new SpliceComponent[ComponentCount];
-                    for (int i = 0; i < ComponentCount; i++)
+                    var componentCount = bytes[pointer++];
+                    SpliceInserts = new SpliceInsertComponent[componentCount];
+                    for (var i = 0; i < componentCount; i++)
                     {
-                        SpliceComponents[i] = new SpliceComponent(bytes[pointer..], SpliceImmediateFlag);
-                        pointer += SpliceImmediateFlag ? 1 : 6;
+                        var component = new SpliceInsertComponent(bytes[pointer..]);
+                        pointer += component.SpliceInsertTypeLength;
+                        SpliceInserts[i] = component;
                     }
                 }
                 if (DurationFlag)
                 {
-                    BreakDuration = new(bytes.Slice(pointer, 5));
+                    BreakDuration = new BreakDuration(bytes[pointer..]);
+                    pointer += 5;
                 }
-                UniqueProgramId = BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]);
-                pointer += 2;
-                AvailNum = bytes[pointer++];
-                AvailsExpected = bytes[pointer++];
+
             }
+            UniqueProgramId = BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]);
+            pointer += 2;
+            AvailNum = bytes[pointer++];
+            AvailsExpected = bytes[pointer++];
+
+            SpliceCommandLength = pointer;
         }
+
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
@@ -79,74 +85,56 @@ namespace TSParser.Tables.Scte35
 
             string str = $"{headerPrefix}Splice Insert Command\n";
             str += $"{prefix}Splice event id: {SpliceEventId}\n";
-            str += $"{prefix}Splice Event Cancel Indicator: {SpliceEventCancelIndicator}\n";
+            str += $"{prefix}Splice event cancel indicator: {SpliceEventCancelIndicator}\n";
 
             if (!SpliceEventCancelIndicator)
             {
-                str += $"{prefix}Out Of Network Indicator: {OutOfNetworkIndicator}\n";
-                str += $"{prefix}Program Splice Flag: {ProgramSpliceFlag}\n";
-                str += $"{prefix}Duration Flag: {DurationFlag}\n";
-                str += $"{prefix}Splice Immediate Flag: {SpliceImmediateFlag}\n";
-                if (ProgramSpliceFlag && !SpliceImmediateFlag)
+                str += $"{prefix}Out of network indicator: {OutOfNetworkIndicator}\n";
+                str += $"{prefix}Program splice flag: {ProgramSpliceFlag}\n";
+                str += $"{prefix}Duration flag: {DurationFlag}\n";
+                str += $"{prefix}Splice immediate flag: {SpliceImmediateFlag}\n";
+
+                foreach (var item in SpliceInserts)
                 {
-                    str += SpliceTime.Print(prefixLen + 4);
+                    str += item.Print(prefixLen + 4);
                 }
-                if (!ProgramSpliceFlag)
-                {
-                    str += $"{prefix}Component count: {ComponentCount}\n";
-                    if (ComponentCount > 0)
-                    {
-                        foreach (var component in SpliceComponents)
-                        {
-                            str += component.Print(prefixLen + 4);
-                        }
-                    }
-                }
+
                 if (DurationFlag)
                 {
                     str += BreakDuration.Print(prefixLen + 4);
                 }
-
-                str += $"{prefix}Unique Program Id: {UniqueProgramId}\n";
-                str += $"{prefix}Avail Num: {AvailNum}\n";
-                str += $"{prefix}Avails Expected: {AvailsExpected}\n";
             }
+            str += $"{prefix}Unique program id: {UniqueProgramId}\n";
+            str += $"{prefix}Avail num: {AvailNum}\n";
+            str += $"{prefix}Avail expected: {AvailsExpected}\n";
 
             return str;
         }
     }
-    public struct SpliceComponent
-    {
-        public byte ComponentTag { get; }
-        public SpliceTime SpliceTime { get; }
 
-        public SpliceComponent(ReadOnlySpan<byte> bytes, bool SpliceImmediateFlag)
-        {
-            ComponentTag = bytes[0];
-            SpliceTime = SpliceImmediateFlag ? new SpliceTime(bytes.Slice(1, 5)) : default;
-        }
-        public string Print(int prefixLen)
-        {
-            string headerPrefix = Utils.HeaderPrefix(prefixLen);
-            return $"{headerPrefix}Component tag: {ComponentTag}, Splice time: {SpliceTime.Print(prefixLen + 2)}\n";
-        }
-    }
     public struct SpliceTime
     {
+        public int SpliceTimeTypeLength { get; }
         public bool TimeSpecificFlag { get; }
         public ulong PtsTime { get; }
         public SpliceTime(ReadOnlySpan<byte> bytes)
         {
+            var pointer = 0;
             //reserved 6 bits
-            TimeSpecificFlag = (bytes[0] & 0x80) != 0;
+            TimeSpecificFlag = (bytes[pointer] & 0x80) != 0;
             if (TimeSpecificFlag)
             {
-                PtsTime = (ulong)(bytes[0] & 0x01) << 32 | (ulong)(bytes[1]) << 24 | (ulong)(bytes[2]) << 16 | (ulong)(bytes[3]) << 8 | (ulong)(bytes[4]);
+                PtsTime = (ulong)(bytes[pointer++] & 0x01) << 32
+                    | (ulong)(bytes[pointer++]) << 24
+                    | (ulong)(bytes[pointer++]) << 16
+                    | (ulong)(bytes[pointer++]) << 8
+                    | bytes[pointer++];
             }
             else
             {
                 PtsTime = default;
             }
+            SpliceTimeTypeLength = pointer;
         }
         public string Print(int prefixLen)
         {
@@ -161,7 +149,7 @@ namespace TSParser.Tables.Scte35
         public BreakDuration(ReadOnlySpan<byte> bytes)
         {
             AutoReturn = (bytes[0] & 0x80) != 0;
-            Duration = (ulong)(bytes[0] & 0x01) << 32 | (ulong)(bytes[1]) << 24 | (ulong)(bytes[2]) << 16 | (ulong)(bytes[3]) << 8 | (ulong)(bytes[4]);
+            Duration = (ulong)(bytes[0] & 0x01) << 32 | (ulong)(bytes[1]) << 24 | (ulong)(bytes[2]) << 16 | (ulong)(bytes[3]) << 8 | bytes[4];
         }
         public string Print(int prefixLen)
         {

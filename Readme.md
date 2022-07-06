@@ -83,8 +83,8 @@ AIT Descriptor:
 * 0x10	ApplicationStorageDescriptor_0x10
 * 0x15	SimpleApplicationLocationDescriptor_0x15
 
-SCTE35 Descriptor:
-* 0x01	DtmfDescriptor_0x01
+Full support of SCTE35 tables, add functionality to serialize scte35 table to XML as describe in http://www.scte.org/schemas/35
+
 
 ## How to use this parser
 First you need to create config instance (this examlpe for udp multicast)

@@ -12,23 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.Descriptors;
+using TSParser.Descriptors.Scte35Descriptors;
 using TSParser.Service;
+using TSParser.Tables.DvbTables;
+using TSParser.Tables.Scte35;
+using System.Xml.Serialization;
 
-namespace TSParser.Tables.Scte35
+namespace TSParser.Convertors
 {
-    public record SpliceCommand
+    public static class Scte35ToXml
     {
-        public byte SpliceCommandType { get; }
-        public int SpliceCommandLength { get; set; }
-        public SpliceCommand(ReadOnlySpan<byte> bytes, byte spliceType)
+        public static SpliceInfoSectionType Convert(SCTE35 scte35)
         {
-            SpliceCommandType = spliceType;
-        }     
+            return new SpliceInfoSectionType(scte35);           
+        }       
 
-        public virtual string Print(int prefixLen)
-        {
-            string headerPrefix = Utils.HeaderPrefix(prefixLen);
-            return $"{headerPrefix}Splice command type: {SpliceCommandType}\n";
-        }
     }
 }

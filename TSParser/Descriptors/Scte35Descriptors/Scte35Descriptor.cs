@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Buffers.Binary;
 using TSParser.DictionariesData;
 using TSParser.Service;
 
@@ -20,9 +21,19 @@ namespace TSParser.Descriptors.Scte35Descriptors
     public record Scte35Descriptor : Descriptor
     {
         public new string DescriptorName => Dictionaries.GetSpliceInfoDescriptorName(DescriptorTag);
+        public uint Identifier { get; }
+        public byte[] PrivateByte { get; }
         public Scte35Descriptor(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-
+            var pointer = 2;
+            Identifier = BinaryPrimitives.ReadUInt32BigEndian(bytes[pointer..]);
+            pointer += 4;
+            var privateByteLength = DescriptorLength - 4;
+            if (privateByteLength > 0)
+            {
+                PrivateByte = new byte[privateByteLength];
+                bytes.Slice(pointer, privateByteLength).CopyTo(PrivateByte);
+            }
         }
         public override string Print(int prefixLen)
         {

@@ -12,23 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Buffers.Binary;
 using TSParser.Service;
 
 namespace TSParser.Tables.Scte35
 {
-    public record SpliceCommand
+    public class EventProgram : EventBase
     {
-        public byte SpliceCommandType { get; }
-        public int SpliceCommandLength { get; set; }
-        public SpliceCommand(ReadOnlySpan<byte> bytes, byte spliceType)
+        public uint UtcSpliceTime { get; }
+        public EventProgram(ReadOnlySpan<byte> bytes)
         {
-            SpliceCommandType = spliceType;
-        }     
-
-        public virtual string Print(int prefixLen)
+            UtcSpliceTime = BinaryPrimitives.ReadUInt32BigEndian(bytes[0..]);
+        }
+        public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
-            return $"{headerPrefix}Splice command type: {SpliceCommandType}\n";
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str = $"{headerPrefix} Event Program\r";
+            str += $"{prefix}Utc splice time: {Utils.UnixTimeStampToDateTime(UtcSpliceTime)}\r";
+            return str;
         }
     }
 }

@@ -172,7 +172,11 @@ namespace TSParser.Descriptors
             {
                 switch (bytes[0])
                 {
+                    case 0x00: return new AvailDescriptor_0x00(bytes);
                     case 0x01: return new DtmfDescriptor_0x01(bytes);
+                    case 0x02: return new SegmentationDescriptor_0x02(bytes);
+                    case 0x03: return new TimeDescriptor_0x03(bytes);
+                    case 0x04: return new AudioDescriptor_0x04(bytes);
                     default:
                         {
                             if (!m_unknownSpliceDescList.Contains(bytes[0]))
@@ -259,7 +263,7 @@ namespace TSParser.Descriptors
                         }
                     case 0x89:
                         {
-                            descriptor=new SettingsDescriptorV1_0x89(bytes);
+                            descriptor = new SettingsDescriptorV1_0x89(bytes);
                             return true;
                         }
                     case 0x90:

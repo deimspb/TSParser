@@ -61,8 +61,8 @@ namespace TSParser
         /// <summary>
         /// Interface which listen to network with multicast
         /// </summary>
-        public string? MulticastIncomingIp;        
-        
+        public string? MulticastIncomingIp;
+
     }
 
     public delegate void TsPacketReady(TsPacket tsPacket);
@@ -217,7 +217,7 @@ namespace TSParser
         /// <summary>
         /// Run parser in synchronous mode
         /// </summary>
-        
+
         public TsParser()
         {
 
@@ -257,7 +257,7 @@ namespace TSParser
             {
                 ParserComplete();
             }
-        }       
+        }
         /// <summary>
         /// Push bytes with known ts packet size. 188 or 204 bytes
         /// </summary>
@@ -309,6 +309,7 @@ namespace TSParser
                 0x4A => new BAT(bytes),
                 0x70 => new TDT(bytes),
                 0x73 => new TOT(bytes),
+                0xFC => new SCTE35(bytes),
                 byte n when n == 0x42 || n == 0x46 => new SDT(bytes),
                 byte n when n == 0x40 || n == 0x41 => new NIT(bytes),
                 byte n when n == 0x4F || n == 0x4E || (n >= 0x50 && n <= 0x5F) || (n >= 0x60 && n <= 0x6F) => new EIT(bytes),
@@ -372,11 +373,11 @@ namespace TSParser
             {
                 m_timer = new System.Timers.Timer
                 {
-                    Interval = (double)m_parserRunTimeIn_ms,                    
+                    Interval = (double)m_parserRunTimeIn_ms,
                 };
                 m_timer.Elapsed += Timer_Elapsed;
             }
-        }        
+        }
         private void InitEvents()
         {
             m_PatFactory.OnPatReady += PatFactory_OnPatReady;
@@ -660,7 +661,7 @@ namespace TSParser
             }
         }
         private void RunFileParser()
-        {            
+        {
             using FileStream fileStream = new(m_tsFileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 348 * 188, FileOptions.SequentialScan);
             using BinaryReader binaryReader = new(fileStream);
             try
@@ -676,7 +677,7 @@ namespace TSParser
 
                 int MAX_BUFFER = 22 * packLen; // 348 packets 188 byte each it is 64kb size. imho optimal size
 
-                Span<byte> Buffer = new byte[MAX_BUFFER];                
+                Span<byte> Buffer = new byte[MAX_BUFFER];
 
                 int BytesRead;
 
@@ -807,7 +808,7 @@ namespace TSParser
         private void AfterParserComplete(Task task)
         {
             ParserComplete();
-        }        
+        }
         private void ParserComplete()
         {
             Logger.Send(LogStatus.INFO, $"Parser complete working");

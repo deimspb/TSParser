@@ -18,9 +18,9 @@ namespace TSParser.Tables.Scte35
 {
     public record BandwidthReservation : SpliceCommand
     {
-        public BandwidthReservation(ReadOnlySpan<byte> bytes) : base(bytes)
+        public BandwidthReservation(ReadOnlySpan<byte> bytes, byte spliceType) : base(bytes, spliceType)
         {
-            Logger.Send(LogStatus.NotImplement, $"Unimpement Bandwidth Reservation command");
+            SpliceCommandLength = 0;
         }
     }
 }

@@ -12,38 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Buffers.Binary;
 using TSParser.Service;
 
-namespace TSParser.Tables.Scte35
+namespace TSParser.Descriptors.Scte35Descriptors
 {
-    public record SpliceSchedule : SpliceCommand
+    public record TimeDescriptor_0x03 : Scte35Descriptor
     {
-        public byte SpliceCount { get; }
-        public SpliceScheduleEvent[] Events { get; }
-
-        public SpliceSchedule(ReadOnlySpan<byte> bytes, byte spliceType) : base(bytes, spliceType)
+        public ulong TaiSeconds { get; }
+        public uint TaiNs { get; }
+        public ushort UtcOffset { get; }
+        public TimeDescriptor_0x03(ReadOnlySpan<byte> bytes) : base(bytes)
         {
-            var pointer = 0;
-            SpliceCount = bytes[pointer++];
-            Events = new SpliceScheduleEvent[SpliceCount];
-            for (int i = 0; i < SpliceCount; i++)
-            {
-                Events[i] = new SpliceScheduleEvent(bytes[pointer..]);
-                pointer += Events[i].EventLength;
-            }
+            var pointer = 6;
+            TaiSeconds = BinaryPrimitives.ReadUInt64BigEndian(bytes[pointer..]) >> 16;
+            pointer += 6;
+            TaiNs = BinaryPrimitives.ReadUInt32BigEndian(bytes[pointer..]);
+            pointer += 4;
+            UtcOffset = BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]);
         }
-
         public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
             string prefix = Utils.Prefix(prefixLen);
 
-            string str = $"{headerPrefix}Splice schedule, type: {SpliceCommandType}\r";
+            string str = $"{headerPrefix}Time descriptor\n";
+            str += $"{prefix}Tai Seconds: {TaiSeconds}\n";
+            str += $"{prefix}Tai Ns: {TaiNs}\n";
+            str += $"{prefix}Utc Offset: {UtcOffset}\n";
 
-            foreach(var item in Events)
-            {
-                str += item.Print(prefixLen + 4);
-            }
             return str;
         }
     }

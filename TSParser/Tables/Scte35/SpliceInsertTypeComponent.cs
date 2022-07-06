@@ -16,19 +16,28 @@ using TSParser.Service;
 
 namespace TSParser.Tables.Scte35
 {
-    public record SpliceCommand
+    public class SpliceInsertComponent : SpliceInsertBase
     {
-        public byte SpliceCommandType { get; }
-        public int SpliceCommandLength { get; set; }
-        public SpliceCommand(ReadOnlySpan<byte> bytes, byte spliceType)
+        public SpliceTime SpliceTime { get; }
+        public byte ComponentTag { get; }
+        public SpliceInsertComponent(ReadOnlySpan<byte> bytes)
         {
-            SpliceCommandType = spliceType;
-        }     
-
-        public virtual string Print(int prefixLen)
+            var pointer = 0;
+            ComponentTag = bytes[pointer++];
+            SpliceTime = new SpliceTime(bytes[pointer..]);
+            pointer += SpliceTime.SpliceTimeTypeLength;
+            SpliceInsertTypeLength = pointer;
+        }
+        public override string Print(int prefixLen)
         {
             string headerPrefix = Utils.HeaderPrefix(prefixLen);
-            return $"{headerPrefix}Splice command type: {SpliceCommandType}\n";
+            string prefix = Utils.Prefix(prefixLen);
+
+            string str = $"{headerPrefix}Splice insert type component\n";
+
+            str += $"{prefix}Component tag: {ComponentTag}\n";
+            str += SpliceTime.Print(prefixLen + 4);
+            return str;
         }
     }
 }

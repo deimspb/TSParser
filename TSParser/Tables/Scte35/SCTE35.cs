@@ -23,25 +23,35 @@ namespace TSParser.Tables.DvbTables
     public record SCTE35 : Table
     {
         public bool PrivateIndicator { get; }
-        public byte ProtocolVersion { get; }
-        public bool EncryptedPacket { get; }
-        public byte EncryptionAlgorithm { get; }
-        public ulong PtsAdjustment { get; }
-        public byte CwIndex { get; }
-        public ushort Tier { get; }
+        public bool IsEncryptedPacket { get; }
+
+
         public ushort SpliceCommandLength { get; }
-        public byte SpliceCommandType { get; }
-        public SpliceCommand SpliceCommand { get; } = null!;
+
         public ushort DescriptorLoopLength { get; }
-        public List<Descriptor> SpliceDescriptors { get; } = null!;
+
         public uint ECRC32 { get; }
-        public override ushort TablePid { get; }        
+        public override ushort TablePid { get; }
+        public byte[] AlignmentStuffing { get; }
+
+        #region SpliceInfoSectionType
+
+        public byte SapType { get; }
+        public byte ProtocolVersion { get; }
+        public EncryptedPacket EncryptedPacket { get; }
+        public ulong PtsAdjustment { get; }
+        public ushort Tier { get; }
+        public SpliceCommand SpliceCommandItem { get; } = null!;
+        public List<Descriptor> SpliceDescriptorItems { get; } = null!;
+        public byte SpliceCommandType { get; }
+
+        #endregion
         public SCTE35(ReadOnlySpan<byte> bytes, ushort scte35Pid) : this(bytes)
         {
             TablePid = scte35Pid;
         }
         public SCTE35(ReadOnlySpan<byte> bytes)
-        {            
+        {
             var pointer = 0;
             TableId = bytes[pointer++];
 
@@ -53,49 +63,48 @@ namespace TSParser.Tables.DvbTables
 
             SectionSyntaxIndicator = (bytes[pointer] & 0x80) != 0;
             PrivateIndicator = (bytes[pointer] & 0x40) != 0;
-            //reserved 2bits
+            SapType = (byte)((bytes[pointer] & 0x30) >> 4);
             SectionLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x0FFF);
             pointer += 2;
             ProtocolVersion = bytes[pointer++];
-            EncryptedPacket = (bytes[pointer] & 0x80) != 0;
-            EncryptionAlgorithm = (byte)((bytes[pointer] & 0x7E) >> 1);
+            IsEncryptedPacket = (bytes[pointer] & 0x80) != 0;
+            EncryptedPacket = new EncryptedPacket(bytes[pointer..]);
             PtsAdjustment = ((BinaryPrimitives.ReadUInt64BigEndian(bytes[pointer..]) & 0x01FFFFFFFF000000) >> 24);
-            pointer += 5;
-            CwIndex = bytes[pointer++];
+            pointer += 6;
             Tier = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer++..]) >> 4);
             SpliceCommandLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x0FFF);
             pointer += 2;
             SpliceCommandType = bytes[pointer++];
-            SpliceCommand = GetCommand(SpliceCommandType, bytes.Slice(pointer, SpliceCommandLength));
 
-            if (SpliceCommandType == 0x00)
+            if (SpliceCommandLength == 0xFFF)
             {
-                pointer += SpliceCommandLength - 1;
+                SpliceCommandItem = GetCommand(bytes[pointer..], SpliceCommandType);
+                pointer += SpliceCommandItem.SpliceCommandLength;
             }
             else
             {
+                SpliceCommandItem = GetCommand(bytes.Slice(pointer, SpliceCommandLength), SpliceCommandType);
                 pointer += SpliceCommandLength;
             }
-
             DescriptorLoopLength = BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]);
             pointer += 2;
-            if (bytes.Length < pointer + DescriptorLoopLength)
-            {
-                Logger.Send(LogStatus.WARNING, $"SCTE35 pid: {TablePid}, Descriptor Loop Length is greate than table length, desc loop length: {DescriptorLoopLength}, pointer: {pointer}, bytes length: {bytes.Length}");
-                CRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]); // return with crc to prevent duplicates outgoing tables
-                return;
-            }
-            var descAllocation = $"Table: SCTE35, table pid: {TablePid}";
-            SpliceDescriptors = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, DescriptorLoopLength), descAllocation, TableId);
-            pointer += DescriptorLoopLength;
+            SpliceDescriptorItems = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, DescriptorLoopLength), "SCTE 35", TableId);
+            var stuffedBytes = 0;
 
-            //alignment stuffing
-
-            if (EncryptedPacket)
+            if (IsEncryptedPacket)
             {
                 ECRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^8..]);
+                stuffedBytes = bytes.Length - pointer - 8;
             }
+
             CRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
+            stuffedBytes = bytes.Length - pointer - 4;
+
+            if (stuffedBytes > 0)
+            {
+                AlignmentStuffing = bytes.Slice(pointer, stuffedBytes).ToArray();
+            }
+
         }
         public override string Print(int prefixLen)
         {
@@ -108,23 +117,23 @@ namespace TSParser.Tables.DvbTables
             str += $"{prefix}Private indicator: {PrivateIndicator}\n";
             str += $"{prefix}Section length: {SectionLength}\n";
             str += $"{prefix}Protocol version: {ProtocolVersion}\n";
-            str += $"{prefix}Encrypted packet: {EncryptedPacket}\n";
-            str += $"{prefix}Encryption Algorithm: {GetEncryptionAlgo(EncryptionAlgorithm)}\n";
             str += $"{prefix}Pts Adjustment: 0x{PtsAdjustment:X}\n";
-            str += $"{prefix}Cw index: {CwIndex}\n";
+
+            str += EncryptedPacket.Print(prefixLen + 4);
+
             str += $"{prefix}Tier: 0x{Tier:X}\n";
             str += $"{prefix}Splice Command Length: {SpliceCommandLength}\n";
             str += $"{prefix}Splice Command Type: {Dictionaries.GetSliceCommandTypeName(SpliceCommandType)}\n";
-            str += SpliceCommand.Print(prefixLen + 4);
+            str += SpliceCommandItem.Print(prefixLen + 4);
             str += $"{prefix}Descriptor Loop Length: {DescriptorLoopLength}\n";
             if (DescriptorLoopLength > 0)
             {
-                foreach (var desc in SpliceDescriptors)
+                foreach (var desc in SpliceDescriptorItems)
                 {
                     str += desc.Print(prefixLen + 4);
                 }
             }
-            if (EncryptedPacket)
+            if (IsEncryptedPacket)
             {
                 str += $"{prefix}ECRC32: 0x{ECRC32:X}\n";
             }
@@ -132,42 +141,31 @@ namespace TSParser.Tables.DvbTables
             return str;
         }
 
-        private static string GetEncryptionAlgo(byte bt)
-        {
-            return bt switch
-            {
-                0 => "No encryption",
-                1 => "DES ECB mode",
-                2 => "DES CBC mode",
-                3 => "Triple DES EDE3-ECB mode",
-                byte n when n >= 4 && n <= 31 => "Reserved",
-                _ => "User private",
-            };
-        }
 
-        private static SpliceCommand GetCommand(byte bt, ReadOnlySpan<byte> bytes)
+
+        private static SpliceCommand GetCommand(ReadOnlySpan<byte> bytes, byte bt)
         {
             try
             {
                 switch (bt)
                 {
-                    case 0x00: return new SpliceNull(bytes);
-                    case 0x04: return new SpliceSchedule(bytes);
-                    case 0x05: return new SpliceInsert(bytes);
-                    case 0x06: return new TimeSignal(bytes);
-                    case 0x07: return new BandwidthReservation(bytes);
-                    case 0xFF: return new PrivateCommand(bytes);
+                    case 0x00: return new SpliceNull(bytes, bt);
+                    case 0x04: return new SpliceSchedule(bytes, bt);
+                    case 0x05: return new SpliceInsert(bytes, bt);
+                    case 0x06: return new TimeSignal(bytes, bt);
+                    case 0x07: return new BandwidthReservation(bytes, bt);
+                    case 0xFF: return new PrivateCommand(bytes, bt);
                     default:
                         {
                             Logger.Send(LogStatus.WARNING, $"Unknown Splice command type: 0x{bt:X} return base command");
-                            return new SpliceCommand(bytes);
+                            return new SpliceCommand(bytes, bt);
                         }
                 }
             }
             catch (Exception ex)
             {
                 Logger.Send(LogStatus.EXCEPTION, $"Ecxeption while deserelise splice command", ex);
-                return new SpliceCommand(bytes);
+                return new SpliceCommand(bytes, bt);
             }
 
         }

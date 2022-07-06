@@ -12,24 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Buffers.Binary;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using TSParser.Service;
 
 namespace TSParser.Tables.Scte35
 {
-    public record TimeSignal : SpliceCommand
+    public class EventComponent:EventBase
     {
-        public SpliceTime SpliceTime { get; }
-        public TimeSignal(ReadOnlySpan<byte> bytes, byte spliceType) : base(bytes, spliceType)
+        public byte ComponentTag { get; }
+        public uint UtcSpliceTime { get; }
+        public EventComponent(ReadOnlySpan<byte> bytes)
         {
-            SpliceTime = new SpliceTime(bytes);
-            SpliceCommandLength = SpliceTime.SpliceTimeTypeLength;
+            var pointer = 0;
+            ComponentTag = bytes[pointer++];
+            UtcSpliceTime = BinaryPrimitives.ReadUInt32BigEndian(bytes[pointer..]);
         }
         public override string Print(int prefixLen)
         {
-            string headerPrefix = Utils.HeaderPrefix(prefixLen);            
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            string prefix = Utils.Prefix(prefixLen);
 
-            string str = $"{headerPrefix}Time signal\n";
-            str += SpliceTime.Print(prefixLen + 4);
+            string str = $"{headerPrefix}Event component\r";
+            str += $"{prefix}Component tag: {ComponentTag}\r";
+            str += $"{prefix}Utc splice time: {Utils.GetPtsDtsValue(UtcSpliceTime)}\r";
 
             return str;
         }

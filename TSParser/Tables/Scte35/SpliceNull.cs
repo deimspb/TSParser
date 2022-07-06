@@ -12,12 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.Service;
+
 namespace TSParser.Tables.Scte35
 {
     public record SpliceNull : SpliceCommand
     {
-        public SpliceNull(ReadOnlySpan<byte> bytes) : base(bytes)
+        public SpliceNull(ReadOnlySpan<byte> bytes, byte spliceType) : base(bytes, spliceType)
         {
+            SpliceCommandLength = 0;
+        }
+
+        public override string Print(int prefixLen)
+        {
+            string headerPrefix = Utils.HeaderPrefix(prefixLen);
+            return $"{headerPrefix}Splice Null command, Type: {SpliceCommandType}";
         }
     }
 }

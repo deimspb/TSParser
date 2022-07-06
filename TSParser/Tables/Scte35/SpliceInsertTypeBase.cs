@@ -12,23 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using TSParser.Service;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace TSParser.Tables.Scte35
 {
-    public record SpliceCommand
+    public class SpliceInsertBase
     {
-        public byte SpliceCommandType { get; }
-        public int SpliceCommandLength { get; set; }
-        public SpliceCommand(ReadOnlySpan<byte> bytes, byte spliceType)
-        {
-            SpliceCommandType = spliceType;
-        }     
-
+        public int SpliceInsertTypeLength { get; set; }
         public virtual string Print(int prefixLen)
         {
-            string headerPrefix = Utils.HeaderPrefix(prefixLen);
-            return $"{headerPrefix}Splice command type: {SpliceCommandType}\n";
+            return string.Empty;
         }
     }
 }
