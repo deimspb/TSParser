@@ -62,7 +62,7 @@ namespace TSParser.Descriptors.Dvb
             string prefix = Utils.Prefix(prefixLen);
 
             string str = $"{headerPrefix}Descriptor tag: 0x{DescriptorTag:X2}, {DescriptorName}\n";
-            if (EventItems.Count > 0)
+            if (EventItems?.Count > 0)
             {
                 foreach (var item in EventItems)
                 {
