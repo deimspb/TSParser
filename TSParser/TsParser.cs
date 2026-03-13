@@ -1,4 +1,4 @@
-﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
+// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
 //  
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
@@ -164,6 +164,8 @@ namespace TSParser
         private List<ushort> m_scte35Pids = new();
         private List<ushort> m_ewsPids = new();
         private List<ushort> m_eewsPids = new();
+        private bool m_ewsPidListEmptyWarningSent;
+        private bool m_eewsPidListEmptyWarningSent;
 
         private int m_connectionAttempts = 5;
         private int m_socketTimeOut = 5000;
@@ -191,7 +193,7 @@ namespace TSParser
             set
             {
                 m_ewsPids = value;
-
+                m_ewsPidListEmptyWarningSent = false;
             }
 
             get
@@ -209,6 +211,7 @@ namespace TSParser
             set
             {
                 m_eewsPids = value;
+                m_eewsPidListEmptyWarningSent = false;
             }
             get
             {
@@ -353,6 +356,9 @@ namespace TSParser
                 0x4A => new BAT(bytes),
                 0x70 => new TDT(bytes),
                 0x73 => new TOT(bytes),
+                0x93 => new EWS(bytes, 0),
+                0x94 => new EEWS(bytes, 0),
+                0x95 => new EEWS(bytes, 0),
                 0xFC => new SCTE35(bytes),
                 byte n when n == 0x42 || n == 0x46 => new SDT(bytes),
                 byte n when n == 0x40 || n == 0x41 => new NIT(bytes),
@@ -659,9 +665,16 @@ namespace TSParser
         {
             if (m_ewsPids == null || m_ewsPids.Count == 0)
             {
-                Logger.Send(LogStatus.WARNING, $"EWS pid list is empty, set EWS pid list to get EWS tables");
+                if (!m_ewsPidListEmptyWarningSent)
+                {
+                    Logger.Send(LogStatus.WARNING, $"EWS pid list is empty, set EWS pid list to get EWS tables");
+                    m_ewsPidListEmptyWarningSent = true;
+                }
                 return;
             }
+
+            m_ewsPidListEmptyWarningSent = false;
+
             var idx = m_ewsPids.IndexOf(tsPacket.Pid);
             if (idx >= 0)
             {
@@ -677,6 +690,7 @@ namespace TSParser
                     };
                     ewsFactory.OnEwsReady += EwsFactory_OnEwsReady;
                     m_ewsFactories.Add(ewsFactory);
+                    ewsFactory.PushTable(tsPacket);
                 }
 
             }
@@ -685,9 +699,16 @@ namespace TSParser
         {
             if (m_eewsPids == null || m_eewsPids.Count == 0)
             {
-                Logger.Send(LogStatus.WARNING, $"EEWS pid list is empty, set EEWS pid list to get EEWS tables");
+                if (!m_eewsPidListEmptyWarningSent)
+                {
+                    Logger.Send(LogStatus.WARNING, $"EEWS pid list is empty, set EEWS pid list to get EEWS tables");
+                    m_eewsPidListEmptyWarningSent = true;
+                }
                 return;
             }
+
+            m_eewsPidListEmptyWarningSent = false;
+
             var idx = m_eewsPids.IndexOf(tsPacket.Pid);
             if (idx >= 0)
             {
@@ -703,6 +724,7 @@ namespace TSParser
                     };
                     eewsFactory.OnEewsReady += EewsFactory_OnEewsReady;
                     m_eewsFactories.Add(eewsFactory);
+                    eewsFactory.PushTable(tsPacket);
                 }
             }
         }
