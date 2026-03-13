@@ -1,4 +1,4 @@
-﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
+// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
 //  
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
@@ -223,7 +223,7 @@ namespace TSParser.Descriptors
             {
                 var desc = GetDesc(bytes[pointer..], descAllocation);
                 descriptors.Add(desc);
-                pointer += desc.DescriptorLength + 2;
+                pointer += desc.DescriptorTotalLength;
             }
             return descriptors;
         }

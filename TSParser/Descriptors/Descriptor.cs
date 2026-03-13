@@ -1,4 +1,4 @@
-﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
+// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
 //  
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
@@ -21,12 +21,21 @@ namespace TSParser.Descriptors
     {
         public byte DescriptorTag { get; init; }
         public byte DescriptorLength { get; init; }
+        public byte DescriptorHeaderLength { get; init; } = 2;
+        public int DescriptorTotalLength => DescriptorHeaderLength + DescriptorLength;
         public string DescriptorName => Dictionaries.DescriptorNames[DescriptorTag];
         public byte[] Data { get; init; } = null!;
         public Descriptor(ReadOnlySpan<byte> bytes)
         {
             int pointer = 0;
             DescriptorTag = bytes[pointer++];
+            if ((DescriptorTag == 0x89 || DescriptorTag == 0x90) && bytes.Length > pointer + 1 && bytes[pointer] == 0x15)
+            {
+                // EWS custom descriptors can store descriptor_length in the 3rd byte.
+                DescriptorHeaderLength = 3;
+                pointer++;
+            }
+
             DescriptorLength = bytes[pointer++];
 
             if (bytes.Length - pointer >= DescriptorLength)
