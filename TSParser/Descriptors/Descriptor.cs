@@ -19,10 +19,10 @@ namespace TSParser.Descriptors
 {
     public record Descriptor
     {
-        public byte DescriptorTag { get; }
-        public byte DescriptorLength { get; }
+        public byte DescriptorTag { get; init; }
+        public byte DescriptorLength { get; init; }
         public string DescriptorName => Dictionaries.DescriptorNames[DescriptorTag];
-        public byte[] Data { get; } = null!;
+        public byte[] Data { get; init; } = null!;
         public Descriptor(ReadOnlySpan<byte> bytes)
         {
             int pointer = 0;

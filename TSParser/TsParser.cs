@@ -79,6 +79,8 @@ namespace TSParser
     public delegate void MipReady(MIP mip);
     public delegate void Scte35Ready(SCTE35 scte35);
     public delegate void ParserComplete();
+    public delegate void EwsReady(EWS ews);
+    public delegate void EewsReady(EEWS eews);
 
     public class TsParser
     {
@@ -106,6 +108,8 @@ namespace TSParser
         public event Scte35Ready OnScte35Ready = null!;
         public event TsPacketReady OnTsPacketReady = null!;
         public event RateDelegate OnRate = null!;
+        public event EwsReady OnEwsReady = null!;
+        public event EewsReady OnEewsReady = null!;
 
         private readonly Lazy<TsPacketFactory> packetFactory = new();
         private readonly Lazy<TdtTotFactory> tdtTotFactory = new();
@@ -119,6 +123,8 @@ namespace TSParser
         private readonly Lazy<Compare> compare = new();
         private readonly Lazy<List<AitFactory>> aitFactories = new();
         private readonly Lazy<List<Scte35Factory>> scte35Factories = new();
+        private readonly Lazy<List<EwsFactory>> ewsFactories = new();
+        private readonly Lazy<List<EewsFactory>> eewsFactories = new();
         private PmtFactory[] m_pmtFactories = null!;
 
         private TsPacketFactory m_tsPacketFactory => packetFactory.Value;
@@ -133,6 +139,8 @@ namespace TSParser
         private Compare m_compare => compare.Value;
         private List<AitFactory> m_aitFactories => aitFactories.Value;
         private List<Scte35Factory> m_scte35Factories => scte35Factories.Value;
+        private List<EwsFactory> m_ewsFactories => ewsFactories.Value;
+        private List<EewsFactory> m_eewsFactories => eewsFactories.Value;
 
         public readonly byte[] PacketSize = new byte[] { 188, 204 };
 
@@ -154,6 +162,8 @@ namespace TSParser
         private ushort[] m_pmtPids = null!;
         private List<ushort> m_aitPids = new();
         private List<ushort> m_scte35Pids = new();
+        private List<ushort> m_ewsPids = new();
+        private List<ushort> m_eewsPids = new();
 
         private int m_connectionAttempts = 5;
         private int m_socketTimeOut = 5000;
@@ -170,7 +180,41 @@ namespace TSParser
             }
         }
         #endregion
-        #region Public methods        
+        #region Public methods
+        /// <summary>
+        /// Gets or sets the list of EWS property identifiers (PIDs) as unsigned 16-bit integers.
+        /// </summary>
+        /// <remarks>The list represents EWS PIDs used to identify specific entities in the EWS context.
+        /// When setting this property, ensure that the value is not null to avoid unexpected behavior.</remarks>
+        public List<ushort> EwsPidList
+        {
+            set
+            {
+                m_ewsPids = value;
+
+            }
+
+            get
+            {
+                return m_ewsPids;
+            }
+        }
+        /// <summary>
+        /// Gets or sets the list of EEWS PIDs represented as unsigned 16-bit integers.
+        /// </summary>
+        /// <remarks>The EEWS PID list is used to identify specific entities within the system. When
+        /// setting this property, ensure that the provided list is not null to avoid unexpected behavior.</remarks>
+        public List<ushort> EewsPidList
+        {
+            set
+            {
+                m_eewsPids = value;
+            }
+            get
+            {
+                return m_eewsPids;
+            }
+        }
         /// <summary>
         /// Return pid list from analyzer
         /// </summary>
@@ -580,6 +624,8 @@ namespace TSParser
             GetPmt(tsPacket);
             GetAit(tsPacket);
             GetScte35(tsPacket);
+            GetEws(tsPacket);
+            GetEews(tsPacket);
         }
         private void GetPmt(TsPacket tsPacket)
         {
@@ -608,6 +654,66 @@ namespace TSParser
             {
                 m_scte35Factories[idx].PushTable(tsPacket);
             }
+        }
+        private void GetEws(TsPacket tsPacket)
+        {
+            if (m_ewsPids == null || m_ewsPids.Count == 0)
+            {
+                Logger.Send(LogStatus.WARNING, $"EWS pid list is empty, set EWS pid list to get EWS tables");
+                return;
+            }
+            var idx = m_ewsPids.IndexOf(tsPacket.Pid);
+            if (idx >= 0)
+            {
+                if (idx < m_ewsFactories.Count)
+                {
+                    m_ewsFactories[idx].PushTable(tsPacket);
+                }
+                else
+                {
+                    var ewsFactory = new EwsFactory
+                    {
+                        CurrentPid = m_ewsPids[idx]
+                    };
+                    ewsFactory.OnEwsReady += EwsFactory_OnEwsReady;
+                    m_ewsFactories.Add(ewsFactory);
+                }
+
+            }
+        }
+        private void GetEews(TsPacket tsPacket)
+        {
+            if (m_eewsPids == null || m_eewsPids.Count == 0)
+            {
+                Logger.Send(LogStatus.WARNING, $"EEWS pid list is empty, set EEWS pid list to get EEWS tables");
+                return;
+            }
+            var idx = m_eewsPids.IndexOf(tsPacket.Pid);
+            if (idx >= 0)
+            {
+                if (idx < m_eewsFactories.Count)
+                {
+                    m_eewsFactories[idx].PushTable(tsPacket);
+                }
+                else
+                {
+                    var eewsFactory = new EewsFactory
+                    {
+                        CurrentPid = m_eewsPids[idx]
+                    };
+                    eewsFactory.OnEewsReady += EewsFactory_OnEewsReady;
+                    m_eewsFactories.Add(eewsFactory);
+                }
+            }
+        }
+        private void EwsFactory_OnEwsReady(EWS ews)
+        {
+            OnEwsReady?.Invoke(ews);
+        }
+
+        private void EewsFactory_OnEewsReady(EEWS eews)
+        {
+            OnEewsReady?.Invoke(eews);
         }
         private void AtscTableFactory(TsPacket tsPacket)
         {

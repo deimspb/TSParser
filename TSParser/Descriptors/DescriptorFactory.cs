@@ -263,12 +263,14 @@ namespace TSParser.Descriptors
                         }
                     case 0x89:
                         {
-                            descriptor = new SettingsDescriptorV1_0x89(bytes);
+                            //descriptor = new SettingsDescriptorV1_0x89(bytes);
+                            descriptor = new EwsRegionDescriptor_0x89(bytes);
                             return true;
                         }
                     case 0x90:
                         {
-                            descriptor = new SettingsDescriptorV2_0x90(bytes);
+                            //descriptor = new SettingsDescriptorV2_0x90(bytes);
+                            descriptor = new EwsZoneDescriptor_0x90(bytes);
                             return true;
                         }
                     case 0xB0:
