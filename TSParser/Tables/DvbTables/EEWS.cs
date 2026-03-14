@@ -1,4 +1,4 @@
-﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
+// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
 //  
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@ public record EEWS : Table
         {
             var deviceLoop = new DeviceLoop(bytes[pointer..]);
             deviceLoopList.Add(deviceLoop);
-            pointer += deviceLoop.EewsDeviceDescriptorLength + 6;
+            pointer += deviceLoop.EewsDeviceDescriptorLength + 5;
         }
         return deviceLoopList;
     }
