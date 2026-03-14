@@ -1,4 +1,4 @@
-﻿// Copyright 2021 Eldar Nizamutdinov 
+// Copyright 2021 Eldar Nizamutdinov 
 //  
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,14 @@
 // limitations under the License.
 
 using System.Buffers.Binary;
+using System.Text;
 using TSParser.Service;
 
 namespace TSParser.DictionariesData
 {
     internal class Dictionaries
     {
+        private static readonly UTF8Encoding StrictUtf8 = new UTF8Encoding(false, true);
         private static readonly Dictionary<byte, ushort> iso8859_1 = new Dictionary<byte, ushort>()
         {
             {0x00,0x0000},
@@ -3993,6 +3995,43 @@ namespace TSParser.DictionariesData
                     }
 
             }
+        }
+        
+        internal static string BytesToStringPreferUtf8Cyrillic(ReadOnlySpan<byte> bytes)
+        {
+            if (bytes.Length == 0) return string.Empty;
+
+            // Some descriptors provide raw UTF-8 bytes without DVB coding prefix.
+            // If payload is valid UTF-8 and contains Cyrillic symbols, prefer UTF-8 decoding.
+            if (bytes[0] != 0x15 && TryDecodeUtf8WithCyrillic(bytes, out var utf8Text))
+            {
+                return utf8Text;
+            }
+
+            return BytesToString(bytes);
+        }
+
+        private static bool TryDecodeUtf8WithCyrillic(ReadOnlySpan<byte> bytes, out string decoded)
+        {
+            try
+            {
+                decoded = StrictUtf8.GetString(bytes);
+            }
+            catch (DecoderFallbackException)
+            {
+                decoded = string.Empty;
+                return false;
+            }
+
+            for (var i = 0; i < decoded.Length; i++)
+            {
+                if (decoded[i] >= '\u0400' && decoded[i] <= '\u04FF')
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
         internal static string GetStreamIdName(byte bt)
         {
