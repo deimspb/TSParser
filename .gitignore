@@ -399,7 +399,6 @@ FodyWeavers.xsd
 *.sln.iml
 
 #spesific
-TSParser/Descriptors/Custom/
 TSParser/AppTest/
 AppTest/
 StreamParser/

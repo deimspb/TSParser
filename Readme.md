@@ -18,6 +18,8 @@ DVB/MPEG tables:
 * AIT
 * MIP
 * SCTE35
+* EWS (Emergency Warning System)
+* EEWS (Extended Emergency Warning System)
 * Support non zero pointer field
 
 Descriptors:
@@ -68,6 +70,19 @@ Descriptors:
  * 0x8A CueIdentifierDescriptor_0x8A
  * 0x7C AACDescriptor_0x7C
 
+Custom descriptors (`TSParser.Descriptors.Custom`, operator-specific SI):
+ * 0x09 CaDescriptorCustom_0x09 (DRE CA variant)
+ * 0x86 GnrDescriptor_0x86
+ * 0x87 LogicalChannelNumberDescriptorV2_0x87
+ * 0x88 MultilingualRegionNameDescriptor_0x88
+ * 0x89 EwsRegionDescriptor_0x89
+ * 0x90 EwsZoneDescriptor_0x90
+ * 0xB0 SettingsDescriptorV3_0xB0
+ * 0xB1 SettingsDescriptorV4_0xB1
+ * 0xB2 ChannelListTypeDescriptor_0xB2
+ * 0xB3 TimeZoneDescriptor_0xB3
+ * 0xB4 TimeZoneDescriptorLG_0xB4
+ * 0xC0 WhiteListDescriptor_0xC0
 
 Extension Descriptor:
 * 0x00  ImageIconDescriptor_0x00
@@ -213,5 +228,4 @@ To Get tables you need to subscribe to the events.
  * Add subtitling parsing
  * Add DekTec PCI/USB adapters support
  * Add Test to all objects
- * Add functionality to add custom descriptors
  * Add custom exceptions
