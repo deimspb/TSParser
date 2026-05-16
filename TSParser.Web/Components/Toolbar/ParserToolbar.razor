@@ -1,0 +1,431 @@
+@rendermode InteractiveServer
+
+@using TSParser.Analysis
+@inject TsParserSessionService Session
+@inject NetworkInterfaceService NetworkInterfaces
+
+<header class="parser-toolbar">
+    <span class="parser-brand">TSParser</span>
+
+    <div class="toolbar-groups">
+        <div class="toolbar-group">
+            <button type="button" class="toolbar-btn" @onclick="ShowFileDialog" disabled="@_sessionBusy">File…</button>
+            <button type="button" class="toolbar-btn" @onclick="ShowBitrateDialog" disabled="@_sessionBusy">Bitrate…</button>
+        </div>
+
+        <div class="toolbar-group toolbar-group--udp">
+            <label class="toolbar-label" for="multicast-endpoint">Multicast</label>
+            <input id="multicast-endpoint"
+                   class="toolbar-input toolbar-input--endpoint"
+                   @bind="_multicastEndpoint"
+                   @bind:event="oninput"
+                   placeholder="239.1.2.3:1234"
+                   disabled="@IsUdpRunning"
+                   autocomplete="off" />
+
+            <label class="toolbar-label" for="bind-address">Source IP</label>
+            <select id="bind-address"
+                    class="toolbar-select"
+                    @bind="_selectedBindAddress"
+                    disabled="@IsUdpRunning">
+                @foreach (var opt in _bindOptions)
+                {
+                    <option value="@(opt.Address ?? "")">@opt.Label</option>
+                }
+            </select>
+
+            <button type="button"
+                    class="toolbar-btn toolbar-btn--primary"
+                    @onclick="PlayUdpAsync"
+                    disabled="@(_sessionBusy || IsUdpRunning || !CanPlayUdp)">
+                Play
+            </button>
+            <button type="button"
+                    class="toolbar-btn"
+                    @onclick="StopUdp"
+                    disabled="@(!IsUdpRunning)">
+                Stop
+            </button>
+        </div>
+
+        <div class="toolbar-group">
+            <button type="button" class="toolbar-btn" @onclick="ShowEwsDialog" disabled="@_sessionBusy">EWS…</button>
+        </div>
+    </div>
+
+    <span class="parser-status" title="@StatusDisplay">@StatusDisplay</span>
+</header>
+
+@if (_showFileDialog)
+{
+    <div class="toolbar-modal-backdrop" @onclick="CloseFileDialog">
+        <div class="toolbar-modal" role="dialog" aria-labelledby="file-dialog-title" @onclick:stopPropagation="true">
+            <h2 id="file-dialog-title" class="toolbar-modal-title">Open transport stream file</h2>
+            <p class="toolbar-modal-hint">Enter the full path on the server machine (minimum 2040 bytes).</p>
+            <input class="toolbar-input toolbar-input--wide"
+                   @bind="_filePath"
+                   placeholder="D:\captures\stream.ts"
+                   autocomplete="off" />
+            @if (!string.IsNullOrEmpty(_fileError))
+            {
+                <p class="toolbar-modal-error">@_fileError</p>
+            }
+            <div class="toolbar-modal-actions">
+                <button type="button" class="toolbar-btn toolbar-btn--primary" @onclick="ConfirmOpenFileAsync" disabled="@_sessionBusy">Open</button>
+                <button type="button" class="toolbar-btn" @onclick="CloseFileDialog">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showBitrateDialog)
+{
+    <div class="toolbar-modal-backdrop" @onclick="CloseBitrateDialog">
+        <div class="toolbar-modal toolbar-modal--wide" role="dialog" aria-labelledby="bitrate-dialog-title" @onclick:stopPropagation="true">
+            <h2 id="bitrate-dialog-title" class="toolbar-modal-title">Bitrate measurement</h2>
+            <p class="toolbar-modal-hint">Applied on the next file open or UDP play.</p>
+
+            <div class="toolbar-form-grid">
+                <label for="clock-source">Clock source</label>
+                <select id="clock-source" class="toolbar-select" @bind="_bitrateClockSource">
+                    <option value="@BitrateClockSource.Pcr">PCR</option>
+                    <option value="@BitrateClockSource.Pts">PTS</option>
+                    <option value="@BitrateClockSource.Dts">DTS</option>
+                    <option value="@BitrateClockSource.AssumedTransportRate">Assumed transport rate</option>
+                </select>
+
+                <label for="measurement-window">Window (seconds)</label>
+                <input id="measurement-window" class="toolbar-input" type="number" min="0.1" step="0.1" @bind="_measurementWindowSeconds" />
+
+                <label for="reference-pid">Reference PID</label>
+                <input id="reference-pid" class="toolbar-input" @bind="_referencePidText" placeholder="optional, e.g. 0x0100" />
+
+                @if (_bitrateClockSource == BitrateClockSource.AssumedTransportRate)
+                {
+                    <label for="assumed-bps">Assumed rate (Mb/s)</label>
+                    <input id="assumed-bps" class="toolbar-input" type="number" min="0.1" step="0.1" @bind="_assumedMbps" />
+                }
+
+                <span class="toolbar-form-span"></span>
+                <div class="toolbar-checks">
+                    <label class="toolbar-check">
+                        <input type="checkbox" @bind="_measureStreamBitrate" />
+                        Stream bitrate
+                    </label>
+                    <label class="toolbar-check">
+                        <input type="checkbox" @bind="_measureUsefulAndTotal" />
+                        Total + useful (exclude null PID)
+                    </label>
+                    <label class="toolbar-check">
+                        <input type="checkbox" @bind="_measurePerPid" />
+                        Per-PID bitrate
+                    </label>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_bitrateError))
+            {
+                <p class="toolbar-modal-error">@_bitrateError</p>
+            }
+
+            <div class="toolbar-modal-actions">
+                <button type="button" class="toolbar-btn toolbar-btn--primary" @onclick="SaveBitrateSettings">OK</button>
+                <button type="button" class="toolbar-btn" @onclick="CloseBitrateDialog">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showEwsDialog)
+{
+    <div class="toolbar-modal-backdrop" @onclick="CloseEwsDialog">
+        <div class="toolbar-modal toolbar-modal--wide" role="dialog" aria-labelledby="ews-dialog-title" @onclick:stopPropagation="true">
+            <h2 id="ews-dialog-title" class="toolbar-modal-title">EWS / EEWS PIDs</h2>
+            <p class="toolbar-modal-hint">
+                Operator EWS and EEWS tables appear only when the parser is given their PIDs before play.
+                Comma-separated decimal or hex (for example 0x1A00, 0x1A01).
+            </p>
+
+            <label class="toolbar-field-label" for="ews-pids">EWS PIDs</label>
+            <input id="ews-pids" class="toolbar-input toolbar-input--wide" @bind="_ewsPidsText" placeholder="0x1A00" />
+
+            <label class="toolbar-field-label" for="eews-pids">EEWS PIDs</label>
+            <input id="eews-pids" class="toolbar-input toolbar-input--wide" @bind="_eewsPidsText" placeholder="0x1A01" />
+
+            @if (!string.IsNullOrEmpty(_ewsError))
+            {
+                <p class="toolbar-modal-error">@_ewsError</p>
+            }
+
+            <div class="toolbar-modal-actions">
+                <button type="button" class="toolbar-btn toolbar-btn--primary" @onclick="SaveEwsSettings">OK</button>
+                <button type="button" class="toolbar-btn" @onclick="CloseEwsDialog">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string StatusText { get; set; } = "Idle";
+
+    private IReadOnlyList<NetworkInterfaceService.BindOption> _bindOptions = [];
+    private string _multicastEndpoint = "239.1.2.3:1234";
+    private string _selectedBindAddress = "";
+    private string _filePath = "";
+    private bool _showFileDialog;
+    private bool _showBitrateDialog;
+    private bool _showEwsDialog;
+    private bool _sessionBusy;
+    private string? _fileError;
+    private string? _bitrateError;
+    private string? _ewsError;
+    private string? _sessionError;
+
+    private BitrateClockSource _bitrateClockSource;
+    private double _measurementWindowSeconds = 1;
+    private string _referencePidText = "";
+    private double _assumedMbps = 10;
+    private bool _measureStreamBitrate = true;
+    private bool _measureUsefulAndTotal = true;
+    private bool _measurePerPid;
+
+    private string _ewsPidsText = "";
+    private string _eewsPidsText = "";
+
+    private string StatusDisplay =>
+        !string.IsNullOrEmpty(_sessionError) ? _sessionError : StatusText;
+
+    private bool IsUdpRunning => Session.InputMode == TsParserSessionInputMode.Udp && Session.IsRunning;
+
+    private bool CanPlayUdp => TsParserSessionService.TryParseMulticastEndpoint(_multicastEndpoint, out _, out _);
+
+    protected override void OnInitialized()
+    {
+        _bindOptions = NetworkInterfaces.GetBindOptions();
+        LoadSettingsFromSession();
+    }
+
+    private void LoadSettingsFromSession()
+    {
+        var s = Session.Settings;
+        _bitrateClockSource = s.ClockSource;
+        _measurementWindowSeconds = s.MeasurementWindow.TotalSeconds;
+        _referencePidText = s.ReferencePid is { } pid ? $"0x{pid:X4}" : "";
+        _assumedMbps = s.AssumedBitsPerSecond / 1_000_000d;
+        _measureStreamBitrate = s.MeasureStreamBitrate;
+        _measureUsefulAndTotal = s.MeasureUsefulAndTotalBitrate;
+        _measurePerPid = s.MeasurePerPidBitrate;
+        _ewsPidsText = FormatPidList(s.EwsPids);
+        _eewsPidsText = FormatPidList(s.EewsPids);
+
+        if (!string.IsNullOrEmpty(Session.CurrentFilePath))
+            _filePath = Session.CurrentFilePath;
+
+        if (!string.IsNullOrEmpty(Session.CurrentMulticastEndpoint))
+            _multicastEndpoint = Session.CurrentMulticastEndpoint;
+
+        _selectedBindAddress = Session.CurrentBindAddress ?? "";
+    }
+
+    private static string FormatPidList(IReadOnlyList<ushort> pids) =>
+        pids.Count == 0 ? "" : string.Join(", ", pids.Select(p => $"0x{p:X4}"));
+
+    private void ShowFileDialog()
+    {
+        _fileError = null;
+        if (string.IsNullOrWhiteSpace(_filePath) && !string.IsNullOrEmpty(Session.CurrentFilePath))
+            _filePath = Session.CurrentFilePath;
+        _showFileDialog = true;
+    }
+
+    private void CloseFileDialog() => _showFileDialog = false;
+
+    private void ShowBitrateDialog()
+    {
+        _bitrateError = null;
+        LoadSettingsFromSession();
+        _showBitrateDialog = true;
+    }
+
+    private void CloseBitrateDialog() => _showBitrateDialog = false;
+
+    private void ShowEwsDialog()
+    {
+        _ewsError = null;
+        LoadSettingsFromSession();
+        _showEwsDialog = true;
+    }
+
+    private void CloseEwsDialog() => _showEwsDialog = false;
+
+    private void SaveBitrateSettings()
+    {
+        _bitrateError = null;
+
+        if (_measurementWindowSeconds <= 0)
+        {
+            _bitrateError = "Measurement window must be greater than zero.";
+            return;
+        }
+
+        ushort? referencePid = null;
+        if (!string.IsNullOrWhiteSpace(_referencePidText))
+        {
+            if (!TsPidListParser.TryParsePid(_referencePidText, out var pid))
+            {
+                _bitrateError = "Reference PID is invalid.";
+                return;
+            }
+
+            referencePid = pid;
+        }
+
+        if (_assumedMbps <= 0)
+        {
+            _bitrateError = "Assumed rate must be greater than zero.";
+            return;
+        }
+
+        var settings = Session.Settings;
+        settings.ClockSource = _bitrateClockSource;
+        settings.MeasurementWindow = TimeSpan.FromSeconds(_measurementWindowSeconds);
+        settings.ReferencePid = referencePid;
+        settings.AssumedBitsPerSecond = _assumedMbps * 1_000_000d;
+        settings.MeasureStreamBitrate = _measureStreamBitrate;
+        settings.MeasureUsefulAndTotalBitrate = _measureUsefulAndTotal;
+        settings.MeasurePerPidBitrate = _measurePerPid;
+
+        _showBitrateDialog = false;
+    }
+
+    private void SaveEwsSettings()
+    {
+        _ewsError = null;
+
+        if (!TsPidListParser.TryParseList(_ewsPidsText, out var ews, out var err))
+        {
+            _ewsError = $"EWS: {err}";
+            return;
+        }
+
+        if (!TsPidListParser.TryParseList(_eewsPidsText, out var eews, out err))
+        {
+            _ewsError = $"EEWS: {err}";
+            return;
+        }
+
+        Session.Settings.SetEwsPids(ews);
+        Session.Settings.SetEewsPids(eews);
+        _showEwsDialog = false;
+    }
+
+    private void ConfirmOpenFileAsync()
+    {
+        _fileError = null;
+        _sessionError = null;
+
+        if (string.IsNullOrWhiteSpace(_filePath))
+        {
+            _fileError = "Enter a file path.";
+            return;
+        }
+
+        var path = _filePath.Trim();
+        // #region agent log
+        AgentDebugLog.Write("A", "ParserToolbar.ConfirmOpenFile", "Open clicked", new { path, showFileDialog = _showFileDialog, sessionBusy = _sessionBusy });
+        // #endregion
+        _ = RunSessionInBackgroundAsync(
+            async () =>
+            {
+                // #region agent log
+                var openStart = Environment.TickCount64;
+                AgentDebugLog.Write("A", "ParserToolbar.background", "Before OpenFileAsync", new { path, showFileDialog = _showFileDialog });
+                // #endregion
+                await Session.OpenFileAsync(path).ConfigureAwait(false);
+                // #region agent log
+                AgentDebugLog.Write("A", "ParserToolbar.background", "After OpenFileAsync", new { elapsedMs = Environment.TickCount64 - openStart, showFileDialog = _showFileDialog });
+                // #endregion
+                try
+                {
+                    await InvokeAsync(() =>
+                    {
+                        // #region agent log
+                        AgentDebugLog.Write("B", "ParserToolbar.InvokeAsync", "Closing file dialog", new { showFileDialogBefore = _showFileDialog });
+                        // #endregion
+                        _showFileDialog = false;
+                    }).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    // #region agent log
+                    AgentDebugLog.Write("B", "ParserToolbar.InvokeAsync", "InvokeAsync failed", new { ex = ex.GetType().Name, ex.Message });
+                    // #endregion
+                    throw;
+                }
+            },
+            ex =>
+            {
+                // #region agent log
+                AgentDebugLog.Write("D", "ParserToolbar.onError", "OpenFile failed", new { ex = ex.GetType().Name, ex.Message });
+                // #endregion
+                _fileError = ex.Message;
+            });
+    }
+
+    private void PlayUdpAsync()
+    {
+        if (!CanPlayUdp || _sessionBusy)
+            return;
+
+        _sessionError = null;
+        var bind = string.IsNullOrEmpty(_selectedBindAddress) ? null : _selectedBindAddress;
+        var endpoint = _multicastEndpoint.Trim();
+        _ = RunSessionInBackgroundAsync(
+            () => Session.StartUdpAsync(endpoint, bind),
+            ex => _sessionError = ex.Message);
+    }
+
+    private void StopUdp()
+    {
+        _sessionError = null;
+        Session.Stop();
+    }
+
+    private Task RunSessionInBackgroundAsync(Func<Task> start, Action<Exception>? onError = null)
+    {
+        if (_sessionBusy)
+            return Task.CompletedTask;
+
+        _sessionBusy = true;
+        _ = InvokeAsync(StateHasChanged);
+
+        return Task.Run(async () =>
+        {
+            try
+            {
+                await start().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                await InvokeAsync(() =>
+                {
+                    onError?.Invoke(ex);
+                    if (onError is null)
+                        _sessionError = ex.Message;
+                }).ConfigureAwait(false);
+            }
+            finally
+            {
+                await InvokeAsync(() =>
+                {
+                    // #region agent log
+                    AgentDebugLog.Write("C", "ParserToolbar.RunSession.finally", "Session busy cleared", new { sessionBusy = false, showFileDialog = _showFileDialog });
+                    // #endregion
+                    _sessionBusy = false;
+                    StateHasChanged();
+                }).ConfigureAwait(false);
+            }
+        });
+    }
+}

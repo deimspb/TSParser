@@ -11,9 +11,9 @@
     <div class="bitrate-chart-plot-wrap">
         @if (_hasData)
         {
-            <BlazorPlot @ref="_plot"
-                        Style="width: 100%; height: 100%;"
-                        class="bitrate-chart-plot" />
+            <motion.div class="bitrate-chart-plot" style="width: 100%; height: 100%;">
+                <BlazorPlot @ref="_plot" Style="width: 100%; height: 100%;" />
+            </motion.div>
         }
         else
         {

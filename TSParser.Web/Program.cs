@@ -11,6 +11,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSingleton<TsParserSessionService>();
 builder.Services.AddSingleton<TableVersionStore>();
 builder.Services.AddSingleton<BitrateHistoryStore>();
+builder.Services.AddSingleton<NetworkInterfaceService>();
 
 var app = builder.Build();
 
