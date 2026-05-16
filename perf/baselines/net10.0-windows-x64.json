@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-05-16T16:04:31.5363697+03:00",
+  "runtime": ".NET 10.0.8",
+  "rid": "win-x64",
+  "machine": "LYNX",
+  "cpu": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+  "benchmarks": {
+    "DescriptorLoopBenchmarks.ParsePmtSection": {
+      "MeanNs": 1212792,
+      "StdDevNs": 20385,
+      "allocatedBytes": 6064
+    },
+    "DescriptorLoopBenchmarks.ParseSyntheticLoop": {
+      "MeanNs": 6351445,
+      "StdDevNs": 38914,
+      "allocatedBytes": 28104
+    },
+    "ParseDescriptorBenchmarks.Parse(DescriptorGroup=Dvb_09)": {
+      "MeanNs": 19531,
+      "StdDevNs": 373,
+      "allocatedBytes": 120
+    },
+    "ParseDescriptorBenchmarks.Parse(DescriptorGroup=Dvb_41)": {
+      "MeanNs": 119636,
+      "StdDevNs": 773,
+      "allocatedBytes": 680
+    },
+    "ParseDescriptorBenchmarks.Parse(DescriptorGroup=Dvb_43)": {
+      "MeanNs": 16968,
+      "StdDevNs": 191,
+      "allocatedBytes": 88
+    },
+    "ParseDescriptorBenchmarks.Parse(DescriptorGroup=Dvb_47)": {
+      "MeanNs": 72676,
+      "StdDevNs": 621,
+      "allocatedBytes": 272
+    },
+    "ParseDescriptorBenchmarks.Parse(DescriptorGroup=Dvb_48)": {
+      "MeanNs": 150108,
+      "StdDevNs": 974,
+      "allocatedBytes": 528
+    },
+    "ParseDescriptorBenchmarks.Parse(DescriptorGroup=Dvb_4A)": {
+      "MeanNs": 23580,
+      "StdDevNs": 379,
+      "allocatedBytes": 200
+    },
+    "ParseDescriptorBenchmarks.Parse(DescriptorGroup=Dvb_4D)": {
+      "MeanNs": 484994,
+      "StdDevNs": 2534,
+      "allocatedBytes": 1576
+    },
+    "ParseDescriptorBenchmarks.Parse(DescriptorGroup=Dvb_4E)": {
+      "MeanNs": 611300,
+      "StdDevNs": 2313,
+      "allocatedBytes": 1936
+    },
+    "ParseDescriptorBenchmarks.Parse(DescriptorGroup=Dvb_52)": {
+      "MeanNs": 12717,
+      "StdDevNs": 113,
+      "allocatedBytes": 64
+    },
+    "ParseDescriptorBenchmarks.Parse(DescriptorGroup=Dvb_54)": {
+      "MeanNs": 16511,
+      "StdDevNs": 122,
+      "allocatedBytes": 104
+    },
+    "ParseTableBenchmarks.Parse(TableType=AIT)": {
+      "MeanNs": 334665,
+      "StdDevNs": 6366,
+      "allocatedBytes": 1552
+    },
+    "ParseTableBenchmarks.Parse(TableType=BAT)": {
+      "MeanNs": 2403683,
+      "StdDevNs": 115989,
+      "allocatedBytes": 10368
+    },
+    "ParseTableBenchmarks.Parse(TableType=CAT)": {
+      "MeanNs": 1728062,
+      "StdDevNs": 28456,
+      "allocatedBytes": 2904
+    },
+    "ParseTableBenchmarks.Parse(TableType=EIT)": {
+      "MeanNs": 11543313,
+      "StdDevNs": 116369,
+      "allocatedBytes": 43256
+    },
+    "ParseTableBenchmarks.Parse(TableType=NIT)": {
+      "MeanNs": 2624886,
+      "StdDevNs": 38002,
+      "allocatedBytes": 12072
+    },
+    "ParseTableBenchmarks.Parse(TableType=PAT)": {
+      "MeanNs": 680795,
+      "StdDevNs": 35678,
+      "allocatedBytes": 4752
+    },
+    "ParseTableBenchmarks.Parse(TableType=PMT)": {
+      "MeanNs": 1156733,
+      "StdDevNs": 14507,
+      "allocatedBytes": 6064
+    },
+    "ParseTableBenchmarks.Parse(TableType=SDT)": {
+      "MeanNs": 5980163,
+      "StdDevNs": 49504,
+      "allocatedBytes": 25408
+    },
+    "ParseTableBenchmarks.Parse(TableType=TDT)": {
+      "MeanNs": 23954,
+      "StdDevNs": 76,
+      "allocatedBytes": 80
+    },
+    "ParseTableBenchmarks.Parse(TableType=TOT)": {
+      "MeanNs": 122437,
+      "StdDevNs": 1019,
+      "allocatedBytes": 440
+    }
+  },
+  "sdk": "10.0.204"
+}
