@@ -332,44 +332,13 @@
         }
 
         var path = _filePath.Trim();
-        // #region agent log
-        AgentDebugLog.Write("A", "ParserToolbar.ConfirmOpenFile", "Open clicked", new { path, showFileDialog = _showFileDialog, sessionBusy = _sessionBusy });
-        // #endregion
+        _showFileDialog = false;
         _ = RunSessionInBackgroundAsync(
-            async () =>
-            {
-                // #region agent log
-                var openStart = Environment.TickCount64;
-                AgentDebugLog.Write("A", "ParserToolbar.background", "Before OpenFileAsync", new { path, showFileDialog = _showFileDialog });
-                // #endregion
-                await Session.OpenFileAsync(path).ConfigureAwait(false);
-                // #region agent log
-                AgentDebugLog.Write("A", "ParserToolbar.background", "After OpenFileAsync", new { elapsedMs = Environment.TickCount64 - openStart, showFileDialog = _showFileDialog });
-                // #endregion
-                try
-                {
-                    await InvokeAsync(() =>
-                    {
-                        // #region agent log
-                        AgentDebugLog.Write("B", "ParserToolbar.InvokeAsync", "Closing file dialog", new { showFileDialogBefore = _showFileDialog });
-                        // #endregion
-                        _showFileDialog = false;
-                    }).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    // #region agent log
-                    AgentDebugLog.Write("B", "ParserToolbar.InvokeAsync", "InvokeAsync failed", new { ex = ex.GetType().Name, ex.Message });
-                    // #endregion
-                    throw;
-                }
-            },
+            () => Session.OpenFileAsync(path),
             ex =>
             {
-                // #region agent log
-                AgentDebugLog.Write("D", "ParserToolbar.onError", "OpenFile failed", new { ex = ex.GetType().Name, ex.Message });
-                // #endregion
                 _fileError = ex.Message;
+                _showFileDialog = true;
             });
     }
 
@@ -419,9 +388,6 @@
             {
                 await InvokeAsync(() =>
                 {
-                    // #region agent log
-                    AgentDebugLog.Write("C", "ParserToolbar.RunSession.finally", "Session busy cleared", new { sessionBusy = false, showFileDialog = _showFileDialog });
-                    // #endregion
                     _sessionBusy = false;
                     StateHasChanged();
                 }).ConfigureAwait(false);

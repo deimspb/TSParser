@@ -1,6 +1,8 @@
+@using System.Text.Json
 @using ScottPlot
-@using ScottPlot.Blazor
 @using TSParser.Web.Services
+@inject IWebHostEnvironment WebHostEnvironment
+@inject IJSRuntime Js
 
 <div class="bitrate-chart-panel">
     <div class="bitrate-chart-header">
@@ -8,12 +10,17 @@
         <span class="bitrate-chart-stats">@_statsText</span>
     </div>
 
-    <div class="bitrate-chart-plot-wrap">
-        @if (_hasData)
+    <div class="bitrate-chart-plot-wrap" @ref="_wrapRef">
+        @if (_hasData && !string.IsNullOrEmpty(_chartImageUri))
         {
-            <motion.div class="bitrate-chart-plot" style="width: 100%; height: 100%;">
-                <BlazorPlot @ref="_plot" Style="width: 100%; height: 100%;" />
-            </motion.div>
+            <img class="bitrate-chart-plot"
+                 src="@_chartImageUri"
+                 data-revision="@_renderedRevision"
+                 alt="Transport bitrate chart" />
+        }
+        else if (_hasData)
+        {
+            <p class="bitrate-chart-placeholder">@_placeholderText</p>
         }
         else
         {
@@ -23,9 +30,17 @@
 </div>
 
 @code {
-    private BlazorPlot? _plot;
-    private int _appliedRevision = -1;
+    private const int MinChartWidth = 320;
+    private const int MinChartHeight = 100;
+    private const int DefaultChartWidth = 800;
+    private const int DefaultChartHeight = 180;
+
+    private ElementReference _wrapRef;
+    private int _renderedRevision = -1;
+    private int _renderedWidth;
+    private int _renderedHeight;
     private bool _hasData;
+    private string? _chartImageUri;
     private string _statsText = "";
     private string _placeholderText = "Bitrate samples appear while parsing a file or UDP stream.";
 
@@ -47,23 +62,109 @@
 
         _placeholderText = snapshot.Mode switch
         {
+            BitrateChartMode.File when _hasData => "Rendering bitrate chart…",
             BitrateChartMode.File => "Waiting for bitrate windows during file parse…",
+            BitrateChartMode.Udp when _hasData => "Rendering live bitrate chart…",
             BitrateChartMode.Udp => "Waiting for live bitrate samples…",
             _ => "Bitrate samples appear while parsing a file or UDP stream."
         };
 
         _statsText = BuildStatsText(snapshot);
+
+        if (!_hasData)
+        {
+            _chartImageUri = null;
+            _renderedRevision = -1;
+        }
     }
 
-    protected override void OnAfterRender(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!_hasData || _plot is null || DataRevision == _appliedRevision)
+        if (!_hasData)
             return;
 
-        _appliedRevision = DataRevision;
-        ApplySnapshot(Store.GetSnapshot());
-        _plot.Refresh();
+        try
+        {
+            var size = await Js.InvokeAsync<PlotWrapSize>("bitrateChart.getPlotWrapSize", _wrapRef);
+            var width = size.Width >= MinChartWidth ? size.Width : DefaultChartWidth;
+            var height = size.Height >= MinChartHeight ? size.Height : DefaultChartHeight;
+
+            var sizeChanged = Math.Abs(width - _renderedWidth) > 8 || Math.Abs(height - _renderedHeight) > 8;
+            var dataChanged = DataRevision != _renderedRevision;
+
+            if (dataChanged || sizeChanged || string.IsNullOrEmpty(_chartImageUri))
+            {
+                var snapshot = Store.GetSnapshot();
+                var plot = new Plot();
+                if (!TryApplySnapshot(plot, snapshot))
+                    return;
+
+                plot.ShowLegend(Alignment.UpperRight);
+                plot.Axes.AutoScale();
+
+                var bytes = plot.GetImageBytes(width, height, ImageFormat.Png);
+                _chartImageUri = $"data:image/png;base64,{Convert.ToBase64String(bytes)}";
+                _renderedRevision = DataRevision;
+                _renderedWidth = width;
+                _renderedHeight = height;
+
+                // #region agent log
+                AgentDebugLog("F", "BitrateChartPanel.razor:OnAfterRenderAsync", "Server PNG chart rendered", new
+                {
+                    renderMode = "server-png-dynamic-zoom",
+                    chartWidth = width,
+                    chartHeight = height,
+                    pngBytes = bytes.Length,
+                    dataRevision = DataRevision,
+                    pointCount = snapshot.Mode == BitrateChartMode.File ? snapshot.FilePoints.Count : snapshot.UdpPoints.Count
+                });
+                // #endregion
+
+                StateHasChanged();
+                return;
+            }
+
+            await Js.InvokeVoidAsync("bitrateChart.attachZoom", _wrapRef);
+            // #region agent log
+            await Js.InvokeVoidAsync("bitrateChart.logDom");
+            // #endregion
+        }
+        catch (Exception ex)
+        {
+            _chartImageUri = null;
+            _placeholderText = "Chart render failed.";
+            // #region agent log
+            AgentDebugLog("F", "BitrateChartPanel.razor:OnAfterRenderAsync", "Chart render failed", new { ex.Message });
+            // #endregion
+        }
     }
+
+    // #region agent log
+    private void AgentDebugLog(string hypothesisId, string location, string message, object data)
+    {
+        try
+        {
+            var logPath = Path.GetFullPath(Path.Combine(WebHostEnvironment.ContentRootPath, "..", "debug-64f5ce.log"));
+            var payload = new Dictionary<string, object?>
+            {
+                ["sessionId"] = "64f5ce",
+                ["runId"] = "post-fix",
+                ["hypothesisId"] = hypothesisId,
+                ["location"] = location,
+                ["message"] = message,
+                ["data"] = data,
+                ["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            };
+            File.AppendAllText(logPath, JsonSerializer.Serialize(payload) + Environment.NewLine);
+        }
+        catch
+        {
+            // ignore debug log failures
+        }
+    }
+
+    private sealed record PlotWrapSize(int Width, int Height);
+    // #endregion
 
     private static string BuildStatsText(BitrateChartSnapshot snapshot)
     {
@@ -84,30 +185,23 @@
         return "";
     }
 
-    private void ApplySnapshot(BitrateChartSnapshot snapshot)
+    private static bool TryApplySnapshot(Plot plot, BitrateChartSnapshot snapshot)
     {
-        if (_plot is null)
-            return;
-
-        var plot = _plot.Plot;
         plot.Clear();
 
         switch (snapshot.Mode)
         {
             case BitrateChartMode.File when snapshot.FilePoints.Count > 0:
                 RenderFileSeries(plot, snapshot);
-                break;
+                return true;
 
             case BitrateChartMode.Udp when snapshot.UdpPoints.Count > 0:
                 RenderUdpSeries(plot, snapshot);
-                break;
+                return true;
 
             default:
-                return;
+                return false;
         }
-
-        plot.ShowLegend(Alignment.UpperRight);
-        plot.Axes.AutoScale();
     }
 
     private static void RenderFileSeries(Plot plot, BitrateChartSnapshot snapshot)

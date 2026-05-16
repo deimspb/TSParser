@@ -59,10 +59,6 @@ public sealed class TsParserSessionService : IAsyncDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(fullPath);
 
         var path = Path.GetFullPath(fullPath.Trim());
-        // #region agent log
-        var openTicks = Environment.TickCount64;
-        AgentDebugLog.Write("E", "TsParserSessionService.OpenFile", "OpenFileAsync entered", new { path });
-        // #endregion
         if (!File.Exists(path))
             throw new FileNotFoundException("Transport stream file was not found.", path);
 
@@ -70,9 +66,6 @@ public sealed class TsParserSessionService : IAsyncDisposable
             throw new InvalidOperationException($"File must be at least {MinimumFileBytes} bytes.");
 
         await StopAndDisposeParserAsync().ConfigureAwait(false);
-        // #region agent log
-        AgentDebugLog.Write("E", "TsParserSessionService.OpenFile", "After StopAndDisposeParserAsync", new { elapsedMs = Environment.TickCount64 - openTicks });
-        // #endregion
 
         Post(new TsParserUiUpdate.SessionReset(TsParserSessionResetReason.OpenFile));
 
@@ -94,13 +87,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
             null,
             null));
 
-        // #region agent log
-        AgentDebugLog.Write("A", "TsParserSessionService.OpenFile", "Before StartRunAsync (blocks until parse completes)", new { elapsedMs = Environment.TickCount64 - openTicks });
-        // #endregion
-        await StartRunAsync(parser, cancellationToken).ConfigureAwait(false);
-        // #region agent log
-        AgentDebugLog.Write("A", "TsParserSessionService.OpenFile", "OpenFileAsync returning after StartRunAsync", new { totalElapsedMs = Environment.TickCount64 - openTicks });
-        // #endregion
+        StartParserRunInBackground(parser, cancellationToken);
     }
 
     public async Task StartUdpAsync(
@@ -142,7 +129,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
             _currentMulticastEndpoint,
             _currentBindAddress));
 
-        await StartRunAsync(parser, cancellationToken).ConfigureAwait(false);
+        StartParserRunInBackground(parser, cancellationToken);
     }
 
     public void Stop()
@@ -223,7 +210,10 @@ public sealed class TsParserSessionService : IAsyncDisposable
             : new List<ushort>();
     }
 
-    private async Task StartRunAsync(TsParser parser, CancellationToken cancellationToken)
+    private void StartParserRunInBackground(TsParser parser, CancellationToken cancellationToken) =>
+        _ = RunParserAsync(parser, cancellationToken);
+
+    private async Task RunParserAsync(TsParser parser, CancellationToken cancellationToken)
     {
         Task runTask;
         lock (_parserLock)
@@ -238,12 +228,10 @@ public sealed class TsParserSessionService : IAsyncDisposable
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             parser.StopParser();
-            throw;
         }
         catch (Exception ex)
         {
             Post(new TsParserUiUpdate.LogMessage(ex.Message, true));
-            throw;
         }
     }
 

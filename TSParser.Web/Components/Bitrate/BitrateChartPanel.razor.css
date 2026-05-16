@@ -34,10 +34,16 @@
     flex: 1 1 auto;
     min-height: 140px;
     position: relative;
+    overflow: hidden;
+    min-width: 0;
 }
 
 .bitrate-chart-plot {
     display: block;
+    width: 100%;
+    height: 100%;
+    user-select: none;
+    touch-action: none;
 }
 
 .bitrate-chart-placeholder {
