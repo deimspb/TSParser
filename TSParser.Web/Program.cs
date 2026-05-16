@@ -1,11 +1,14 @@
 // Run from repo root: dotnet run --project TSParser.Web
 using TSParser.Web.Components;
+using TSParser.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddSingleton<TsParserSessionService>();
 
 var app = builder.Build();
 
