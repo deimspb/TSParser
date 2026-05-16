@@ -229,6 +229,8 @@ foreach ($type in ($grouped.Keys | Sort-Object)) {
         unique    = $n
         selected  = $indices.Count
         samples   = $indices.Count
+        complete  = ($indices.Count -ge $TargetSamples)
+        missing   = $false
     }
 
     if ($n -eq 0) {
@@ -276,6 +278,19 @@ foreach ($type in ($grouped.Keys | Sort-Object)) {
     }
 }
 
+foreach ($type in ($KnownTypes | Sort-Object)) {
+    if ($manifest.types.Contains($type)) { continue }
+    $manifest.types[$type] = [ordered]@{
+        available = 0
+        unique    = 0
+        selected  = 0
+        samples   = 0
+        complete  = $false
+        missing   = $true
+    }
+    Write-Host "$type : no valid sections (missing in corpus)"
+}
+
 if (-not $WhatIf) {
     if (-not (Test-Path -LiteralPath (Split-Path $ManifestPath -Parent))) {
         New-Item -ItemType Directory -Path (Split-Path $ManifestPath -Parent) -Force | Out-Null
@@ -285,7 +300,7 @@ if (-not $WhatIf) {
 
 Write-Host ''
 Write-Host 'Selection complete.'
-Write-Host "  Types:    $($grouped.Keys.Count)"
+Write-Host "  Types:    $($manifest.types.Count)"
 Write-Host "  Copied:   $totalCopied"
 Write-Host "  Manifest: $ManifestPath"
 

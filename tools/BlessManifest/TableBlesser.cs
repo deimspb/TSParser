@@ -15,6 +15,9 @@ internal static class TableBlesser
     };
 
     private static readonly Regex SampleSuffix = new(@"_(S|M1|M2|L)\.tbl$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex CanonicalFixture = new(
+        @"^Tables[\\/](?<type>[A-Za-z0-9]+)[\\/]\k<type>_(?<sample>S|M1|M2|L)\.tbl$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public static TablesManifest Bless(string fixturesRoot, TablesManifest? existing)
     {
@@ -39,6 +42,12 @@ internal static class TableBlesser
         foreach (var file in Directory.EnumerateFiles(tablesDir, "*.tbl", SearchOption.AllDirectories).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
         {
             var relativePath = Path.GetRelativePath(fixturesRoot, file).Replace('\\', '/');
+            if (!CanonicalFixture.IsMatch(relativePath))
+            {
+                Console.Error.WriteLine($"Skip non-canonical table fixture: {relativePath}");
+                continue;
+            }
+
             var existingEntry = existing?.Tables.GetValueOrDefault(relativePath);
             var bytes = File.ReadAllBytes(file);
             var type = InferTableType(file, bytes, existingEntry?.Type);
@@ -53,9 +62,20 @@ internal static class TableBlesser
             manifest.Tables[relativePath] = entry;
         }
 
-        foreach (var group in manifest.Tables.Values.GroupBy(t => t.Type, StringComparer.OrdinalIgnoreCase))
+        const int targetSamples = 4;
+        foreach (var type in KnownTypes.OrderBy(t => t, StringComparer.OrdinalIgnoreCase))
         {
-            manifest.Types[group.Key] = new TableTypeStats { Samples = group.Count() };
+            var samples = manifest.Tables.Values.Count(t => t.Type.Equals(type, StringComparison.OrdinalIgnoreCase));
+            var prior = existing?.Types.GetValueOrDefault(type);
+            manifest.Types[type] = new TableTypeStats
+            {
+                Available = prior?.Available,
+                Unique = prior?.Unique,
+                Selected = prior?.Selected ?? samples,
+                Samples = samples,
+                Complete = samples >= targetSamples,
+                Missing = samples == 0,
+            };
         }
 
         return manifest;
@@ -86,6 +106,7 @@ internal static class TableBlesser
         var rawCrc = bytes.Length >= 4
             ? BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(bytes.Length - 4))
             : 0u;
+        var effectiveCrc = table.CRC32 != 0 ? table.CRC32 : rawCrc;
         var sample = InferSample(Path.GetFileName(filePath), existing?.Sample);
 
         var entry = new TableManifestEntry
@@ -94,23 +115,23 @@ internal static class TableBlesser
             Type = type,
             Sample = sample,
             Size = bytes.Length,
-            Crc32 = HexFormat.UInt32(table.CRC32 != 0 ? table.CRC32 : rawCrc),
+            Crc32 = HexFormat.UInt32(effectiveCrc),
             SectionLength = table.SectionLength,
             TableId = HexFormat.Byte(table.TableId),
             ClrType = table.GetType().Name,
             SourceTs = existing?.SourceTs,
             SourceStagingPath = existing?.SourceStagingPath,
-            Expected = BuildExpected(table, bytes),
+            Expected = BuildExpected(table, bytes, effectiveCrc),
         };
 
         return entry;
     }
 
-    private static Dictionary<string, object?> BuildExpected(Table table, byte[] bytes)
+    private static Dictionary<string, object?> BuildExpected(Table table, byte[] bytes, uint effectiveCrc)
     {
         var expected = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["crc32"] = HexFormat.UInt32(table.CRC32),
+            ["crc32"] = HexFormat.UInt32(effectiveCrc),
             ["sectionLength"] = table.SectionLength,
             ["sectionSyntaxIndicator"] = table.SectionSyntaxIndicator,
             ["versionNumber"] = table.VersionNumber,

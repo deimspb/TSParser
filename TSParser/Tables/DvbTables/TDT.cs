@@ -28,6 +28,7 @@ namespace TSParser.Tables.DvbTables
             SectionSyntaxIndicator = (bytes[1] & 0x80) != 0;
             SectionLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(1, 2)) & 0x0FFF);
             UtcDateTime = Utils.GetDateTimeFromMJD_UTC(bytes.Slice(3, 5));
+            CRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
             TableBytes = bytes;
         }
        

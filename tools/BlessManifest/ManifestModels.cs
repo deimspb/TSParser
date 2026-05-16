@@ -15,7 +15,12 @@ internal sealed class TablesManifest
 
 internal sealed class TableTypeStats
 {
+    public int? Available { get; set; }
+    public int? Unique { get; set; }
+    public int? Selected { get; set; }
     public int Samples { get; set; }
+    public bool Complete { get; set; }
+    public bool Missing { get; set; }
 }
 
 internal sealed class TableManifestEntry
