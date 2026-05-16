@@ -1,0 +1,103 @@
+@using TSParser.Web.Models
+
+<li class="table-tree-item @GetItemClass()" role="treeitem" aria-expanded="@(Node.IsExpanded ? "true" : "false")">
+    <div class="table-tree-row">
+        @if (ShowToggle)
+        {
+            <button type="button"
+                    class="table-tree-toggle"
+                    aria-label="@(Node.IsExpanded ? "Collapse" : "Expand")"
+                    @onclick="ToggleExpand">
+                @(Node.IsExpanded ? "▼" : "▶")
+            </button>
+        }
+        else
+        {
+            <span class="table-tree-toggle table-tree-toggle--spacer"></span>
+        }
+
+        <button type="button"
+                class="table-tree-label @GetLabelClass()"
+                @onclick="SelectNode">
+            @Node.Label
+        </button>
+    </div>
+
+    @if (Node.IsExpanded && VisibleChildren.Count > 0)
+    {
+        <ul class="table-tree-children" role="group">
+            @foreach (var child in VisibleChildren)
+            {
+                <TableTreeNodeView Node="child"
+                                   Store="Store"
+                                   SelectedNodeId="SelectedNodeId"
+                                   OnSelect="OnSelect"
+                                   OnToggleExpand="OnToggleExpand" />
+            }
+        </ul>
+    }
+</li>
+
+@code {
+    [Parameter, EditorRequired]
+    public TableTreeNode Node { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public TableVersionStore Store { get; set; } = null!;
+
+    [Parameter]
+    public Guid? SelectedNodeId { get; set; }
+
+    [Parameter]
+    public EventCallback<TableTreeNode> OnSelect { get; set; }
+
+    [Parameter]
+    public EventCallback<(TableTreeNode Node, bool Expanded)> OnToggleExpand { get; set; }
+
+    private IReadOnlyList<TableTreeNode> VisibleChildren => Node.Children;
+
+    private bool ShowToggle => Node.Kind switch
+    {
+        TableTreeNodeKind.Version => MayHaveDescriptors(Node) || Node.Children.Count > 0,
+        _ => Node.Children.Count > 0
+    };
+
+    private static bool MayHaveDescriptors(TableTreeNode versionNode) =>
+        versionNode.Table switch
+        {
+            TSParser.Tables.DvbTables.PAT => false,
+            TSParser.Tables.DvbTables.TDT => false,
+            _ => true
+        };
+
+    private bool IsSelected => SelectedNodeId == Node.Id;
+
+    private string GetItemClass() => Node.Kind switch
+    {
+        TableTreeNodeKind.Category => "table-tree-item--category",
+        TableTreeNodeKind.Stream => "table-tree-item--stream",
+        TableTreeNodeKind.Version => "table-tree-item--version",
+        TableTreeNodeKind.ElementaryStream => "table-tree-item--es",
+        TableTreeNodeKind.Descriptor => "table-tree-item--descriptor",
+        _ => ""
+    };
+
+    private string GetLabelClass()
+    {
+        var classes = new List<string>();
+        if (Node.Kind == TableTreeNodeKind.Version)
+            classes.Add(Node.IsActive ? "table-tree-label--active" : "table-tree-label--stale");
+        if (IsSelected)
+            classes.Add("table-tree-label--selected");
+        return string.Join(' ', classes);
+    }
+
+    private Task ToggleExpand() =>
+        OnToggleExpand.InvokeAsync((Node, !Node.IsExpanded));
+
+    private async Task SelectNode()
+    {
+        Store.SetSelectedNode(Node.Id);
+        await OnSelect.InvokeAsync(Node);
+    }
+}

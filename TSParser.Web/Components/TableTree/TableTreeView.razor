@@ -1,0 +1,43 @@
+@using TSParser.Web.Models
+
+<div class="table-tree" role="tree" aria-label="SI tables">
+    @if (Categories.Count == 0)
+    {
+        <p class="table-tree-empty">No tables yet. Open a file or start UDP to parse.</p>
+    }
+    else
+    {
+        <ul class="table-tree-root">
+            @foreach (var category in Categories)
+            {
+                <TableTreeNodeView Node="category"
+                                   Store="Store"
+                                   SelectedNodeId="SelectedNodeId"
+                                   OnSelect="OnSelect"
+                                   OnToggleExpand="OnToggleExpand" />
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public TableVersionStore Store { get; set; } = null!;
+
+    [Parameter]
+    public Guid? SelectedNodeId { get; set; }
+
+    [Parameter]
+    public EventCallback<TableTreeNode> OnSelect { get; set; }
+
+    [Parameter]
+    public EventCallback OnStructureChanged { get; set; }
+
+    private IReadOnlyList<TableTreeNode> Categories => Store.RootCategories;
+
+    private async Task OnToggleExpand((TableTreeNode Node, bool Expanded) args)
+    {
+        Store.SetExpanded(args.Node.Id, args.Expanded);
+        await OnStructureChanged.InvokeAsync();
+    }
+}

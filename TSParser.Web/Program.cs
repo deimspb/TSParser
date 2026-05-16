@@ -9,6 +9,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddSingleton<TsParserSessionService>();
+builder.Services.AddSingleton<TableVersionStore>();
 
 var app = builder.Build();
 
