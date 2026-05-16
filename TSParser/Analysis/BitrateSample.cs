@@ -36,13 +36,50 @@ namespace TSParser.Analysis
         /// <summary>Clock source that paced this window.</summary>
         public BitrateClockSource ClockSource { get; }
 
+        /// <summary>
+        /// Whole-transport bitrate including null packets (PID <c>0x1FFF</c>) when dual stream measurement is enabled.
+        /// </summary>
+        public double? TotalBitsPerSecond { get; }
+
+        /// <summary>
+        /// Whole-transport bitrate excluding null packets when dual stream measurement is enabled.
+        /// </summary>
+        public double? UsefulBitsPerSecond { get; }
+
+        /// <summary>Bytes counted toward <see cref="TotalBitsPerSecond"/> in dual stream measurement.</summary>
+        public ulong? TotalBytesInWindow { get; }
+
+        /// <summary>Bytes counted toward <see cref="UsefulBitsPerSecond"/> in dual stream measurement.</summary>
+        public ulong? UsefulBytesInWindow { get; }
+
+        /// <summary><see langword="true"/> when <see cref="TotalBitsPerSecond"/> and <see cref="UsefulBitsPerSecond"/> are set.</summary>
+        public bool HasDualStreamMeasurement => TotalBitsPerSecond.HasValue && UsefulBitsPerSecond.HasValue;
+
         public BitrateSample(ushort? pid, double bitsPerSecond, ulong bytesInWindow, TimeSpan windowDuration, BitrateClockSource clockSource)
+            : this(pid, bitsPerSecond, bytesInWindow, windowDuration, clockSource, null, null, null, null)
+        {
+        }
+
+        public BitrateSample(
+            ushort? pid,
+            double bitsPerSecond,
+            ulong bytesInWindow,
+            TimeSpan windowDuration,
+            BitrateClockSource clockSource,
+            double? totalBitsPerSecond,
+            double? usefulBitsPerSecond,
+            ulong? totalBytesInWindow,
+            ulong? usefulBytesInWindow)
         {
             Pid = pid;
             BitsPerSecond = bitsPerSecond;
             BytesInWindow = bytesInWindow;
             WindowDuration = windowDuration;
             ClockSource = clockSource;
+            TotalBitsPerSecond = totalBitsPerSecond;
+            UsefulBitsPerSecond = usefulBitsPerSecond;
+            TotalBytesInWindow = totalBytesInWindow;
+            UsefulBytesInWindow = usefulBytesInWindow;
         }
     }
 }

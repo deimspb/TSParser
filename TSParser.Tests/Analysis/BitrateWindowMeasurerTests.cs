@@ -154,6 +154,39 @@ public sealed class BitrateWindowMeasurerTests
     }
 
     [Test]
+    public void DualStream_counters_emit_total_and_useful_bitrates()
+    {
+        const int packetSize = 188;
+        const ulong windowTicks = TimestampMath.PcrTickRate;
+        var measurer = new BitrateWindowMeasurer(
+            windowTicks,
+            TimestampMath.PcrTickRate,
+            TimestampMath.PcrTimestampBitWidth,
+            BitrateClockSource.Pcr,
+            trackUsefulAndTotal: true);
+
+        measurer.OnTimestamp(0);
+
+        for (var i = 0; i < 800; i++)
+            measurer.AddBytes(packetSize, includeInUseful: true);
+
+        for (var i = 0; i < 200; i++)
+            measurer.AddBytes(packetSize, includeInUseful: false);
+
+        var sample = measurer.OnTimestamp(windowTicks);
+
+        Assert.That(sample, Is.Not.Null);
+        Assert.That(sample!.Value.HasDualStreamMeasurement, Is.True);
+        Assert.That(sample.Value.TotalBytesInWindow, Is.EqualTo(1000UL * (ulong)packetSize));
+        Assert.That(sample.Value.UsefulBytesInWindow, Is.EqualTo(800UL * (ulong)packetSize));
+        Assert.That(sample.Value.BitsPerSecond, Is.EqualTo(sample.Value.UsefulBitsPerSecond));
+        Assert.That(sample.Value.TotalBitsPerSecond, Is.GreaterThan(sample.Value.UsefulBitsPerSecond!.Value));
+        Assert.That(
+            sample.Value.UsefulBitsPerSecond!.Value / sample.Value.TotalBitsPerSecond!.Value,
+            Is.EqualTo(0.8).Within(0.01));
+    }
+
+    [Test]
     public void ResetWindow_clears_accumulated_state()
     {
         var measurer = new BitrateWindowMeasurer(

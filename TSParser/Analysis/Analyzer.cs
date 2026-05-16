@@ -41,6 +41,7 @@ namespace TSParser.Analysis
         private ushort? m_streamReferencePid;
 
         private BitrateWindowMeasurer? m_streamMeasurer;
+        private readonly bool m_measureUsefulAndTotalBitrate;
         private readonly Dictionary<ushort, BitrateWindowMeasurer> m_pidMeasurers = new();
 
         private readonly List<ushort> m_pidList = new(50);
@@ -60,9 +61,10 @@ namespace TSParser.Analysis
             m_windowTicks = options.GetWindowTicks();
             m_tickRate = options.GetTickRate();
             m_timestampBitWidth = options.GetTimestampBitWidth();
+            m_measureUsefulAndTotalBitrate = options.MeasureUsefulAndTotalBitrate;
 
             if (options.MeasureStreamBitrate)
-                m_streamMeasurer = CreateMeasurer(pid: null);
+                m_streamMeasurer = CreateMeasurer(pid: null, trackUsefulAndTotal: m_measureUsefulAndTotalBitrate);
         }
 
         internal List<ushort> PidList
@@ -97,10 +99,33 @@ namespace TSParser.Analysis
         {
             AddPacketToPidMetric(packet);
 
-            if (!ShouldCountBytes(packet))
+            if (packetSize <= 0)
                 return;
 
-            if (packetSize <= 0)
+            if (m_measureUsefulAndTotalBitrate && m_streamMeasurer != null)
+            {
+                if (packet.TransportErrorIndicator)
+                    return;
+
+                if (m_clockSource == BitrateClockSource.AssumedTransportRate)
+                {
+                    PushAssumedBitrate(packet, packetSize);
+                    return;
+                }
+
+                AddStreamBytes(packet, packetSize);
+
+                if (m_options!.MeasurePerPidBitrate && packet.Pid != 0x1FFF)
+                    GetOrCreatePidMeasurer(packet.Pid).AddBytes(packetSize);
+
+                if (packet.HasAdaptationField && packet.Adaptation_field.DiscontinuityIndicator)
+                    HandleDiscontinuity(packet.Pid);
+
+                ProcessBitrateTimestamps(packet);
+                return;
+            }
+
+            if (!ShouldCountBytes(packet))
                 return;
 
             if (m_clockSource == BitrateClockSource.AssumedTransportRate)
@@ -122,10 +147,24 @@ namespace TSParser.Analysis
 
         private void PushAssumedBitrate(TsPacket packet, int packetSize)
         {
-            TryEmit(m_streamMeasurer?.AddBytes(packetSize));
+            TryEmit(AddStreamBytes(packet, packetSize));
 
             if (m_options!.MeasurePerPidBitrate && packet.Pid != 0x1FFF)
                 TryEmit(GetOrCreatePidMeasurer(packet.Pid).AddBytes(packetSize));
+        }
+
+        private BitrateSample? AddStreamBytes(TsPacket packet, int packetSize)
+        {
+            if (m_streamMeasurer == null)
+                return null;
+
+            if (m_measureUsefulAndTotalBitrate)
+                return m_streamMeasurer.AddBytes(packetSize, includeInUseful: packet.Pid != 0x1FFF);
+
+            if (!ShouldCountBytes(packet))
+                return null;
+
+            return m_streamMeasurer.AddBytes(packetSize);
         }
 
         private void ProcessLegacyPcr(TsPacket packet)
@@ -272,13 +311,13 @@ namespace TSParser.Analysis
             OnRate?.Invoke(pid, deltaPackets, deltaTicks);
         }
 
-        private BitrateWindowMeasurer CreateMeasurer(ushort? pid)
+        private BitrateWindowMeasurer CreateMeasurer(ushort? pid, bool trackUsefulAndTotal = false)
         {
             double? assumedBps = m_clockSource == BitrateClockSource.AssumedTransportRate
                 ? m_options!.AssumedBitsPerSecond
                 : null;
 
-            return new(m_windowTicks, m_tickRate, m_timestampBitWidth, m_clockSource, pid, assumedBps);
+            return new(m_windowTicks, m_tickRate, m_timestampBitWidth, m_clockSource, pid, assumedBps, trackUsefulAndTotal);
         }
 
         private BitrateWindowMeasurer GetOrCreatePidMeasurer(ushort pid)

@@ -162,6 +162,75 @@ public sealed class BitrateMeasurementTests
     }
 
     [Test]
+    public void Dual_stream_measurement_reports_total_and_useful_bitrates()
+    {
+        const int usefulPacketsPerSecond = 800;
+        const int nullPacketsPerSecond = 200;
+        const int packetsPerSecond = usefulPacketsPerSecond + nullPacketsPerSecond;
+        const int packetCount = packetsPerSecond * 2 + 100;
+        var samples = new List<BitrateSample>();
+
+        var parser = CreateParser(
+            options =>
+            {
+                options.MeasurementWindow = TimeSpan.FromSeconds(1);
+                options.ClockSource = BitrateClockSource.Pcr;
+                options.MeasureStreamBitrate = true;
+                options.MeasureUsefulAndTotalBitrate = true;
+                options.MeasurePerPidBitrate = false;
+            },
+            samples);
+
+        PushStreamWithNullPackets(parser, PcrPid, usefulPacketsPerSecond, nullPacketsPerSecond, packetCount);
+
+        Assert.That(samples, Is.Not.Empty);
+        var stream = samples.First(s => s.Pid is null);
+        Assert.That(stream.HasDualStreamMeasurement, Is.True);
+        Assert.That(stream.TotalBytesInWindow, Is.GreaterThan(stream.UsefulBytesInWindow));
+        Assert.That(stream.BitsPerSecond, Is.EqualTo(stream.UsefulBitsPerSecond));
+        Assert.That(stream.TotalBitsPerSecond, Is.GreaterThan(stream.UsefulBitsPerSecond));
+        Assert.That(
+            stream.UsefulBitsPerSecond!.Value / stream.TotalBitsPerSecond!.Value,
+            Is.EqualTo(usefulPacketsPerSecond / (double)(usefulPacketsPerSecond + nullPacketsPerSecond)).Within(0.05));
+        Assert.That(
+            stream.UsefulBytesInWindow!.Value / (double)stream.TotalBytesInWindow!.Value,
+            Is.EqualTo(usefulPacketsPerSecond / (double)(usefulPacketsPerSecond + nullPacketsPerSecond)).Within(0.05));
+    }
+
+    [Test]
+    public void AssumedTransportRate_dual_stream_reports_nominal_total_and_lower_useful()
+    {
+        const ushort pid = 0x0100;
+        const double assumedBps = 10_000_000;
+        const int usefulPacketCount = 5600;
+        const int nullPacketCount = 1400;
+        var samples = new List<BitrateSample>();
+
+        var parser = CreateParser(
+            options =>
+            {
+                options.ClockSource = BitrateClockSource.AssumedTransportRate;
+                options.AssumedBitsPerSecond = assumedBps;
+                options.MeasurementWindow = TimeSpan.FromSeconds(1);
+                options.MeasureStreamBitrate = true;
+                options.MeasureUsefulAndTotalBitrate = true;
+                options.MeasurePerPidBitrate = false;
+            },
+            samples);
+
+        PushMixedNullAndPayload(parser, pid, usefulPacketCount, nullPacketCount);
+
+        Assert.That(samples, Is.Not.Empty);
+        var stream = samples.First(s => s.Pid is null);
+        Assert.That(stream.HasDualStreamMeasurement, Is.True);
+        Assert.That(stream.TotalBitsPerSecond, Is.EqualTo(assumedBps).Within(assumedBps * 0.05));
+        Assert.That(stream.UsefulBitsPerSecond, Is.LessThan(stream.TotalBitsPerSecond));
+        Assert.That(
+            stream.UsefulBitsPerSecond!.Value / stream.TotalBitsPerSecond!.Value,
+            Is.EqualTo(usefulPacketCount / (double)(usefulPacketCount + nullPacketCount)).Within(0.05));
+    }
+
+    [Test]
     public void Legacy_OnRate_fires_when_per_pid_pcr_measurement_enabled()
     {
         var rates = new List<(ushort Pid, ulong Packets, ulong Ticks)>();
@@ -286,6 +355,53 @@ public sealed class BitrateMeasurementTests
         packet[2] = (byte)(pid & 0xFF);
         packet[3] = 0x10;
         return packet;
+    }
+
+    private static void PushStreamWithNullPackets(
+        TsParser parser,
+        ushort pcrPid,
+        int usefulPerSecond,
+        int nullPerSecond,
+        int packetCount)
+    {
+        var bytes = new byte[packetCount * PacketLength];
+        var usefulRatio = usefulPerSecond + nullPerSecond;
+        ulong pcrTick = 0;
+
+        for (var i = 0; i < packetCount; i++)
+        {
+            var isNull = usefulRatio > 0 && i % usefulRatio >= usefulPerSecond;
+            if (isNull)
+                BuildPayloadOnlyPacket(0x1FFF).CopyTo(bytes.AsSpan(i * PacketLength, PacketLength));
+            else
+            {
+                BuildPcrPacket(pcrPid, pcrTick).CopyTo(bytes.AsSpan(i * PacketLength, PacketLength));
+                pcrTick += PcrStepTicks;
+            }
+        }
+
+        parser.PushBytes(bytes, PacketLength);
+    }
+
+    private static void PushMixedNullAndPayload(TsParser parser, ushort pid, int usefulCount, int nullCount)
+    {
+        var total = usefulCount + nullCount;
+        var bytes = new byte[total * PacketLength];
+        var offset = 0;
+
+        for (var i = 0; i < usefulCount; i++)
+        {
+            BuildPayloadOnlyPacket(pid).CopyTo(bytes.AsSpan(offset, PacketLength));
+            offset += PacketLength;
+        }
+
+        for (var i = 0; i < nullCount; i++)
+        {
+            BuildPayloadOnlyPacket(0x1FFF).CopyTo(bytes.AsSpan(offset, PacketLength));
+            offset += PacketLength;
+        }
+
+        parser.PushBytes(bytes, PacketLength);
     }
 
     private static void PushUniformPcrStream(TsParser parser, ushort pid, int packetCount, ulong pcrStep)

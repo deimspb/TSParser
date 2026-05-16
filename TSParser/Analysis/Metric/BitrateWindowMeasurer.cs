@@ -25,9 +25,12 @@ namespace TSParser.Analysis.Metric
         private readonly BitrateClockSource m_clockSource;
         private readonly ushort? m_pid;
         private readonly double? m_assumedBitsPerSecond;
+        private readonly bool m_trackUsefulAndTotal;
 
         private ulong m_windowStartTick;
         private ulong m_bytesInWindow;
+        private ulong m_totalBytesInWindow;
+        private ulong m_usefulBytesInWindow;
         private bool m_hasWindowStart;
         private double m_virtualTicks;
 
@@ -37,7 +40,8 @@ namespace TSParser.Analysis.Metric
             int timestampBitWidth,
             BitrateClockSource clockSource,
             ushort? pid = null,
-            double? assumedBitsPerSecond = null)
+            double? assumedBitsPerSecond = null,
+            bool trackUsefulAndTotal = false)
         {
             m_windowTicks = windowTicks;
             m_tickRate = tickRate;
@@ -45,21 +49,31 @@ namespace TSParser.Analysis.Metric
             m_clockSource = clockSource;
             m_pid = pid;
             m_assumedBitsPerSecond = assumedBitsPerSecond;
+            m_trackUsefulAndTotal = trackUsefulAndTotal;
         }
 
         /// <summary>Accumulates bytes; for assumed transport rate, may return a completed sample.</summary>
-        internal BitrateSample? AddBytes(int packetSize)
+        internal BitrateSample? AddBytes(int packetSize, bool includeInUseful = true)
         {
             if (packetSize <= 0)
                 return null;
 
-            m_bytesInWindow += (ulong)packetSize;
+            if (m_trackUsefulAndTotal)
+            {
+                m_totalBytesInWindow += (ulong)packetSize;
+                if (includeInUseful)
+                    m_usefulBytesInWindow += (ulong)packetSize;
+            }
+            else
+            {
+                m_bytesInWindow += (ulong)packetSize;
+            }
 
             if (m_assumedBitsPerSecond is not double assumedBps)
                 return null;
 
             m_virtualTicks += TimestampMath.AssumedTicksFromPacket(packetSize, m_tickRate, assumedBps);
-            if (m_virtualTicks < m_windowTicks || m_bytesInWindow == 0)
+            if (m_virtualTicks < m_windowTicks || BytesForWindowClose() == 0)
                 return null;
 
             return CloseAssumedWindow(assumedBps);
@@ -78,20 +92,20 @@ namespace TSParser.Analysis.Metric
             }
 
             var deltaTicks = TimestampMath.Delta(m_windowStartTick, tick, m_timestampBitWidth);
-            if (deltaTicks < m_windowTicks || m_bytesInWindow == 0)
+            if (deltaTicks < m_windowTicks || BytesForWindowClose() == 0)
                 return null;
 
-            var sample = CreateSample(m_bytesInWindow, deltaTicks);
+            var sample = CreateSample(deltaTicks);
 
             m_windowStartTick = tick;
-            m_bytesInWindow = 0;
+            ClearByteCounters();
 
             return sample;
         }
 
         internal void ResetWindow()
         {
-            m_bytesInWindow = 0;
+            ClearByteCounters();
             m_hasWindowStart = false;
             m_windowStartTick = 0;
             m_virtualTicks = 0;
@@ -99,24 +113,54 @@ namespace TSParser.Analysis.Metric
 
         private BitrateSample CloseAssumedWindow(double assumedBps)
         {
-            var bytesInWindow = m_bytesInWindow;
+            var bytesInWindow = BytesForWindowClose();
             var deltaTicks = TimestampMath.AssumedDeltaTicksFromBytes(bytesInWindow, m_tickRate, assumedBps);
             if (deltaTicks == 0)
                 deltaTicks = 1;
 
-            var sample = CreateSample(bytesInWindow, deltaTicks);
+            var sample = CreateSample(deltaTicks);
 
-            m_bytesInWindow = 0;
+            ClearByteCounters();
             m_virtualTicks = 0;
 
             return sample;
         }
 
-        private BitrateSample CreateSample(ulong bytesInWindow, ulong deltaTicks)
+        private ulong BytesForWindowClose() =>
+            m_trackUsefulAndTotal ? m_totalBytesInWindow : m_bytesInWindow;
+
+        private void ClearByteCounters()
         {
+            m_bytesInWindow = 0;
+            m_totalBytesInWindow = 0;
+            m_usefulBytesInWindow = 0;
+        }
+
+        private BitrateSample CreateSample(ulong deltaTicks)
+        {
+            if (m_trackUsefulAndTotal)
+            {
+                var totalBytes = m_totalBytesInWindow;
+                var usefulBytes = m_usefulBytesInWindow;
+                var totalBps = TimestampMath.BitsPerSecond(totalBytes, deltaTicks, m_tickRate);
+                var usefulBps = TimestampMath.BitsPerSecond(usefulBytes, deltaTicks, m_tickRate);
+                var duration = TimestampMath.WindowDuration(deltaTicks, m_tickRate);
+                return new BitrateSample(
+                    m_pid,
+                    usefulBps,
+                    usefulBytes,
+                    duration,
+                    m_clockSource,
+                    totalBps,
+                    usefulBps,
+                    totalBytes,
+                    usefulBytes);
+            }
+
+            var bytesInWindow = m_bytesInWindow;
             var bps = TimestampMath.BitsPerSecond(bytesInWindow, deltaTicks, m_tickRate);
-            var duration = TimestampMath.WindowDuration(deltaTicks, m_tickRate);
-            return new BitrateSample(m_pid, bps, bytesInWindow, duration, m_clockSource);
+            var windowDuration = TimestampMath.WindowDuration(deltaTicks, m_tickRate);
+            return new BitrateSample(m_pid, bps, bytesInWindow, windowDuration, m_clockSource);
         }
     }
 }

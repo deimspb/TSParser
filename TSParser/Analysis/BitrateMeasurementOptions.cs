@@ -47,6 +47,14 @@ namespace TSParser.Analysis
         public bool IncludeNullPackets { get; set; }
 
         /// <summary>
+        /// When <see langword="true"/> with <see cref="MeasureStreamBitrate"/>, each stream sample reports
+        /// <see cref="BitrateSample.TotalBitsPerSecond"/> (all packets except transport errors) and
+        /// <see cref="BitrateSample.UsefulBitsPerSecond"/> (excludes PID <c>0x1FFF</c>).
+        /// <see cref="BitrateSample.BitsPerSecond"/> matches useful bitrate for backward compatibility.
+        /// </summary>
+        public bool MeasureUsefulAndTotalBitrate { get; set; }
+
+        /// <summary>
         /// Nominal transport bitrate (bit/s) for <see cref="BitrateClockSource.AssumedTransportRate"/>.
         /// Windows advance from byte volume at this rate; reported <c>BitsPerSecond</c> matches the nominal rate
         /// when the stream is CBR at this value.
