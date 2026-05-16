@@ -114,6 +114,8 @@ namespace TSParser
         public event Scte35Ready OnScte35Ready = null!;
         public event TsPacketReady OnTsPacketReady = null!;
         public event RateDelegate OnRate = null!;
+        /// <summary>Raised when a bitrate measurement window completes (requires <see cref="ParserConfig.BitrateMeasurement"/>).</summary>
+        public event BitrateMeasuredDelegate OnBitrateMeasured = null!;
         public event EwsReady OnEwsReady = null!;
         public event EewsReady OnEewsReady = null!;
 
@@ -125,7 +127,8 @@ namespace TSParser
         private readonly Lazy<PatFactory> patFactory = new();
         private readonly Lazy<EitFactory> eitFactory = new();
         private readonly Lazy<MipFactory> mipFactory = new();
-        private readonly Lazy<Analyzer> analyzer = new();
+        private readonly Lazy<Analyzer> analyzer;
+        private readonly BitrateMeasurementOptions? m_bitrateMeasurement;
         private readonly Lazy<Compare> compare = new();
         private readonly Lazy<List<AitFactory>> aitFactories = new();
         private readonly Lazy<List<Scte35Factory>> scte35Factories = new();
@@ -251,7 +254,9 @@ namespace TSParser
                 case DecodeMode.Table: ParserModeDel = ParseBytesToTables; break;
             }
 
-            m_allowAnalyzer = config.AllowAnalyzer;
+            m_bitrateMeasurement = config.BitrateMeasurement;
+            m_allowAnalyzer = config.AllowAnalyzer || (m_bitrateMeasurement?.Enabled ?? false);
+            analyzer = new Lazy<Analyzer>(() => new Analyzer(m_bitrateMeasurement));
             MaxParserRunTime = config.ParserRunTime;
 
             ParserRunTimer();
@@ -277,6 +282,7 @@ namespace TSParser
         public TsParser()
         {
             m_ct = m_cts.Token;
+            analyzer = new Lazy<Analyzer>(() => new Analyzer(m_bitrateMeasurement));
         }
 
         public void Dispose()
@@ -502,10 +508,15 @@ namespace TSParser
             m_SdtBatFactory.OnSdtReady += SdtBatFactory_OnSdtReady;
             m_SdtBatFactory.OnBatReady += SdtBatFactory_OnBatReady;
             m_analyzer.OnRate += Analyzer_OnRate;
+            m_analyzer.OnBitrateMeasured += Analyzer_OnBitrateMeasured;
         }
         private void Analyzer_OnRate(ushort pid, ulong deltaPackets, ulong deltaTime)
         {
             OnRate?.Invoke(pid, deltaPackets, deltaTime);
+        }
+        private void Analyzer_OnBitrateMeasured(BitrateSample sample)
+        {
+            OnBitrateMeasured?.Invoke(sample);
         }
         private void Timer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
@@ -835,7 +846,7 @@ namespace TSParser
             for (int i = 0; i < tsPackets.Length; i++)
             {
                 if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
-                if (m_allowAnalyzer) m_analyzer.PushPacket(tsPackets[i]);
+                if (m_allowAnalyzer) m_analyzer.PushPacket(tsPackets[i], packetLength);
                 SelectedTableFactory(tsPackets[i]);
             }
         }
@@ -846,7 +857,7 @@ namespace TSParser
             for (int i = 0; i < tsPackets.Length; i++)
             {
                 if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
-                if (m_allowAnalyzer) m_analyzer.PushPacket(tsPackets[i]);
+                if (m_allowAnalyzer) m_analyzer.PushPacket(tsPackets[i], packetLength);
                 OnTsPacketReady?.Invoke(tsPackets[i]);
             }
         }

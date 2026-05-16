@@ -20,17 +20,51 @@ namespace TSParser.Analysis
 {
     public delegate void TimeStampChange(ulong timeStamp);
     public delegate void RateDelegate(ushort pid, ulong deltaPackets, ulong deltaTime);
+
     internal class Analyzer
     {
+        private const ushort UnsetPid = 0xFFFF;
+
         internal event TimeStampChange OnTimeStampChange = null!;
         internal event RateDelegate OnRate = null!;
+        internal event BitrateMeasuredDelegate OnBitrateMeasured = null!;
 
-        private ulong m_currentTimeStamp = 0;
-        private ushort m_basePcrPid = 0xFFFF;
+        private readonly BitrateMeasurementOptions? m_options;
+        private readonly bool m_bitrateEnabled;
+        private readonly BitrateClockSource m_clockSource;
+        private readonly ulong m_windowTicks;
+        private readonly ulong m_tickRate;
+        private readonly int m_timestampBitWidth;
 
-        private List<ushort> m_pidList = new List<ushort>(50);
-        private List<PidMetric> pidMetrics = new List<PidMetric>(50);
-        
+        private ulong m_currentTimeStamp;
+        private ushort m_basePcrPid = UnsetPid;
+        private ushort? m_streamReferencePid;
+
+        private BitrateWindowMeasurer? m_streamMeasurer;
+        private readonly Dictionary<ushort, BitrateWindowMeasurer> m_pidMeasurers = new();
+
+        private readonly List<ushort> m_pidList = new(50);
+        private readonly List<PidMetric> m_pidMetrics = new(50);
+
+        private int m_lastPacketSize = 188;
+
+        internal Analyzer(BitrateMeasurementOptions? options = null)
+        {
+            m_options = options;
+            m_bitrateEnabled = options is { Enabled: true } && options.GetWindowTicks() > 0;
+
+            if (!m_bitrateEnabled)
+                return;
+
+            m_clockSource = options!.ClockSource;
+            m_windowTicks = options.GetWindowTicks();
+            m_tickRate = options.GetTickRate();
+            m_timestampBitWidth = options.GetTimestampBitWidth();
+
+            if (options.MeasureStreamBitrate)
+                m_streamMeasurer = CreateMeasurer(pid: null);
+        }
+
         internal List<ushort> PidList
         {
             get
@@ -40,9 +74,49 @@ namespace TSParser.Analysis
             }
         }
 
-        internal void PushPacket(TsPacket packet)
+        internal void PushPacket(TsPacket packet) => PushPacket(packet, 188);
+
+        internal void PushPacket(TsPacket packet, int packetSize)
         {
-            if (m_basePcrPid == 0xFFFF && packet.HasAdaptationField && packet.Adaptation_field.PCRFlag) // init analyzer. first packet with pcr selected as PCR based pid.
+            if (packetSize > 0)
+                m_lastPacketSize = packetSize;
+
+            if (m_bitrateEnabled)
+                PushPacketBitrate(packet, packetSize);
+            else
+                PushPacketLegacy(packet);
+        }
+
+        private void PushPacketLegacy(TsPacket packet)
+        {
+            ProcessLegacyPcr(packet);
+            AddPacketToPidMetric(packet);
+        }
+
+        private void PushPacketBitrate(TsPacket packet, int packetSize)
+        {
+            AddPacketToPidMetric(packet);
+
+            if (!ShouldCountBytes(packet))
+                return;
+
+            if (packetSize <= 0)
+                return;
+
+            m_streamMeasurer?.AddBytes(packetSize);
+
+            if (m_options!.MeasurePerPidBitrate)
+                GetOrCreatePidMeasurer(packet.Pid).AddBytes(packetSize);
+
+            if (packet.HasAdaptationField && packet.Adaptation_field.DiscontinuityIndicator)
+                HandleDiscontinuity(packet.Pid);
+
+            ProcessBitrateTimestamps(packet);
+        }
+
+        private void ProcessLegacyPcr(TsPacket packet)
+        {
+            if (m_basePcrPid == UnsetPid && packet.HasAdaptationField && packet.Adaptation_field.PCRFlag)
             {
                 m_basePcrPid = packet.Pid;
                 Logger.Send(LogStatus.INFO, $"PCR base pid selected: {m_basePcrPid}");
@@ -55,22 +129,169 @@ namespace TSParser.Analysis
                 m_currentTimeStamp = packet.Adaptation_field.PcrValue;
                 OnTimeStampChange?.Invoke(m_currentTimeStamp);
             }
+        }
 
+        private void ProcessBitrateTimestamps(TsPacket packet)
+        {
+            if (!TimestampExtractor.TryGetTimestamp(packet, m_clockSource, out var tick))
+                return;
+
+            if (m_clockSource == BitrateClockSource.Pcr)
+                UpdateLegacyPcrState(packet, tick);
+
+            if (m_options!.MeasureStreamBitrate && m_streamMeasurer != null && IsStreamClockPacket(packet))
+                TryEmit(m_streamMeasurer.OnTimestamp(tick));
+
+            if (m_options.MeasurePerPidBitrate && packet.Pid != 0x1FFF)
+                TryEmit(GetOrCreatePidMeasurer(packet.Pid).OnTimestamp(tick));
+        }
+
+        private void UpdateLegacyPcrState(TsPacket packet, ulong tick)
+        {
+            if (m_basePcrPid == UnsetPid && packet.HasAdaptationField && packet.Adaptation_field.PCRFlag)
+            {
+                m_basePcrPid = packet.Pid;
+                Logger.Send(LogStatus.INFO, $"PCR base pid selected: {m_basePcrPid}");
+            }
+
+            if (packet.Pid == ResolveStreamReferencePid(packet) || packet.Pid == m_basePcrPid)
+            {
+                if (tick != m_currentTimeStamp)
+                {
+                    m_currentTimeStamp = tick;
+                    OnTimeStampChange?.Invoke(m_currentTimeStamp);
+                }
+            }
+        }
+
+        private bool IsStreamClockPacket(TsPacket packet)
+        {
+            if (m_options!.ReferencePid is ushort refPid)
+                return packet.Pid == refPid;
+
+            if (m_clockSource == BitrateClockSource.Pcr)
+            {
+                if (m_basePcrPid == UnsetPid && packet.HasAdaptationField && packet.Adaptation_field.PCRFlag)
+                    m_basePcrPid = packet.Pid;
+
+                return m_basePcrPid != UnsetPid && packet.Pid == m_basePcrPid;
+            }
+
+            if (m_streamReferencePid == null)
+                m_streamReferencePid = packet.Pid;
+
+            return packet.Pid == m_streamReferencePid;
+        }
+
+        private ushort ResolveStreamReferencePid(TsPacket packet)
+        {
+            if (m_options!.ReferencePid is ushort refPid)
+                return refPid;
+
+            if (m_clockSource == BitrateClockSource.Pcr)
+            {
+                if (m_basePcrPid == UnsetPid && packet.HasAdaptationField && packet.Adaptation_field.PCRFlag)
+                    m_basePcrPid = packet.Pid;
+
+                return m_basePcrPid;
+            }
+
+            if (m_streamReferencePid == null)
+                m_streamReferencePid = packet.Pid;
+
+            return m_streamReferencePid.Value;
+        }
+
+        private void HandleDiscontinuity(ushort pid)
+        {
+            if (IsStreamReferencePid(pid))
+                m_streamMeasurer?.ResetWindow();
+
+            if (m_pidMeasurers.TryGetValue(pid, out var measurer))
+                measurer.ResetWindow();
+        }
+
+        private bool IsStreamReferencePid(ushort pid)
+        {
+            if (m_options!.ReferencePid is ushort refPid)
+                return pid == refPid;
+
+            if (m_clockSource == BitrateClockSource.Pcr)
+                return m_basePcrPid != UnsetPid && pid == m_basePcrPid;
+
+            return m_streamReferencePid != null && pid == m_streamReferencePid;
+        }
+
+        private bool ShouldCountBytes(TsPacket packet)
+        {
+            if (packet.TransportErrorIndicator)
+                return false;
+
+            if (packet.Pid == 0x1FFF && m_options is { IncludeNullPackets: false })
+                return false;
+
+            return true;
+        }
+
+        private void TryEmit(BitrateSample? sample)
+        {
+            if (sample == null)
+                return;
+
+            var value = sample.Value;
+            OnBitrateMeasured?.Invoke(value);
+
+            if (value.Pid is ushort pid && m_clockSource == BitrateClockSource.Pcr && m_options!.MeasurePerPidBitrate)
+                EmitLegacyRate(pid, value);
+        }
+
+        private void EmitLegacyRate(ushort pid, BitrateSample sample)
+        {
+            if (m_lastPacketSize <= 0 || m_tickRate == 0)
+                return;
+
+            var deltaPackets = sample.BytesInWindow / (ulong)m_lastPacketSize;
+            var deltaTicks = (ulong)(sample.WindowDuration.TotalSeconds * m_tickRate);
+            if (deltaPackets == 0 || deltaTicks == 0)
+                return;
+
+            OnRate?.Invoke(pid, deltaPackets, deltaTicks);
+        }
+
+        private BitrateWindowMeasurer CreateMeasurer(ushort? pid) =>
+            new(m_windowTicks, m_tickRate, m_timestampBitWidth, m_clockSource, pid);
+
+        private BitrateWindowMeasurer GetOrCreatePidMeasurer(ushort pid)
+        {
+            if (!m_pidMeasurers.TryGetValue(pid, out var measurer))
+            {
+                measurer = CreateMeasurer(pid);
+                m_pidMeasurers[pid] = measurer;
+            }
+
+            return measurer;
+        }
+
+        private void AddPacketToPidMetric(TsPacket packet)
+        {
             var pidIndex = m_pidList.IndexOf(packet.Pid);
 
-            if(pidIndex >= 0)
+            if (pidIndex >= 0)
             {
-                pidMetrics[pidIndex].AddPacket(packet);
+                m_pidMetrics[pidIndex].AddPacket(packet);
+                return;
             }
-            else
+
+            m_pidList.Add(packet.Pid);
+            var pm = new PidMetric(packet.Pid);
+            if (!m_bitrateEnabled)
             {
-                m_pidList.Add(packet.Pid);
-                var pm = new PidMetric(packet.Pid);
                 pm.OnRate += Pm_OnRate;
                 OnTimeStampChange += pm.TimeStampChanged;
-                pm.AddPacket(packet);
-                pidMetrics.Add(pm);
             }
+
+            pm.AddPacket(packet);
+            m_pidMetrics.Add(pm);
         }
 
         private void Pm_OnRate(ushort pid, ulong deltaPackets, ulong deltaTime)
