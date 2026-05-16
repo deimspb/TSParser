@@ -14,6 +14,7 @@
 
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using TSParser.Analysis;
 using TSParser.Buffers;
 using TSParser.Comparer;
@@ -82,7 +83,7 @@ namespace TSParser
     public delegate void EwsReady(EWS ews);
     public delegate void EewsReady(EEWS eews);
 
-    public class TsParser
+    public class TsParser : IDisposable
     {
         #region Private fields
         private delegate void m_currentTableFactory(TsPacket tsPacket);
@@ -150,13 +151,14 @@ namespace TSParser
         private int m_multicastPort;
         private Socket socket = null!;
 
-        private static CancellationTokenSource m_cts = new();
-        private CancellationToken m_ct = m_cts.Token;
+        private CancellationTokenSource m_cts = new();
+        private CancellationToken m_ct;
 
         private CircularBuffer buffer = null!;
+        private bool m_disposed;
 
-        private Task m_parserTask = null!;
-        private Task m_bufferReaderTask = null!;
+        private Task? m_parserTask;
+        private Task? m_bufferReaderTask;
 
 
         private ushort[] m_pmtPids = null!;
@@ -230,6 +232,8 @@ namespace TSParser
         /// </summary>        
         public TsParser(ParserConfig config)
         {
+            m_ct = m_cts.Token;
+
             switch (config.CurrentTsMode)
             {
                 case TsMode.DVB: SelectedTableFactory = DvbTableFactory; break;
@@ -267,10 +271,44 @@ namespace TSParser
 
         public TsParser()
         {
-
+            m_ct = m_cts.Token;
         }
+
+        public void Dispose()
+        {
+            if (m_disposed)
+                return;
+
+            m_disposed = true;
+
+            try
+            {
+                if (!m_cts.IsCancellationRequested)
+                    m_cts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
+            CloseSocket();
+
+            WaitForParserTasks();
+
+            if (m_timer != null)
+            {
+                m_timer.Elapsed -= Timer_Elapsed;
+                m_timer.Dispose();
+                m_timer = null!;
+            }
+
+            m_cts.Dispose();
+        }
+
         public void RunParser()
         {
+            ObjectDisposedException.ThrowIf(m_disposed, this);
+            EnsureCancellationTokenReady();
+
             m_parserTask = Task.Run(() => RunParserDel(), m_ct).ContinueWith(AfterParserComplete);
             m_parserTask.Wait();
         }
@@ -280,6 +318,9 @@ namespace TSParser
         /// <returns></returns>
         public async Task RunParserAsync()
         {
+            ObjectDisposedException.ThrowIf(m_disposed, this);
+            EnsureCancellationTokenReady();
+
             m_parserTask = Task.Run(() => RunParserDel(), m_ct).ContinueWith(AfterParserComplete);
             try
             {
@@ -298,12 +339,16 @@ namespace TSParser
         /// </summary>
         public void StopParser()
         {
-            m_cts.Cancel();
+            if (m_disposed)
+                return;
+
+            if (!m_cts.IsCancellationRequested)
+                m_cts.Cancel();
+
+            CloseSocket();
 
             if (m_parserTask == null)
-            {
                 ParserComplete();
-            }
         }
         /// <summary>
         /// Push bytes with known ts packet size. 188 or 204 bytes
@@ -312,6 +357,8 @@ namespace TSParser
         /// <param name="packetLength"></param>
         public void PushBytes(byte[] bytes, int packetLength)
         {
+            ObjectDisposedException.ThrowIf(m_disposed, this);
+
             if (m_timer != null && !m_timer.Enabled) m_timer.Enabled = true;
 
             ParserModeDel(bytes, packetLength);
@@ -929,11 +976,14 @@ namespace TSParser
 
                 }
 
-                socket.Close();
             }
             catch (Exception ex)
             {
                 Logger.Send(LogStatus.EXCEPTION, $"Exception in Run UDP parser", ex);
+            }
+            finally
+            {
+                CloseSocket();
             }
         }
         private void ReadFromBuffer(int packetLen)
@@ -951,9 +1001,83 @@ namespace TSParser
         {
             Logger.Send(LogStatus.INFO, $"Parser complete working");
             OnParserComplete?.Invoke();
+
+            m_parserTask = null;
+            m_bufferReaderTask = null;
+
+            CloseSocket();
+
+            if (m_timer != null)
+            {
+                m_timer.Elapsed -= Timer_Elapsed;
+                m_timer.Dispose();
+                m_timer = null!;
+            }
+
+            if (!m_disposed)
+            {
+                ResetCancellationToken();
+                if (m_parserRunTimeIn_ms != null)
+                    ParserRunTimer();
+            }
+        }
+
+        private void EnsureCancellationTokenReady()
+        {
+            if (m_ct.IsCancellationRequested)
+                ResetCancellationToken();
+        }
+
+        private void ResetCancellationToken()
+        {
+            var previous = m_cts;
             m_cts = new CancellationTokenSource();
-            m_timer?.Dispose();
-            m_timer = null;
+            m_ct = m_cts.Token;
+            previous.Dispose();
+        }
+
+        private void CloseSocket()
+        {
+            if (socket == null)
+                return;
+
+            try
+            {
+                socket.Close();
+            }
+            catch (Exception ex)
+            {
+                Logger.Send(LogStatus.EXCEPTION, "Exception while closing UDP socket", ex);
+            }
+            finally
+            {
+                socket = null!;
+            }
+        }
+
+        private void WaitForParserTasks()
+        {
+            var tasks = new List<Task>(2);
+            if (m_parserTask != null)
+                tasks.Add(m_parserTask);
+            if (m_bufferReaderTask != null)
+                tasks.Add(m_bufferReaderTask);
+
+            if (tasks.Count == 0)
+                return;
+
+            try
+            {
+                Task.WaitAll(tasks.ToArray(), TimeSpan.FromSeconds(5));
+            }
+            catch (AggregateException ex)
+            {
+                foreach (var inner in ex.InnerExceptions)
+                {
+                    if (inner is not OperationCanceledException)
+                        Logger.Send(LogStatus.EXCEPTION, "Exception while waiting for parser tasks", inner);
+                }
+            }
         }
         #endregion
     }
