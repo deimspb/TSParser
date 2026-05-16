@@ -907,6 +907,23 @@ namespace TSParser
                 binaryReader.Close();
             }
         }
+        internal static bool TryResolveUdpTsPacketLength(int datagramByteCount, out int packetLength)
+        {
+            packetLength = 0;
+
+            if (datagramByteCount < 188)
+                return false;
+
+            var supports188 = datagramByteCount % 188 == 0;
+            var supports204 = datagramByteCount % 204 == 0;
+
+            if (supports188 == supports204)
+                return false;
+
+            packetLength = supports188 ? 188 : 204;
+            return true;
+        }
+
         private void RunUdpParser()
         {
             try
@@ -940,16 +957,12 @@ namespace TSParser
                     }
                 }
 
-                var packetLen = -1;
-
-                if (bytesCount % 188 == 0)
+                if (!TryResolveUdpTsPacketLength(bytesCount, out var packetLen))
                 {
-                    packetLen = 188;
-                }
-
-                if (bytesCount % 204 == 0)
-                {
-                    packetLen = 204;
+                    Logger.Send(
+                        LogStatus.EXCEPTION,
+                        $"UDP datagram length {bytesCount} is not a valid multiple of 188 or 204 byte TS packets");
+                    return;
                 }
 
                 if (m_timer != null) m_timer.Enabled = true;

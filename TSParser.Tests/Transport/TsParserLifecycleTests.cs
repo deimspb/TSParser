@@ -84,6 +84,31 @@ public sealed class TsParserLifecycleTests
     }
 
     [Test]
+    public void PushBytes_invokes_packet_events_without_file_source()
+    {
+        var parser = new TsParser(new ParserConfig
+        {
+            CurrentDecodeMode = DecodeMode.Packet,
+        });
+
+        var packets = new List<TSParser.TransportStream.TsPacket>();
+        parser.OnTsPacketReady += packets.Add;
+
+        var bytes = new byte[10 * 188];
+        for (var p = 0; p < 10; p++)
+        {
+            var offset = p * 188;
+            bytes[offset] = 0x47;
+            bytes[offset + 1] = 0x1F;
+            bytes[offset + 2] = 0xFF;
+        }
+
+        parser.PushBytes(bytes, 188);
+
+        Assert.That(packets, Has.Count.EqualTo(10));
+    }
+
+    [Test]
     public void Dispose_after_stop_does_not_throw()
     {
         var path = WriteTempTs(packetCount: 12_000);
