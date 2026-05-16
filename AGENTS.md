@@ -34,15 +34,35 @@ tools/BlessManifest/      # bless/refresh manifest.descriptors.json
 
 ---
 
-## 2. Architecture rules (code changes)
+## 2. Architecture and conventions (code changes)
 
-- **Data flow:** bytes → `TsPacketFactory.GetTsPackets` → (`DecodeMode`) → per-PID `TableFactory.AddData` until section complete → parse → event (table mode), or `OnTsPacketReady` (packet mode).
-- **New SI table:** record in `DvbTables/`, factory in `DvbTableFactory/`, registration in `TsParser` (`DvbTableFactory` path), event + delegate, manifest entry + `.tbl` fixtures + smoke test.
-- **New descriptor:** `{Name}Descriptor_0xNN.cs`, case in `DescriptorFactory`; tag `0x7F` → `GetExtensionDescriptor`; AIT (`table_id` `0x74`) / SCTE-35 (`0xFC`) → resolvers in `GetDescriptorList`.
-- **Naming:** descriptors `{Name}Descriptor_0x{tag hex}`; tables `{NAME}.cs` (e.g. `PAT`, `PMT`).
-- **Parsing:** `ReadOnlySpan<byte>`, `SectionParseValidation` / `SectionParseException`; do not swallow errors in descriptor loops.
-- **Logging:** `Logger.Send(LogStatus, …)`; unknown descriptor tags logged once per tag (`ConcurrentDictionary`).
-- **Tests:** use [ManifestReader](TSParser.Tests/Helpers/ManifestReader.cs) and [FixtureLoader](TSParser.Tests/Helpers/FixtureLoader.cs); after new fixtures run `BlessManifest`.
+### Data flow
+
+bytes → `TsPacketFactory.GetTsPackets` → (`DecodeMode`) → per-PID `TableFactory.AddData` until section complete → parse → event (table mode), or `OnTsPacketReady` (packet mode).
+
+### Adding features
+
+| Change | Where |
+|--------|--------|
+| New SI table | Record in `DvbTables/`, factory in `DvbTableFactory/`, wire in `TsParser` (`DvbTableFactory`), public event + delegate, `manifest.tables.json` entry, `.tbl` under `TestResources`, smoke test |
+| New descriptor | `*Descriptor_0xNN.cs`; case in `DescriptorFactory` (`GetCustomDescriptor` for operator tags); `0x7F` → `GetExtensionDescriptor`; AIT (`table_id` `0x74`) / SCTE-35 (`0xFC`) use `GetAitDescriptor` / `GetSpliceDescriptor` via `GetDescriptorList` |
+
+### Naming and parsing
+
+- **Descriptors:** `{Name}Descriptor_0x{tag hex}` (e.g. `ServiceDescriptor_0x48`).
+- **Tables:** `{NAME}.cs` in `DvbTables/` (e.g. `PAT`, `PMT`).
+- **Spans:** parse from `ReadOnlySpan<byte>`; validate with `SectionParseValidation` / throw `SectionParseException`.
+- **Descriptor loops:** do not swallow parse errors; rethrow `SectionParseException`, log other exceptions via `Logger.Send` and fall back only where the factory already does.
+
+### Logging
+
+- Use `Logger.Send(LogStatus, …)`; consumers subscribe to `Logger.OnLogMessage`.
+- Unknown descriptor / extension / AIT / splice tags: log once per tag (`ConcurrentDictionary` in `DescriptorFactory`).
+
+### Tests
+
+- Resolve fixtures via [FixtureLoader](TSParser.Tests/Helpers/FixtureLoader.cs) and enumerate via [ManifestReader](TSParser.Tests/Helpers/ManifestReader.cs) — do not hardcode absolute paths in tests.
+- After adding or changing `.tbl` / `.desc` files, run **BlessManifest** so CRC/hash and expected fields in manifest JSON stay in sync.
 
 ---
 
@@ -198,21 +218,17 @@ Full class names: see switch in [DescriptorFactory.cs](TSParser/Descriptors/Desc
 
 ---
 
-## 6. Readme.md discrepancies (audit findings)
+## 6. README vs code (keep in sync)
 
-Use this when rewriting README:
+End-user docs: [Readme.md](Readme.md) (Russian). When editing README, prefer this file for API truth.
 
-| Topic | Readme / plan assumption | Code truth |
-|-------|--------------------------|------------|
-| Custom descriptor sources | Sometimes described as absent | **Present** under `Descriptors/Custom/` |
-| Custom `0xB3` | Listed as supported | **Not** in `GetCustomDescriptor`; use `0xB4` (`TimeZoneDescriptorLG`) |
-| DVB `0x5F` | Omitted from descriptor list | **Implemented** (`PrivateDataSpecifierDescriptor_0x5F`) |
-| Events | Incomplete in examples | Add `OnEwsReady`, `OnEewsReady`, `OnBitrateMeasured`, `OnRate`; fix `OnTotready` spelling |
-| `ParserConfig` | Partially documented | Document `AllowAnalyzer`, `BitrateMeasurement`, `CurrentDecodeMode`, file size **2040** bytes |
-| Parameterless `TsParser()` | Implied for DekTec `PushBytes` | **Requires `ParserConfig` ctor** for `PushBytes` / table mode |
-| 2022 NotImplement log sample | Shows `0xB0`–`0xC0` unknown | Custom tags now parsed when `GetCustomDescriptor` matches |
-| `TsMode` ATSC/ISDB | “not implement yet” | Selects factory that throws `NotImplementedException` on first table packet |
-| Examples | `parser` / `new(config)` | Use `TsParser`, `ParserConfig`, `using var parser = …` |
+| Topic | Code truth (do not regress in docs) |
+|-------|-------------------------------------|
+| Custom `0xB3` | `TimeZoneDescriptor_0xB3.cs` exists but **not** wired in `GetCustomDescriptor`; runtime uses `0xB4` (`TimeZoneDescriptorLG`) |
+| Custom `0x89` / `0x90` | EWS region/zone types active; legacy `SettingsDescriptorV1/V2` sources exist but are commented out in factory |
+| `OnTotready` | Public API typo — event name is `OnTotready`, not `OnTotReady` |
+| `TsParser()` | Static/table helpers only; **`PushBytes` and stream parsing need `TsParser(ParserConfig)`** |
+| `TsMode.ATSC` / `ISDB` | Enum values select factories that throw `NotImplementedException` on first SI packet |
 
 ---
 
@@ -224,16 +240,38 @@ dotnet test TSParser.Tests/TSParser.Tests.csproj
 dotnet run --project TSParser.Benchmarks -c Release
 ```
 
-Optional: `TSPARSER_TEST_FIXTURES` for alternate fixture root (see test helpers).
+**Tools** (from repo root):
+
+```bash
+dotnet run --project tools/CorpusHarvester -- harvest
+dotnet run --project tools/CorpusHarvester -- select
+dotnet run --project tools/BlessManifest
+```
+
+On Windows, equivalent wrappers: `tools\harvest-tables.ps1`, `tools\select-samples.ps1`, `tools\bless-manifest.ps1`.
+
+**Environment variables**
+
+| Variable | Used by | Purpose |
+|----------|---------|---------|
+| `TSPARSER_TEST_CORPUS` | `FixtureLoader`, benchmarks | Override `TestResources` root when **running tests** |
+| `TSPARSER_TEST_FIXTURES` | CorpusHarvester, BlessManifest, PS scripts | Alternate fixtures root for **harvest/bless** |
+| `TSPARSER_TS_ROOT` | CorpusHarvester, harvest scripts | Directory of input `.ts` files |
+| `TSPARSER_DESCRIPTOR_STAGING` | CorpusHarvester `harvest` / `select` | Staging for harvested `.desc` |
+| `TSPARSER_TABLE_STAGING` | Table harvest/select scripts | Staging for harvested `.tbl` |
 
 ---
 
 ## 8. Manifest / fixture workflow
 
-- [manifest.tables.json](TSParser.Tests/TestResources/manifest.tables.json) — per-table completeness (`missing: true` where noted above).
-- [manifest.descriptors.json](TSParser.Tests/TestResources/manifest.descriptors.json) — grouped descriptor fixtures.
-- **CorpusHarvester:** `harvest`, `select` — build corpus → copy into `TestResources`.
-- **BlessManifest:** refresh CRC/hash entries after fixture changes.
+1. **Tables (optional corpus path):** harvest `.ts` → staging (`tools/harvest-tables.ps1`) → copy samples (`tools/select-samples.ps1`) into `TSParser.Tests/TestResources/Tables/`.
+2. **Descriptors:** `CorpusHarvester harvest` (parse TS, unique `.desc` to staging) → `CorpusHarvester select` (copy S/M1/M2/L samples into `TestResources/Descriptors/`).
+3. **Bless:** run BlessManifest (or `bless-manifest.ps1`) to parse every on-disk fixture and rewrite:
+   - [manifest.tables.json](TSParser.Tests/TestResources/manifest.tables.json) — CRC, lengths, type-specific expected fields; `missing: true` marks types without corpus samples yet (**EEWS**, **EWS**, **MIP**, **SCTE35**).
+   - [manifest.descriptors.json](TSParser.Tests/TestResources/manifest.descriptors.json) — grouped descriptor entries.
+4. **Test:** manifest-driven tests load fixtures via `ManifestReader` / `FixtureLoader`; `dotnet test` must pass before merging descriptor/table changes.
+
+BlessManifest flags: `--tables-only`, `--descriptors-only`, `--fixtures-root <path>`.
 
 ---
 
@@ -242,7 +280,7 @@ Optional: `TSPARSER_TEST_FIXTURES` for alternate fixture root (see test helpers)
 - `TsMode.ATSC` / `TsMode.ISDB` — enum only; `AtscTableFactory` / `IsdbTableFactory` throw.
 - `TransportStream/NAL/` — placeholder folder in csproj.
 - `Decoder` — not implemented.
-- Solution references **AppTest** and **StreamParser** projects not present in tree (`.gitignore` excludes `AppTest/`).
+- Solution references **AppTest** and **StreamParser** sample apps (`.gitignore` excludes `AppTest/` and `StreamParser/` — absent in a minimal clone; `StreamParser` may warn on missing DekTec `DTAPINET` refs).
 - Custom tags `0xB3`, legacy `SettingsDescriptorV1/V2` — source files exist, factory wiring incomplete.
 
 ---
