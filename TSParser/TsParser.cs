@@ -343,10 +343,14 @@ namespace TSParser
         /// Return ONE table from incoming bytes. Bytes length shall be less than 4093 bytes. Use it for tests or in lab
         /// </summary>
         /// <param name="bytes"></param>
+        /// <param name="mip">When true, parse as DVB-T MIP (PID 0x15); first byte is synchronization id, not MPEG table_id.</param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public static Table GetOneTableFromBytes(ReadOnlySpan<byte> bytes)
+        public static Table GetOneTableFromBytes(ReadOnlySpan<byte> bytes, bool mip = false)
         {
+            if (mip)
+                return new MIP(bytes);
+
             return bytes[0] switch
             {
                 0x00 => new PAT(bytes),
@@ -370,10 +374,16 @@ namespace TSParser
         /// Return ONE descriptor from incoming bytes. Bytes length shall be less than 255 bytes. use for tests or in lab
         /// </summary>
         /// <param name="bytes"></param>
+        /// <param name="callerTableId">AIT (0x74) or SCTE-35 (0xFC) table_id when the tag namespace differs from DVB SI.</param>
         /// <returns></returns>
-        public static Descriptor GetOneDescriptorFromBytes(ReadOnlySpan<byte> bytes)
+        public static Descriptor GetOneDescriptorFromBytes(ReadOnlySpan<byte> bytes, byte? callerTableId = null)
         {
-            return DescriptorFactory.GetDescriptor(bytes);
+            return callerTableId switch
+            {
+                0x74 => DescriptorFactory.GetAitDescriptor(bytes),
+                0xFC => DescriptorFactory.GetSpliceDescriptor(bytes),
+                _ => DescriptorFactory.GetDescriptor(bytes),
+            };
         }
         /// <summary>
         /// Compare two table and return difference between them as ienumerable<string>
