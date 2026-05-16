@@ -25,6 +25,8 @@ namespace TSParser.Tables.DvbTables
         public override ushort TablePid => (ushort)ReservedPids.PAT;
         public PAT(ReadOnlySpan<byte> bytes) : base(bytes)
         { 
+            SectionParseValidation.ValidateFixedRecordLoop(bytes, SectionLength, recordStartIndex: 8, recordSize: 4);
+
             TransportStreamId = BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]);
 
             PatRecords = new PatRecord[(SectionLength - 8) / 4];

@@ -58,8 +58,13 @@ internal class EewsFactory : TableFactory
             ResetFactory();
             return;
         }
-        Eews = new EEWS(bytes, CurrentPid);
-
-        OnEewsReady?.Invoke(Eews);
+        if (!TryParseAssembledTable(() =>
+        {
+            Eews = new EEWS(TableData, CurrentPid);
+            OnEewsReady?.Invoke(Eews);
+        }, "EEWS"))
+        {
+            return;
+        }
     }
 }

@@ -78,29 +78,34 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentNit = new(bytes);
-
-            var idx = m_nitList.FindIndex(nit=>nit.NetworkId==CurrentNit.NetworkId &&
-                                          nit.SectionNumber==CurrentNit.SectionNumber &&
-                                          nit.LastSectionNumber == CurrentNit.LastSectionNumber);
-
-            if(idx >= 0)
+            if (!TryParseAssembledTable(() =>
             {
-                if (m_nitList[idx].VersionNumber != CurrentNit.VersionNumber)
+                CurrentNit = new NIT(TableData);
+
+                var idx = m_nitList.FindIndex(nit => nit.NetworkId == CurrentNit.NetworkId &&
+                                              nit.SectionNumber == CurrentNit.SectionNumber &&
+                                              nit.LastSectionNumber == CurrentNit.LastSectionNumber);
+
+                if (idx >= 0)
                 {
-                    Logger.Send(LogStatus.INFO, $"NIT table version changed for ts id: {m_nitList[idx].NetworkId} from {m_nitList[idx].VersionNumber} to {CurrentNit.VersionNumber}");
-                    m_nitList.RemoveAt(idx);
+                    if (m_nitList[idx].VersionNumber != CurrentNit.VersionNumber)
+                    {
+                        Logger.Send(LogStatus.INFO, $"NIT table version changed for ts id: {m_nitList[idx].NetworkId} from {m_nitList[idx].VersionNumber} to {CurrentNit.VersionNumber}");
+                        m_nitList.RemoveAt(idx);
+                    }
+                    else
+                    {
+                        return;
+                    }
                 }
-                else
-                {
-                    return;
-                }
+
+                Nit = CurrentNit;
+                m_nitList.Add(Nit);
+                OnNitReady?.Invoke(Nit);
+            }, "NIT"))
+            {
+                return;
             }
-
-            Nit = CurrentNit;
-            m_nitList.Add(Nit);
-            OnNitReady?.Invoke(Nit);
-
         }
     }
 }

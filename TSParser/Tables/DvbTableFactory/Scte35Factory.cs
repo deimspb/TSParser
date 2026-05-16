@@ -53,10 +53,15 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentScte35 = new SCTE35(bytes, CurrentPid);
-
-            Scte35 = CurrentScte35;
-            OnScte35Ready?.Invoke(Scte35);
+            if (!TryParseAssembledTable(() =>
+            {
+                CurrentScte35 = new SCTE35(TableData, CurrentPid);
+                Scte35 = CurrentScte35;
+                OnScte35Ready?.Invoke(Scte35);
+            }, "SCTE-35"))
+            {
+                return;
+            }
         }
     }
 }

@@ -27,6 +27,9 @@ namespace TSParser.Descriptors
         public byte[] Data { get; init; } = null!;
         public Descriptor(ReadOnlySpan<byte> bytes)
         {
+            if (!SectionParseValidation.TryGetDescriptorTotalLength(bytes, out var totalLength, out var reason))
+                throw new SectionParseException(reason, $"Invalid descriptor header (length {bytes.Length} bytes).");
+
             int pointer = 0;
             DescriptorTag = bytes[pointer++];
             if ((DescriptorTag == 0x89 || DescriptorTag == 0x90) && bytes.Length > pointer + 1 && bytes[pointer] == 0x15)
@@ -38,15 +41,15 @@ namespace TSParser.Descriptors
 
             DescriptorLength = bytes[pointer++];
 
-            if (bytes.Length - pointer >= DescriptorLength)
+            if (totalLength != DescriptorTotalLength || totalLength > bytes.Length)
             {
-                Data = new byte[DescriptorLength + 1];
-                bytes[..Data.Length].CopyTo(Data);
+                throw new SectionParseException(
+                    ParseFailureReason.InvalidDescriptorLength,
+                    $"Descriptor tag 0x{DescriptorTag:X2} declared length {DescriptorLength} does not fit in {bytes.Length} bytes.");
             }
-            else
-            {
-                Logger.Send(LogStatus.WARNING, $"Pointer out of descriptor tag 0x{DescriptorTag:X}");
-            }
+
+            Data = new byte[DescriptorLength + 1];
+            bytes[..Data.Length].CopyTo(Data);
         }
         public virtual string Print(int prefixLen)
         {

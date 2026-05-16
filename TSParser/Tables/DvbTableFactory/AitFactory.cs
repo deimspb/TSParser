@@ -60,15 +60,21 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentAit = new AIT(bytes, CurrentPid);
-
-            if (Ait != null && Ait.VersionNumber != CurrentAit.VersionNumber)
+            if (!TryParseAssembledTable(() =>
             {
-                Logger.Send(LogStatus.INFO, $"AIT version changed from {Ait.VersionNumber} to {CurrentAit.VersionNumber}");
-            }
+                CurrentAit = new AIT(TableData, CurrentPid);
 
-            Ait = CurrentAit;
-            OnAitReady?.Invoke(Ait);
+                if (Ait != null && Ait.VersionNumber != CurrentAit.VersionNumber)
+                {
+                    Logger.Send(LogStatus.INFO, $"AIT version changed from {Ait.VersionNumber} to {CurrentAit.VersionNumber}");
+                }
+
+                Ait = CurrentAit;
+                OnAitReady?.Invoke(Ait);
+            }, "AIT"))
+            {
+                return;
+            }
         }
     }
 }

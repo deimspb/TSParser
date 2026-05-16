@@ -64,15 +64,20 @@ internal class EwsFactory : TableFactory
             return;
         }
 
-        CurrentEws = new EWS(bytes, CurrentPid);
-
-        if(Ews!=null && Ews.VersionNumber != CurrentEws.VersionNumber)
+        if (!TryParseAssembledTable(() =>
         {
-            Logger.Send(LogStatus.INFO, $"EWS table updated to version {CurrentEws.VersionNumber} for PID: 0x{CurrentPid:X}");
+            CurrentEws = new EWS(TableData, CurrentPid);
+
+            if (Ews != null && Ews.VersionNumber != CurrentEws.VersionNumber)
+            {
+                Logger.Send(LogStatus.INFO, $"EWS table updated to version {CurrentEws.VersionNumber} for PID: 0x{CurrentPid:X}");
+            }
+
+            Ews = CurrentEws;
+            OnEwsReady?.Invoke(Ews);
+        }, "EWS"))
+        {
+            return;
         }
-
-        Ews = CurrentEws;
-
-        OnEwsReady?.Invoke(Ews);
     }
 }

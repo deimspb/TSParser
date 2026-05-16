@@ -40,12 +40,21 @@ namespace TSParser.Tables.DvbTables
             var pointer = 12;
             var descAllocation = $"Table: PMT, Program: {ProgramNumber}, Section number: {SectionNumber}";
 
+            SectionParseValidation.ValidateSpanBounds(bytes, pointer, ProgramInfoLength);
+
             if (ProgramInfoLength > 0)
             {
-                PmtDescriptorList = DescriptorFactory.GetDescriptorList(bytes[pointer..(pointer + ProgramInfoLength)], descAllocation);
+                PmtDescriptorList = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, ProgramInfoLength), descAllocation);
             }
 
             pointer += ProgramInfoLength;
+
+            if (pointer > bytes.Length - 4)
+            {
+                throw new SectionParseException(
+                    ParseFailureReason.SectionLengthMismatch,
+                    $"PMT program info length {ProgramInfoLength} leaves no room for elementary stream data.");
+            }
 
             EsInfoList = GetEsInfoList(bytes[pointer..^4]);
         }
@@ -57,9 +66,20 @@ namespace TSParser.Tables.DvbTables
 
             while (pointer < bytes.Length)
             {
-                var es = new EsInfo(bytes[pointer..],ProgramNumber);
-                pointer += es.EsInfoLength + 5;
+                if (bytes.Length - pointer < 5)
+                {
+                    break;
+                }
 
+                var esInfoLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(pointer + 3, 2)) & 0x0FFF);
+                var entryLength = esInfoLength + 5;
+                if (entryLength < 5 || pointer + entryLength > bytes.Length)
+                {
+                    break;
+                }
+
+                var es = new EsInfo(bytes.Slice(pointer, entryLength), ProgramNumber);
+                pointer += entryLength;
                 esList.Add(es);
             }
             return esList;
@@ -131,6 +151,7 @@ namespace TSParser.Tables.DvbTables
             EsInfoLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x0FFF);
             pointer += 2;
             var descAllocation = $"Table: PMT, Program: {programId}, Es pid: {ElementaryPid}";
+            SectionParseValidation.ValidateSpanBounds(bytes, pointer, EsInfoLength);
             EsDescriptorList = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, EsInfoLength), descAllocation);
         }        
         public string Print(int prefixLen)

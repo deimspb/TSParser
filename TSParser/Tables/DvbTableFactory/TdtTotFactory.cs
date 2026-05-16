@@ -70,8 +70,14 @@ namespace TSParser.Tables.DvbTableFactory
 
         private void ParseTDT()
         {
-            Tdt = new(TableData);
-            OnTdtReady?.Invoke(Tdt);
+            if (!TryParseAssembledTable(() =>
+            {
+                Tdt = new TDT(TableData);
+                OnTdtReady?.Invoke(Tdt);
+            }, "TDT"))
+            {
+                return;
+            }
         }
 
         private void ParseTOT()
@@ -87,8 +93,14 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            Tot = new(TableData);
-            OnTotready?.Invoke(Tot);
+            if (!TryParseAssembledTable(() =>
+            {
+                Tot = new TOT(TableData);
+                OnTotready?.Invoke(Tot);
+            }, "TOT"))
+            {
+                return;
+            }
         }
     }
 }

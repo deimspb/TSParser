@@ -57,31 +57,33 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentEit = new EIT(bytes);
-            // next find index on table id, service id, section number and last section number based.
-            // this method help us to remove old eit table from eitlist and remove potentional memory leak when new eits add to list only by crc
-            var idx = eitList.FindIndex(e => e.TableId == CurrentEit.TableId &&
-                                        e.ServiceId == CurrentEit.ServiceId &&
-                                        e.SectionNumber == CurrentEit.SectionNumber &&
-                                        e.LastSectionNumber == CurrentEit.LastSectionNumber);
-
-            if (idx >= 0)
+            if (!TryParseAssembledTable(() =>
             {
-                if (eitList[idx].VersionNumber != CurrentEit.VersionNumber)
+                CurrentEit = new EIT(TableData);
+                var idx = eitList.FindIndex(e => e.TableId == CurrentEit.TableId &&
+                                            e.ServiceId == CurrentEit.ServiceId &&
+                                            e.SectionNumber == CurrentEit.SectionNumber &&
+                                            e.LastSectionNumber == CurrentEit.LastSectionNumber);
+
+                if (idx >= 0)
                 {
-                    //Logger.Send(LogStatus.Info, $"EIT version changed for service id: {eitList[idx].ServiceId}");
-                    eitList.RemoveAt(idx);
+                    if (eitList[idx].VersionNumber != CurrentEit.VersionNumber)
+                    {
+                        eitList.RemoveAt(idx);
+                    }
+                    else
+                    {
+                        return;
+                    }
                 }
-                else
-                {
-                    return;
-                }
+
+                Eit = CurrentEit;
+                eitList.Add(Eit);
+                OnEitReady?.Invoke(Eit);
+            }, "EIT"))
+            {
+                return;
             }
-
-            Eit = CurrentEit;
-            eitList.Add(Eit);
-            OnEitReady?.Invoke(Eit);
-
         }
     }
 }

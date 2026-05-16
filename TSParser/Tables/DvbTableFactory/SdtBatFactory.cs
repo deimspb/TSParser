@@ -92,29 +92,34 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentSdt = new SDT(bytes);
-
-            var idx = m_sdtList.FindIndex(sdt => sdt.OriginalNetworkId == CurrentSdt.OriginalNetworkId &&
-                                          sdt.TransportStreamId == CurrentSdt.TransportStreamId &&
-                                          sdt.SectionNumber == CurrentSdt.SectionNumber &&
-                                          sdt.LastSectionNumber == CurrentSdt.LastSectionNumber);
-            if (idx >= 0)
+            if (!TryParseAssembledTable(() =>
             {
-                if (m_sdtList[idx].VersionNumber != CurrentSdt.VersionNumber)
+                CurrentSdt = new SDT(TableData);
+
+                var idx = m_sdtList.FindIndex(sdt => sdt.OriginalNetworkId == CurrentSdt.OriginalNetworkId &&
+                                              sdt.TransportStreamId == CurrentSdt.TransportStreamId &&
+                                              sdt.SectionNumber == CurrentSdt.SectionNumber &&
+                                              sdt.LastSectionNumber == CurrentSdt.LastSectionNumber);
+                if (idx >= 0)
                 {
-                    Logger.Send(LogStatus.INFO, $"SDT table version changed for ts id: {m_sdtList[idx].TransportStreamId}");
-                    m_sdtList.RemoveAt(idx);
+                    if (m_sdtList[idx].VersionNumber != CurrentSdt.VersionNumber)
+                    {
+                        Logger.Send(LogStatus.INFO, $"SDT table version changed for ts id: {m_sdtList[idx].TransportStreamId}");
+                        m_sdtList.RemoveAt(idx);
+                    }
+                    else
+                    {
+                        return;
+                    }
                 }
-                else
-                {
-                    return;
-                }
+
+                Sdt = CurrentSdt;
+                m_sdtList.Add(Sdt);
+                OnSdtReady?.Invoke(Sdt);
+            }, "SDT"))
+            {
+                return;
             }
-
-            Sdt = CurrentSdt;
-            m_sdtList.Add(Sdt);
-            OnSdtReady?.Invoke(Sdt);
-
         }
         private void ParseBat()
         {
@@ -131,27 +136,33 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentBAT = new BAT(bytes);
-
-            var idx = m_batList.FindIndex(bat=> bat.BouquetId==CurrentBAT.BouquetId &&
-                                          bat.SectionNumber==CurrentBAT.SectionNumber &&
-                                          bat.LastSectionNumber==CurrentBAT.LastSectionNumber);
-            if(idx >= 0)
+            if (!TryParseAssembledTable(() =>
             {
-                if (m_batList[idx].VersionNumber != CurrentBAT.VersionNumber)
-                {
-                    Logger.Send(LogStatus.INFO, $"Bat version changed for bouquet id:{CurrentBAT.BouquetId}");
-                    m_batList.RemoveAt(idx);
-                }
-                else
-                {
-                    return;
-                }
-            }
+                CurrentBAT = new BAT(TableData);
 
-            Bat = CurrentBAT;
-            m_batList.Add(Bat);
-            OnBatReady?.Invoke(Bat);
+                var idx = m_batList.FindIndex(bat => bat.BouquetId == CurrentBAT.BouquetId &&
+                                              bat.SectionNumber == CurrentBAT.SectionNumber &&
+                                              bat.LastSectionNumber == CurrentBAT.LastSectionNumber);
+                if (idx >= 0)
+                {
+                    if (m_batList[idx].VersionNumber != CurrentBAT.VersionNumber)
+                    {
+                        Logger.Send(LogStatus.INFO, $"Bat version changed for bouquet id:{CurrentBAT.BouquetId}");
+                        m_batList.RemoveAt(idx);
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+
+                Bat = CurrentBAT;
+                m_batList.Add(Bat);
+                OnBatReady?.Invoke(Bat);
+            }, "BAT"))
+            {
+                return;
+            }
         }
     }
 }

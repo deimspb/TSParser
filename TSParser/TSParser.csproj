@@ -12,4 +12,8 @@
     <Folder Include="TransportStream\NAL\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="TSParser.Tests" />
+  </ItemGroup>
+
 </Project>

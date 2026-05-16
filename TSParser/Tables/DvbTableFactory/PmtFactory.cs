@@ -59,15 +59,21 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentPmt = new PMT(bytes, CurrentPid);
-
-            if (Pmt != null && Pmt.VersionNumber != CurrentPmt.VersionNumber)
+            if (!TryParseAssembledTable(() =>
             {
-                Logger.Send(LogStatus.INFO, $"PMT version changed from {Pmt.VersionNumber} to {CurrentPmt.VersionNumber}");
-            }
+                CurrentPmt = new PMT(TableData, CurrentPid);
 
-            Pmt = CurrentPmt;
-            OnPmtReady?.Invoke(Pmt);
+                if (Pmt != null && Pmt.VersionNumber != CurrentPmt.VersionNumber)
+                {
+                    Logger.Send(LogStatus.INFO, $"PMT version changed from {Pmt.VersionNumber} to {CurrentPmt.VersionNumber}");
+                }
+
+                Pmt = CurrentPmt;
+                OnPmtReady?.Invoke(Pmt);
+            }, "PMT"))
+            {
+                return;
+            }
         }
     }
 }

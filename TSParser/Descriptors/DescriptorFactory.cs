@@ -100,6 +100,10 @@ namespace TSParser.Descriptors
                         }
                 }
             }
+            catch (SectionParseException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 Logger.Send(LogStatus.EXCEPTION, $"While creating descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
@@ -127,6 +131,10 @@ namespace TSParser.Descriptors
                         }
                 }
             }
+            catch (SectionParseException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 Logger.Send(LogStatus.EXCEPTION, $"While creating AIT descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
@@ -149,6 +157,10 @@ namespace TSParser.Descriptors
                             return new ExtendedDescriptor(bytes);
                         }
                 }
+            }
+            catch (SectionParseException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -175,6 +187,10 @@ namespace TSParser.Descriptors
                         }
                 }
             }
+            catch (SectionParseException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 Logger.Send(LogStatus.EXCEPTION, $"While creating Splice descriptor tag: 0x{bytes[0]:X2} descriptor location: {descAllocation}", ex);
@@ -198,10 +214,39 @@ namespace TSParser.Descriptors
             List<Descriptor> descriptors = new List<Descriptor>();
             while (pointer < bytes.Length)
             {
-                var desc = getDescriptor(bytes[pointer..], descAllocation);
-                descriptors.Add(desc);
-                pointer += desc.DescriptorTotalLength;
+                var slice = bytes[pointer..];
+                if (!SectionParseValidation.TryGetDescriptorTotalLength(slice, out var totalLength, out var reason))
+                {
+                    Logger.Send(
+                        LogStatus.EXCEPTION,
+                        $"Descriptor loop aborted at offset {pointer} in {descAllocation}: {reason}");
+                    break;
+                }
+
+                try
+                {
+                    var desc = getDescriptor(slice[..totalLength], descAllocation);
+                    if (desc.DescriptorTotalLength <= 0 || desc.DescriptorTotalLength != totalLength)
+                    {
+                        Logger.Send(
+                            LogStatus.EXCEPTION,
+                            $"Descriptor loop aborted at offset {pointer} in {descAllocation}: {ParseFailureReason.DescriptorLoopStall}");
+                        break;
+                    }
+
+                    descriptors.Add(desc);
+                    pointer += totalLength;
+                }
+                catch (SectionParseException ex)
+                {
+                    Logger.Send(
+                        LogStatus.EXCEPTION,
+                        $"Descriptor loop aborted at offset {pointer} in {descAllocation}: {ex.Message}",
+                        ex);
+                    break;
+                }
             }
+
             return descriptors;
         }
 
@@ -272,6 +317,10 @@ namespace TSParser.Descriptors
                         }
 
                 }
+            }
+            catch (SectionParseException)
+            {
+                throw;
             }
             catch (Exception ex)
             {

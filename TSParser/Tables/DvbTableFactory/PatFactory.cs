@@ -59,16 +59,21 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentPat = new PAT(bytes);            
-
-            if (Pat != null && Pat.VersionNumber != CurrentPat.VersionNumber)
+            if (!TryParseAssembledTable(() =>
             {
-                Logger.Send(LogStatus.INFO, $"Pat version changed from {Pat.VersionNumber} to {CurrentPat.VersionNumber}");
-            }            
+                CurrentPat = new PAT(TableData);
 
-            Pat = CurrentPat;
-            OnPatReady?.Invoke(Pat);
+                if (Pat != null && Pat.VersionNumber != CurrentPat.VersionNumber)
+                {
+                    Logger.Send(LogStatus.INFO, $"Pat version changed from {Pat.VersionNumber} to {CurrentPat.VersionNumber}");
+                }
 
+                Pat = CurrentPat;
+                OnPatReady?.Invoke(Pat);
+            }, "PAT"))
+            {
+                return;
+            }
         }
     }
 }

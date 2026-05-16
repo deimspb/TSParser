@@ -53,15 +53,21 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            CurrentCat = new(bytes);
-
-            if(Cat!=null && Cat.VersionNumber != CurrentCat.VersionNumber)
+            if (!TryParseAssembledTable(() =>
             {
-                Logger.Send(LogStatus.INFO, $"Cat version changed from {Cat.VersionNumber} to {CurrentCat.VersionNumber}");
-            }
+                CurrentCat = new CAT(TableData);
 
-            Cat = CurrentCat;
-            OnCatReady?.Invoke(Cat);
+                if (Cat != null && Cat.VersionNumber != CurrentCat.VersionNumber)
+                {
+                    Logger.Send(LogStatus.INFO, $"Cat version changed from {Cat.VersionNumber} to {CurrentCat.VersionNumber}");
+                }
+
+                Cat = CurrentCat;
+                OnCatReady?.Invoke(Cat);
+            }, "CAT"))
+            {
+                return;
+            }
         }
     }
 }

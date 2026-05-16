@@ -40,8 +40,32 @@ namespace TSParser.Tables
         {
             isInProgresTable = false;            
             Pointer = 0;
-            CurrentTableSectionLength = 0;            
+            CurrentTableSectionLength = 0;
+            TableBytes = 0;
+            TableData = null!;
+            tempBuffer = null!;
         }
+
+        internal bool TryParseAssembledTable(Action parseAction, string tableName)
+        {
+            try
+            {
+                parseAction();
+                return true;
+            }
+            catch (SectionParseException ex)
+            {
+                Logger.Send(
+                    LogStatus.EXCEPTION,
+                    $"Failed to parse {tableName} section on PID 0x{CurrentPid:X4}: {ex.Message}",
+                    ex);
+                ResetFactory();
+                return false;
+            }
+        }
+
+        private static bool IsValidSectionLength(int sectionLength) =>
+            sectionLength > 0 && sectionLength <= SectionParseValidation.MaxSectionLength;
         internal void AddData(TsPacket tsPacket)
         {
             try
@@ -71,6 +95,12 @@ namespace TSParser.Tables
                         {
                             Buffer.BlockCopy(tsPacket.Payload, 1, tempBuffer, TableBytes, 3 - TableBytes);
                             CurrentTableSectionLength = (((tempBuffer[1] & 0x0F) << 8) + tempBuffer[2]);
+                            if (!IsValidSectionLength(CurrentTableSectionLength))
+                            {
+                                Logger.Send(LogStatus.WARNING, $"Invalid section length {CurrentTableSectionLength} for pid: {tsPacket.Pid}");
+                                ResetFactory();
+                                return;
+                            }
                             if (CurrentTableSectionLength > Pointer)
                             {
                                 throw new Exception(" section length greater than pointer!");
@@ -110,6 +140,12 @@ namespace TSParser.Tables
                     else
                     {
                         CurrentTableSectionLength = (((tsPacket.Payload[Pointer + 2] & 0x0F) << 8) + tsPacket.Payload[Pointer + 3]);
+                        if (!IsValidSectionLength(CurrentTableSectionLength))
+                        {
+                            Logger.Send(LogStatus.WARNING, $"Invalid section length {CurrentTableSectionLength} for pid: {tsPacket.Pid}");
+                            ResetFactory();
+                            return;
+                        }
                         TableData = new byte[CurrentTableSectionLength + 3];
 
                         if (CurrentTableSectionLength + 3 < tsPacket.Payload.Length - Pointer)
@@ -136,6 +172,12 @@ namespace TSParser.Tables
                     {
                         Buffer.BlockCopy(tsPacket.Payload, 0, tempBuffer, TableBytes, 3 - TableBytes);
                         CurrentTableSectionLength = (((tempBuffer[1] & 0x0F) << 8) + tempBuffer[2]);
+                        if (!IsValidSectionLength(CurrentTableSectionLength))
+                        {
+                            Logger.Send(LogStatus.WARNING, $"Invalid section length {CurrentTableSectionLength} for pid: {tsPacket.Pid}");
+                            ResetFactory();
+                            return;
+                        }
                         TableData = new byte[CurrentTableSectionLength + 3];
 
                         if (CurrentTableSectionLength + 3 <= tsPacket.Payload.Length)
@@ -180,9 +222,9 @@ namespace TSParser.Tables
             }
             catch (Exception ex)
             {
-                Logger.Send(LogStatus.EXCEPTION, $"Exception in Add data for packet No: {tsPacket.PacketNumber}, pid: {tsPacket.Pid}",ex);
+                Logger.Send(LogStatus.EXCEPTION, $"Exception in Add data for packet No: {tsPacket.PacketNumber}, pid: {tsPacket.Pid}", ex);
+                ResetFactory();
             }
-            
         }
     }
 }

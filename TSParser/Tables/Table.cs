@@ -41,9 +41,11 @@ namespace TSParser.Tables
         public Table() { }
         public Table(ReadOnlySpan<byte> bytes)
         {
+            SectionParseValidation.ValidateSyntaxSection(bytes);
+
             TableId = bytes[0];
             SectionSyntaxIndicator = (bytes[1] & 0x80) != 0;
-            SectionLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(1, 2)) & 0x0FFF);
+            SectionLength = SectionParseValidation.ReadSectionLength(bytes);
             VersionNumber = (byte)((bytes[5] & 0x3E) >> 1);
             CurrentNextIndicator = (bytes[5] & 0x01) != 0;
             SectionNumber = bytes[6];

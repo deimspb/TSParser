@@ -24,9 +24,25 @@ namespace TSParser.Tables.DvbTables
         public override ushort TablePid => (ushort)ReservedPids.TDT;
         public TDT(ReadOnlySpan<byte> bytes)
         {
+            if (bytes.Length < 8)
+            {
+                throw new SectionParseException(
+                    ParseFailureReason.BufferTooShort,
+                    $"TDT section too short ({bytes.Length} bytes).");
+            }
+
             TableId = bytes[0];
             SectionSyntaxIndicator = (bytes[1] & 0x80) != 0;
-            SectionLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(1, 2)) & 0x0FFF);
+            SectionLength = SectionParseValidation.ReadSectionLength(bytes);
+            if (SectionLength > SectionParseValidation.MaxSectionLength ||
+                bytes.Length < SectionParseValidation.GetDeclaredSectionByteCount(SectionLength))
+            {
+                throw SectionParseValidation.CreateException(
+                    ParseFailureReason.SectionLengthMismatch,
+                    bytes.Length,
+                    SectionLength);
+            }
+
             UtcDateTime = Utils.GetDateTimeFromMJD_UTC(bytes.Slice(3, 5));
             CRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
             TableBytes = bytes;
