@@ -1,231 +1,242 @@
-# DVB MPEG Transport Stream Parser Library
-...project not finished
+# TSParser — библиотека разбора DVB/MPEG-2 Transport Stream
 
-Parse Transport stream packet,
-Adaptation field
-Pes header
+Библиотека на **.NET 10** для разбора MPEG-2 Transport Stream: TS-пакеты (188/204 байт), adaptation field, PES-заголовки, PSI/SI-таблицы DVB, SCTE-35, операторские дескрипторы и опциональный анализ CC/битрейта.
 
-DVB/MPEG tables:
-* PAT
-* CAT
-* PMT
-* BAT
-* SDT 
-* EIT
-* TOT
-* TDT
-* NIT
-* AIT
-* MIP
-* SCTE35
-* EWS (Emergency Warning System)
-* EEWS (Extended Emergency Warning System)
-* Support non zero pointer field
+Лицензия: [Apache 2.0](TSParser/LICENCE).
 
-Descriptors:
- * 0x02 VideoStreamDescriptor_0x02
- * 0x03 AudioStreamDescriptor_0x03
- * 0x05 RegistrationDescriptor_0x05
- * 0x06 DataStreamAlignmentDescriptor_0x06
- * 0x09 CaDescriptor_0x09
- * 0x0A Iso639LanguageDescriptor_0x0A
- * 0x0C MultiplexBufferUtilizationDescriptor_0x0C
- * 0x0E MaximumBitrateDescriptor_0x0E
- * 0x11 StdDescriptor_0x11
- * 0x13 CarouselIdentifierDescriptor_0x13
- * 0x14 AssociationTagDescriptor_0x14
- * 0x28 AvcVideoDescriptor_0x28
- * 0x2A AvcTimingAndHrdDescriptor_0x2A
- * 0x38 HevcVideoDescriptor_0x38
- * 0x40 NetworkNameDescriptor_0x40
- * 0x41 ServiceListDescriptor_0x41
- * 0x43 SatelliteDeliverySystemDescriptor_0x43
- * 0x44 CableDeliverySystemDescriptor_0x44
- * 0x45 VbiDataDescriptor_0x45
- * 0x47 BouquetNameDescriptor_0x47
- * 0x48 ServiceDescriptor_0x48
- * 0x4A LinkageDescriptor_0x4A
- * 0x4D ShortEventDescriptor_0x4D
- * 0x4E ExtendedEventDescriptor_0x4E
- * 0x50 ComponentDescriptor_0x50
- * 0x52 StreamIdentifierDescriptor_0x52
- * 0x53 CaIdentifierDescriptor_0x53
- * 0x54 ContentDescriptor_0x54
- * 0x55 ParentalRatingDescriptor_0x55
- * 0x56 TeletextDescriptor_0x56
- * 0x58 LocalTimeOffsetDescriptor_0x58
- * 0x59 SubtitlingDescriptor_0x59
- * 0x5A TerrestrialDeliverySystemDescriptor_0x5A
- * 0x5C MultilingualBouquetNameDescriptor_0x5C
- * 0x60 ServiceMoveDescriptor_0x60
- * 0x64 DataBroadcastDescriptor_0x64
- * 0x66 DataBroadcastIdDescriptor_0x66
- * 0x6A AC3Descriptor_0x6A
- * 0x6C CellListDescriptor_0x6C
- * 0x6D CellFrequencyLinkDescriptor_0x6D
- * 0x6F ApplicationSignallingDescriptor_0x6F
- * 0x70 AdaptationFieldDataDescriptor_0x70
- * 0x7F ExtensionDescriptor_0x7F
- * 0x83 LogicalChannelNumberDescriptor_0x83
- * 0x8A CueIdentifierDescriptor_0x8A
- * 0x7C AACDescriptor_0x7C
+---
 
-Custom descriptors (`TSParser.Descriptors.Custom`, operator-specific SI):
- * 0x09 CaDescriptorCustom_0x09 (DRE CA variant)
- * 0x86 GnrDescriptor_0x86
- * 0x87 LogicalChannelNumberDescriptorV2_0x87
- * 0x88 MultilingualRegionNameDescriptor_0x88
- * 0x89 EwsRegionDescriptor_0x89
- * 0x90 EwsZoneDescriptor_0x90
- * 0xB0 SettingsDescriptorV3_0xB0
- * 0xB1 SettingsDescriptorV4_0xB1
- * 0xB2 ChannelListTypeDescriptor_0xB2
- * 0xB3 TimeZoneDescriptor_0xB3
- * 0xB4 TimeZoneDescriptorLG_0xB4
- * 0xC0 WhiteListDescriptor_0xC0
+## Возможности
 
-Extension Descriptor:
-* 0x00  ImageIconDescriptor_0x00
-* 0x04	T2DeliverySystemDescriptor_0x04
+- Разбор TS-пакетов, adaptation field и PES-заголовков; поддержка секций с ненулевым `pointer_field`.
+- SI/PSI-таблицы DVB (см. [Поддерживаемые таблицы](#поддерживаемые-таблицы)).
+- **SCTE-35** (PID из PMT, stream type `0x86`); сериализация в XML — [`Scte35ToXml`](TSParser/Convertors/Scte35ToXml.cs) ([схема SCTE-35](http://www.scte.org/schemas/35)).
+- **AIT** (PID из PMT: stream type `0x05` + descriptor `0x6F`).
+- **EWS / EEWS** — при заданных `EwsPidList` / `EewsPidList` на экземпляре `TsParser`.
+- Дескрипторы: DVB, extension (`0x7F`), AIT, SCTE-35 splice, custom (операторские) — см. [Дескрипторы](#дескрипторы).
+- Режимы ввода: файл, UDP multicast, внешняя подача байт (`PushBytes`, например DekTec).
+- Анализатор: CC по PID, legacy-оценка скорости (`OnRate`), окно битрейта (`OnBitrateMeasured` + `BitrateMeasurementOptions`).
 
+---
 
-AIT Descriptor:
-* 0x00	ApplicationDescriptor_0x00
-* 0x01	ApplicationNameDescriptor_0x01
-* 0x02	TransportProtocolDescriptor_0x02
-* 0x03	DvbJApplicationDescriptor_0x03
-* 0x04	DvbJApplicationLocationDescriptor_0x04
-* 0x10	ApplicationStorageDescriptor_0x10
-* 0x15	SimpleApplicationLocationDescriptor_0x15
+## Требования
 
-Full support of SCTE35 tables, add functionality to serialize scte35 table to XML as describe in http://www.scte.org/schemas/35
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
 
+Сборка:
 
-## How to use this parser
-First you need to create config instance (this examlpe for udp multicast)
+```bash
+dotnet build TSParser.sln
 ```
+
+---
+
+## Быстрый старт
+
+Подключите пакет/проект `TSParser`, namespace `TSParser`.
+
+### Файл или multicast
+
+Конструктор `TsParser(ParserConfig)` при указании `TsFileName` или пары `MulticastGroup` + `MulticastPort` сам запускает разбор после подписки на события и вызова `RunParser()` / `RunParserAsync()`.
+
+```csharp
+using TSParser;
+using TSParser.Analysis;
+using TSParser.Service;
+
 var config = new ParserConfig
 {
-    MulticastGroup = sopts.MulticastAddress,
-    MulticastPort = sopts.UdpPort,
-    MulticastIncomingIp = sopts.McastInterfaceAddress,
-    ParserRunTime = sopts.runTime == 0 ? m_defaultDuration : sopts.runTime,
+    TsFileName = @"C:\captures\stream.ts",
+    CurrentDecodeMode = DecodeMode.Table,
+    ParserRunTime = 60_000, // необязательно; минимум 100 мс, если задано
+    BitrateMeasurement = new BitrateMeasurementOptions
+    {
+        Enabled = true,
+        MeasurementWindow = TimeSpan.FromSeconds(1),
+        MeasureStreamBitrate = true,
+    },
 };
-```
-Than create instance of parser with this config:
-```
-parser = new(config); 
-```
-next step:
-```
-parser.OnParserComplete += Parser_OnParserComplete;
-parser.OnPatReady += Parser_OnPatReady;
-parser.OnPmtReady += Parser_OnPmtReady;
-parser.OnSdtReady += Parser_OnSdtReady;
-parser.OnNitReady += Parser_OnNitReady;
-parser.OnBatReady += Parser_OnBatReady;
-parser.OnCatReady += Parser_OnCatReady;
-parser.OnAitReady += Parser_OnAitReady;
-parser.OnEitReady += Parser_OnEitReady;
-parser.OnMipReady += Parser_OnMipReady;
-parser.OnTdtReady += Parser_OnTdtReady;
-parser.OnTotready += Parser_OnTotready;
-parser.OnTsPacketReady += Parser_OnTsPacketReady;
-parser.OnScte35Ready += Parser_OnScte35Ready;
-Logger.OnLogMessage += Logger_OnLogMessage;
-```
-next:
-```
+
+using var parser = new TsParser(config);
+
+parser.OnPatReady += pat => { /* PAT */ };
+parser.OnPmtReady += pmt => { /* PMT */ };
+parser.OnBitrateMeasured += sample => { /* BitrateSample */ };
+parser.OnParserComplete += () => { /* конец файла или StopParser() */ };
+
+Logger.OnLogMessage += (status, message) =>
+    Console.WriteLine($"[{status}] {message}");
+
 parser.RunParser();
 ```
 
-Or you can push tables from DekTec analyzer:
-```
-byte[] dataBuffer = new byte[m_packetSize * 100];
+Для UDP:
 
-m_dtInp.SetRxControl(DTAPI.RXCTRL_RCV);
-
-while (!Done)
+```csharp
+var config = new ParserConfig
 {
-    m_dtInp.Read(dataBuffer, dataBuffer.Length);
-    parser.PushBytes(dataBuffer, m_packetSize);
+    MulticastGroup = "239.0.0.1",
+    MulticastPort = 1234,
+    MulticastIncomingIp = null, // null → любой интерфейс
+    CurrentDecodeMode = DecodeMode.Table,
+};
+```
+
+Файл должен существовать и быть не меньше **2040** байт.
+
+### PushBytes (DekTec и др.)
+
+Для внешней подачи пакетов используйте **`TsParser(ParserConfig)`** с нужным `CurrentDecodeMode` и `CurrentTsMode`. Конструктор без параметров предназначен только для статических helper-методов; **`PushBytes` с ним приведёт к ошибке** — не инициализированы внутренние фабрики.
+
+`RunParser()` не вызывайте — только подписка на события и цикл чтения:
+
+```csharp
+var config = new ParserConfig { CurrentDecodeMode = DecodeMode.Table };
+using var parser = new TsParser(config);
+
+parser.OnPatReady += /* ... */;
+
+byte[] buffer = new byte[packetSize * 100];
+while (!cancellationToken.IsCancellationRequested)
+{
+    int read = device.Read(buffer, buffer.Length);
+    parser.PushBytes(buffer, packetSize); // packetSize: 188 или 204
 }
 ```
-In this case you won't needed to call parser.RunParser() method
-just subscribe to events
 
-### Parser Modes:
-* DVB
-* ISDB (not implement yet)
-* ATSC (not implement yet)
+Остановка: `parser.StopParser()` или `Dispose()`.
 
-### Decoder Modes:
-* Table
-in this mode you can get decoded tables via events
+---
 
-* Packet 
-in this mode you can get only decoded ts packets via events. it is work faster than table mode
+## Конфигурация (`ParserConfig`)
 
-To Get tables you need to subscribe to the events.
- each table have it's own event:
- * event PatReady OnPatReady 
- * event PmtReady OnPmtReady 
- * event EitReady OnEitReady 
- * event TdtReady OnTdtReady 
- * event SdtReady OnSdtReady 
- * event BatReady OnBatReady 
- * event CatReady OnCatReady 
- * event NitReady OnNitReady 
- * event AitReady OnAitReady
- * event MipReady OnMipReady
- * event Scte35Ready OnScte35Ready
+| Поле | Назначение |
+|------|------------|
+| `CurrentTsMode` | `DVB` — рабочий режим. `ATSC` / `ISDB` есть в enum, но фабрики таблиц выбрасывают `NotImplementedException` при первой SI-секции. |
+| `CurrentDecodeMode` | `Table` — события SI-таблиц; `Packet` — только `OnTsPacketReady` (быстрее, без сборки секций). |
+| `TsFileName` | Путь к `.ts`; размер ≥ 2040 байт. |
+| `MulticastGroup`, `MulticastPort`, `MulticastIncomingIp` | UDP; порт по умолчанию **1234**, если `MulticastPort` не задан. |
+| `ParserRunTime` | Лимит работы (мс), минимум **100** при установке. |
+| `AllowAnalyzer` | CC и legacy `OnRate` по PID. |
+| `BitrateMeasurement` | При `Enabled == true` анализатор включается **даже если** `AllowAnalyzer == false`; результаты в `OnBitrateMeasured`. |
 
- You can also subcribe to event OnParserComplete which will rase when file is complete or StopParser method calls.
+На экземпляре `TsParser`:
 
- This project have build in logger class which write logs in debug view on in relese mode you can subscribe to the OnLogMessage event
+- `EwsPidList` / `EewsPidList` — список PID для таблиц EWS/EEWS (иначе события не придут).
+- `PacketSize` — `188` или `204` после разбора потока.
 
- You can run parser in async mode:
- ```
- RunParserAsync();
- ```
- ## Log output example
- ```
-[05.01.2022 20:17:46.227] [NotImplement] [Not specified descriptor with tag: 0x91, descriptor location: Table: EIT, Service id: 4, Event id: 52122] 
-[05.01.2022 20:17:46.229] [INFO] [PCR base pid selected: 271] 
-[05.01.2022 20:17:46.270] [NotImplement] [Not specified descriptor with tag: 0xFE, descriptor location: Table: PMT, Program: 27120, Es pid: 1101] 
-[05.01.2022 20:17:46.281] [NotImplement] [Not specified descriptor with tag: 0xC0, descriptor location: Table: NIT, table id: 64, section number: 1] 
-[05.01.2022 20:17:46.299] [NotImplement] [Not specified descriptor with tag: 0xB4, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
-[05.01.2022 20:17:46.302] [NotImplement] [Not specified descriptor with tag: 0x87, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
-[05.01.2022 20:17:46.304] [NotImplement] [Not specified descriptor with tag: 0xB2, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
-[05.01.2022 20:17:46.307] [NotImplement] [Not specified descriptor with tag: 0x89, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
-[05.01.2022 20:17:46.309] [NotImplement] [Not specified descriptor with tag: 0x90, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
-[05.01.2022 20:17:46.311] [NotImplement] [Not specified descriptor with tag: 0xB0, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
-[05.01.2022 20:17:46.313] [NotImplement] [Not specified descriptor with tag: 0xB1, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
-[05.01.2022 20:17:46.315] [NotImplement] [Not specified descriptor with tag: 0x88, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
-[05.01.2022 20:17:46.317] [NotImplement] [Not specified descriptor with tag: 0xB3, descriptor location: Table: BAT, bouquet id: 1, section number: 0] 
-[05.01.2022 20:17:46.367] [NotImplement] [Not specified descriptor with tag: 0x86, descriptor location: Table: BAT, bouquet id: 16, section number: 0] 
-[05.01.2022 20:17:46.691] [ETSI] [CC detect om pid: 2004, Total CC for this pid: 1] 
-[05.01.2022 20:17:48.834] [ETSI] [CC detect om pid: 5899, Total CC for this pid: 1] 
-[05.01.2022 20:17:48.837] [INFO] [Parser complete working]  
- ```
- ##
+Класс `Decoder` в репозитории — заглушка, не используйте как готовый API.
 
- ## Library features
+---
 
- * Logger send info about not implement descriptors, but do it only one time for each not specified descriptor.
+## События
 
- ## Simple analyzer
- * Check all pids in transport stream for CC errors
- * Calculate rate for all pids. For this calculation selected first PID with adaptation field and PCR value. Rate calculate packets between PCR
- rate = (delta_packets)*188 * 8 / (Current_PCR - Last_PCR). Use gate > 100 ms.
+В режиме `DecodeMode.Table` подписывайтесь на нужные обработчики. Имена событий совпадают с публичным API (в т.ч. опечатка в коде).
 
- ## TODO list: 
- * Add NAL unit parsing
- * Add ISDB support
- * Add ATSC support
- * Add Plp support
- * Add teletext parsing
- * Add subtitling parsing
- * Add DekTec PCI/USB adapters support
- * Add Test to all objects
- * Add custom exceptions
+| Событие | Тип данных | Примечание |
+|---------|------------|------------|
+| `OnPatReady` | `PAT` | |
+| `OnPmtReady` | `PMT` | |
+| `OnCatReady` | `CAT` | |
+| `OnNitReady` | `NIT` | |
+| `OnSdtReady` | `SDT` | |
+| `OnBatReady` | `BAT` | |
+| `OnEitReady` | `EIT` | |
+| `OnTdtReady` | `TDT` | |
+| `OnTotready` | `TOT` | Имя с маленькой **`r`** — `OnTotready`, не `OnTotReady`. |
+| `OnAitReady` | `AIT` | PID из PMT |
+| `OnMipReady` | `MIP` | PID `0x15` |
+| `OnScte35Ready` | `SCTE35` | PID из PMT (`0x86`) |
+| `OnEwsReady` | `EWS` | Нужен `EwsPidList` |
+| `OnEewsReady` | `EEWS` | Нужен `EewsPidList` |
+| `OnTsPacketReady` | `TsPacket` | Только `DecodeMode.Packet` |
+| `OnRate` | `ushort pid, …` | Legacy-анализатор (`AllowAnalyzer`) |
+| `OnBitrateMeasured` | `BitrateSample` | `BitrateMeasurement.Enabled` |
+| `OnParserComplete` | — | Конец файла или `StopParser()` |
+
+Логи: `Logger.OnLogMessage` (`TSParser.Service.Logger`). Неизвестные теги дескрипторов логируются **один раз на тег**.
+
+Часть таблиц (RST, RNT, DIT, SIT и др.) разбирается, но отдельных событий нет — только запись в лог.
+
+---
+
+## Разбор без потока (статические методы)
+
+| Метод | Назначение |
+|-------|------------|
+| `TsParser.GetOneTableFromBytes(bytes, mip: false)` | Одна SI-секция → `Table` (`mip: true` → `MIP`) |
+| `TsParser.GetOneDescriptorFromBytes(bytes, callerTableId?)` | Один дескриптор; `table_id` `0x74` → AIT, `0xFC` → SCTE-35 splice |
+| `TsParser.GetOneTsPacketFromBytes` / `GetTsPacketsFromBytes` | TS-пакеты |
+| `TsParser.CompareTables(t1, t2)` | Структурное сравнение таблиц |
+
+`table_id` для `GetOneTableFromBytes`: `0x00` PAT, `0x01` CAT, `0x02` PMT, `0x40`/`0x41` NIT, `0x42`/`0x46` SDT, `0x4A` BAT, `0x4E`–`0x6F` EIT, `0x70` TDT, `0x73` TOT, `0x74` AIT, `0x93` EWS, `0x94`/`0x95` EEWS, `0xFC` SCTE-35.
+
+---
+
+## Поддерживаемые таблицы
+
+PAT, CAT, PMT, NIT, SDT, BAT, EIT, TDT, TOT, AIT, MIP, SCTE-35, EWS, EEWS.
+
+В тестовом manifest для EEWS, EWS, MIP, SCTE35 могут быть пометки `missing: true` — типы в коде есть, корпус фикстур неполный.
+
+---
+
+## Дескрипторы
+
+Полный dispatch — в [`DescriptorFactory.cs`](TSParser/Descriptors/DescriptorFactory.cs). Кратко по группам:
+
+| Группа | Условие | Примеры тегов |
+|--------|---------|----------------|
+| **Custom** (операторские) | Проверяются первыми в `GetCustomDescriptor` | `0x09`, `0x86`–`0x90`, `0xB0`–`0xB2`, `0xB4`, `0xC0` |
+| **DVB SI** | Стандартный `switch` | `0x02`, `0x03`, `0x05`, `0x48`, `0x4D`, `0x7F`, … |
+| **Extension** | Тег `0x7F`, байт расширения | `0x00` ImageIcon, `0x04` T2 delivery |
+| **AIT** | `table_id` `0x74` | `0x00`–`0x04`, `0x10`, `0x15` |
+| **SCTE-35 splice** | `table_id` `0xFC` | `0x00`–`0x04` (avail, DTMF, segmentation, time, audio) |
+
+Custom `0x09` перекрывает стандартный CA descriptor. Тег **`0xB3`** в factory не подключён (используйте **`0xB4`** — `TimeZoneDescriptorLG`). Неизвестные теги → базовый `Descriptor` + однократный лог.
+
+Потребителям: разбор через граф таблиц или `GetOneDescriptorFromBytes`; `DescriptorFactory` — internal.
+
+---
+
+## Тестирование
+
+Проект **TSParser.Tests** (NUnit), фикстуры в `TSParser.Tests/TestResources/` и manifest JSON.
+
+```bash
+dotnet test TSParser.Tests/TSParser.Tests.csproj
+```
+
+Переменная окружения `TSPARSER_TEST_FIXTURES` — альтернативный корень фикстур.
+
+После добавления `.tbl` / `.desc` обновите manifest инструментом **BlessManifest** (CRC/hash).
+
+---
+
+## Инструменты разработчика
+
+| Проект | Назначение |
+|--------|------------|
+| [tools/CorpusHarvester](tools/CorpusHarvester) | Сбор реальных TS → выборка дескрипторов для фикстур |
+| [tools/BlessManifest](tools/BlessManifest) | Обновление `manifest.descriptors.json` / checksums |
+| [TSParser.Benchmarks](TSParser.Benchmarks) | BenchmarkDotNet: `dotnet run --project TSParser.Benchmarks -c Release` |
+
+---
+
+## Планы развития
+
+- Разбор NAL-единиц (`TransportStream/NAL/` — заготовка в проекте).
+- Режимы **ATSC** / **ISDB** (сейчас только enum и throwing factories).
+- PLP, teletext, субтитры, прямая поддержка адаптеров DekTec.
+
+---
+
+## Для разработчиков с AI
+
+Подробный operational context для агентов (архитектура, правила правок, manifest workflow): **[AGENTS.md](AGENTS.md)** (English).
+
+---
+
+## Лицензия
+
+Copyright Eldar Nizamutdinov. [Apache License 2.0](TSParser/LICENCE).

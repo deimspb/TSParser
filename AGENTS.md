@@ -1,0 +1,260 @@
+# AGENTS.md — TSParser
+
+Operational context for AI-assisted development. End-user quick start: [Readme.md](Readme.md).
+
+**API audit** (2026-05-17): sections below match `TsParser.cs`, `ParserConfig`, `DescriptorFactory.cs`, and `dotnet build TSParser.sln` on this tree.
+
+---
+
+## 1. Repository map
+
+```
+TSParser/                 # Core library (ship target), net10.0
+  TransportStream/        # TsPacket, AdaptationField, PesHeader, TsPacketFactory
+  Tables/
+    Table.cs              # abstract record — section header + CRC
+    TableFactory.cs       # PSI/SI section reassembly across TS packets
+    DvbTables/            # PAT, PMT, NIT, SDT, EIT, BAT, CAT, TDT, TOT, AIT, EWS, EEWS, SCTE35
+    DvbTableFactory/      # PatFactory, PmtFactory, … — wired from TsParser
+    Scte35/, Mip/
+  Descriptors/
+    Descriptor.cs
+    DescriptorFactory.cs  # tag dispatch; unknown-once logging
+    Dvb/, ExtendedDvb/, AitDescriptors/, Scte35Descriptors/
+    Custom/               # operator descriptors (present in repo; see §6)
+  Analysis/               # Analyzer, BitrateWindowMeasurer, BitrateMeasurementOptions
+  Service/                # Logger, SectionParseValidation, SpliceInfoSectionType (XML schema types)
+  Convertors/             # Scte35ToXml
+  Buffers/, Comparer/, DictionariesData/, Enums/
+TSParser.Tests/           # NUnit + manifest JSON + TestResources/**/*.tbl|.desc
+TSParser.Benchmarks/      # BenchmarkDotNet
+tools/CorpusHarvester/    # harvest real TS → descriptor fixtures
+tools/BlessManifest/      # bless/refresh manifest.descriptors.json
+```
+
+---
+
+## 2. Architecture rules (code changes)
+
+- **Data flow:** bytes → `TsPacketFactory.GetTsPackets` → (`DecodeMode`) → per-PID `TableFactory.AddData` until section complete → parse → event (table mode), or `OnTsPacketReady` (packet mode).
+- **New SI table:** record in `DvbTables/`, factory in `DvbTableFactory/`, registration in `TsParser` (`DvbTableFactory` path), event + delegate, manifest entry + `.tbl` fixtures + smoke test.
+- **New descriptor:** `{Name}Descriptor_0xNN.cs`, case in `DescriptorFactory`; tag `0x7F` → `GetExtensionDescriptor`; AIT (`table_id` `0x74`) / SCTE-35 (`0xFC`) → resolvers in `GetDescriptorList`.
+- **Naming:** descriptors `{Name}Descriptor_0x{tag hex}`; tables `{NAME}.cs` (e.g. `PAT`, `PMT`).
+- **Parsing:** `ReadOnlySpan<byte>`, `SectionParseValidation` / `SectionParseException`; do not swallow errors in descriptor loops.
+- **Logging:** `Logger.Send(LogStatus, …)`; unknown descriptor tags logged once per tag (`ConcurrentDictionary`).
+- **Tests:** use [ManifestReader](TSParser.Tests/Helpers/ManifestReader.cs) and [FixtureLoader](TSParser.Tests/Helpers/FixtureLoader.cs); after new fixtures run `BlessManifest`.
+
+---
+
+## 3. Public API (verified)
+
+### 3.1 `ParserConfig` (class, public fields)
+
+| Member | Type | Default | Notes |
+|--------|------|---------|--------|
+| `AllowAnalyzer` | `bool` | `false` | CC / legacy per-PID rate via `OnRate` |
+| `BitrateMeasurement` | `BitrateMeasurementOptions?` | `null` | When `Enabled == true`, analyzer runs even if `AllowAnalyzer == false` |
+| `ParserRunTime` | `int?` | `null` | Max run time (ms); minimum **100** when set |
+| `CurrentTsMode` | `TsMode` | `DVB` | Only `DVB` is functional; `ATSC` / `ISDB` select factories that throw |
+| `CurrentDecodeMode` | `DecodeMode` | `Packet` | `Packet` → `OnTsPacketReady`; `Table` → SI table events |
+| `TsFileName` | `string?` | `null` | File mode; file must exist and be **≥ 2040** bytes |
+| `MulticastGroup` | `string?` | `null` | UDP mode |
+| `MulticastPort` | `int?` | `null` | UDP mode (default **1234** if null in UDP path) |
+| `MulticastIncomingIp` | `string?` | `null` | Bind address; `IPAddress.Any` if null |
+
+Constructor `TsParser(ParserConfig)` starts file or UDP parsing internally when `TsFileName` or `MulticastGroup`+`MulticastPort` is set. Otherwise it only configures delegates (no `RunParser` until called).
+
+### 3.2 `TsParser` lifecycle
+
+| API | Notes |
+|-----|--------|
+| `TsParser(ParserConfig)` | File / multicast / configured push |
+| `TsParser()` | **Lab helpers only** (`GetOneTsPacketFromBytes`, etc.); does **not** set `ParserModeDel` / `SelectedTableFactory` — **`PushBytes` will null-ref** unless you use `ParserConfig` ctor |
+| `RunParser()` / `RunParserAsync()` / `StopParser()` | |
+| `PushBytes(byte[] bytes, int packetLength)` | 188 or 204; DekTec-style feed without `RunParser` when input is external |
+| `Dispose()` | Cancels tasks, closes UDP socket |
+
+**Instance members:** `PacketSize` (`188`, `204`), `PidList` (from analyzer), `EwsPidList` / `EewsPidList` (must be set for EWS/EEWS table delivery).
+
+**Static helpers:**
+
+| Method | Purpose |
+|--------|---------|
+| `GetOneTableFromBytes(bytes, mip: false)` | Single section bytes → `Table`; `mip: true` → `MIP` |
+| `GetOneDescriptorFromBytes(bytes, callerTableId?)` | `0x74` → AIT; `0xFC` → SCTE-35 splice descriptors; else DVB |
+| `GetOneTsPacketFromBytes` / `GetTsPacketsFromBytes` | Packet-level parsing |
+| `CompareTables(t1, t2)` | Structural diff as `IEnumerable<string>` |
+
+`DescriptorFactory` is **internal** — consumers use `GetOneDescriptorFromBytes` or table object graphs.
+
+### 3.3 Events (exact names from `TsParser.cs`)
+
+| Event | Delegate | Payload type |
+|-------|----------|----------------|
+| `OnParserComplete` | `ParserComplete` | — |
+| `OnPatReady` | `PatReady` | `PAT` |
+| `OnPmtReady` | `PmtReady` | `PMT` |
+| `OnCatReady` | `CatReady` | `CAT` |
+| `OnNitReady` | `NitReady` | `NIT` |
+| `OnSdtReady` | `SdtReady` | `SDT` |
+| `OnBatReady` | `BatReady` | `BAT` |
+| `OnEitReady` | `EitReady` | `EIT` |
+| `OnTdtReady` | `TdtReady` | `TDT` |
+| `OnTotready` | `TotReady` | `TOT` | **Spelling is `OnTotready` (lowercase `r`) — public API typo** |
+| `OnAitReady` | `AitReady` | `AIT` | PID discovered from PMT (stream type `0x05` + descriptor `0x6F`) |
+| `OnMipReady` | `MipReady` | `MIP` | PID `0x15` (network sync) |
+| `OnScte35Ready` | `Scte35Ready` | `SCTE35` | PID from PMT stream type `0x86` |
+| `OnEwsReady` | `EwsReady` | `EWS` | Requires `EwsPidList` |
+| `OnEewsReady` | `EewsReady` | `EEWS` | Requires `EewsPidList` |
+| `OnTsPacketReady` | `TsPacketReady` | `TsPacket` | `DecodeMode.Packet` only |
+| `OnRate` | `RateDelegate` | `ushort pid, ulong deltaPackets, ulong deltaTime` | Legacy analyzer |
+| `OnBitrateMeasured` | `BitrateMeasuredDelegate` | `BitrateSample` | Needs `ParserConfig.BitrateMeasurement` |
+
+**Logging:** `Logger.OnLogMessage` (`TSParser.Service.Logger`).
+
+**Not exposed as events** (logged at INFO only): RST, RNT, in-band signalling, measurement, DIT, SIT.
+
+### 3.4 `GetOneTableFromBytes` table_id map
+
+| `table_id` | Type |
+|------------|------|
+| `0x00` | `PAT` |
+| `0x01` | `CAT` |
+| `0x02` | `PMT` |
+| `0x40`, `0x41` | `NIT` |
+| `0x42`, `0x46` | `SDT` |
+| `0x4A` | `BAT` |
+| `0x4E`–`0x4F`, `0x50`–`0x5F`, `0x60`–`0x6F` | `EIT` |
+| `0x70` | `TDT` |
+| `0x73` | `TOT` |
+| `0x74` | `AIT` |
+| `0x93` | `EWS` |
+| `0x94`, `0x95` | `EEWS` |
+| `0xFC` | `SCTE35` |
+| `mip: true` (not `table_id`) | `MIP` |
+
+### 3.5 `BitrateMeasurementOptions` (public)
+
+`Enabled`, `MeasurementWindow` (default 1s), `ClockSource` (`Pcr` / `Pts` / `Dts`), `ReferencePid`, `MeasureStreamBitrate`, `MeasurePerPidBitrate`, `IncludeNullPackets`.
+
+### 3.6 Other public types (do not treat as ready product API)
+
+- `Decoder` — stub; `RunDecoder` / `Scte35Decoder` empty.
+- `Scte35ToXml.Convert(SCTE35)` — XML serialization helper.
+
+---
+
+## 4. Supported tables (runtime vs fixtures)
+
+**Stream parsing (DVB, `DecodeMode.Table`):** PAT, CAT, PMT, NIT, SDT, BAT, EIT, TDT, TOT, MIP, AIT (dynamic PID), SCTE-35 (dynamic PID), EWS, EEWS (operator PIDs).
+
+**Manifest coverage** ([manifest.tables.json](TSParser.Tests/TestResources/manifest.tables.json)): `missing: true` for **EEWS**, **EWS**, **MIP**, **SCTE35** (types exist in code; corpus fixtures incomplete).
+
+---
+
+## 5. Descriptors (verified dispatch)
+
+Resolution order in `GetDescriptor`: **`GetCustomDescriptor` first**, then DVB `switch`, then unknown → generic `Descriptor` (one log per tag).
+
+### 5.1 Custom (`GetCustomDescriptor` — active)
+
+| Tag | Type used at runtime |
+|-----|----------------------|
+| `0x09` | `CaDescriptorCustom_0x09` (**shadows** standard `CaDescriptor_0x09`) |
+| `0x86` | `GnrDescriptor_0x86` |
+| `0x87` | `LogicalChannelNumberDescriptorV2_0x87` |
+| `0x88` | `MultilingualRegionNameDescriptor_0x88` |
+| `0x89` | `EwsRegionDescriptor_0x89` |
+| `0x90` | `EwsZoneDescriptor_0x90` |
+| `0xB0` | `SettingsDescriptorV3_0xB0` |
+| `0xB1` | `SettingsDescriptorV4_0xB1` |
+| `0xB2` | `ChannelListTypeDescriptor_0xB2` |
+| `0xB4` | `TimeZoneDescriptorLG_0xB4` |
+| `0xC0` | `WhiteListDescriptor_0xC0` |
+
+**Sources:** `TSParser/Descriptors/Custom/*.cs` (tracked in git; `dotnet build` succeeds).
+
+**On disk but not wired in `GetCustomDescriptor`:** `SettingsDescriptorV1_0x89`, `SettingsDescriptorV2_0x90`, `TimeZoneDescriptor_0xB3` — tags `0x89`/`0x90` use EWS region/zone types instead; `0xB3` falls through to unknown/generic DVB handling.
+
+### 5.2 DVB SI (`GetDescriptor` switch)
+
+`0x02` `0x03` `0x05` `0x06` `0x09`* `0x0A` `0x0C` `0x0E` `0x0F` `0x11` `0x13` `0x14` `0x28` `0x2A` `0x38` `0x40` `0x41` `0x43` `0x44` `0x45` `0x47` `0x48` `0x4A` `0x4D` `0x4E` `0x50` `0x52` `0x53` `0x54` `0x55` `0x56` `0x58` `0x59` `0x5A` `0x5C` `0x5F` `0x60` `0x64` `0x66` `0x6A` `0x6C` `0x6D` `0x6F` `0x70` `0x7C` `0x7F` `0x83` `0x8A`
+
+\*Standard `0x09` never reached when custom `0x09` matches first.
+
+### 5.3 Extension (`0x7F`, byte at index 2)
+
+`0x00` ImageIcon, `0x04` T2DeliverySystem; else `ExtendedDescriptor`.
+
+### 5.4 AIT (`GetAitDescriptor`, `callerTableId == 0x74`)
+
+`0x00`–`0x04`, `0x10`, `0x15`; else `AitDescriptor`.
+
+### 5.5 SCTE-35 splice (`GetSpliceDescriptor`, `callerTableId == 0xFC`)
+
+`0x00`–`0x04` Avail, DTMF, Segmentation, Time, Audio; else `Scte35Descriptor`.
+
+Full class names: see switch in [DescriptorFactory.cs](TSParser/Descriptors/DescriptorFactory.cs).
+
+---
+
+## 6. Readme.md discrepancies (audit findings)
+
+Use this when rewriting README:
+
+| Topic | Readme / plan assumption | Code truth |
+|-------|--------------------------|------------|
+| Custom descriptor sources | Sometimes described as absent | **Present** under `Descriptors/Custom/` |
+| Custom `0xB3` | Listed as supported | **Not** in `GetCustomDescriptor`; use `0xB4` (`TimeZoneDescriptorLG`) |
+| DVB `0x5F` | Omitted from descriptor list | **Implemented** (`PrivateDataSpecifierDescriptor_0x5F`) |
+| Events | Incomplete in examples | Add `OnEwsReady`, `OnEewsReady`, `OnBitrateMeasured`, `OnRate`; fix `OnTotready` spelling |
+| `ParserConfig` | Partially documented | Document `AllowAnalyzer`, `BitrateMeasurement`, `CurrentDecodeMode`, file size **2040** bytes |
+| Parameterless `TsParser()` | Implied for DekTec `PushBytes` | **Requires `ParserConfig` ctor** for `PushBytes` / table mode |
+| 2022 NotImplement log sample | Shows `0xB0`–`0xC0` unknown | Custom tags now parsed when `GetCustomDescriptor` matches |
+| `TsMode` ATSC/ISDB | “not implement yet” | Selects factory that throws `NotImplementedException` on first table packet |
+| Examples | `parser` / `new(config)` | Use `TsParser`, `ParserConfig`, `using var parser = …` |
+
+---
+
+## 7. Commands
+
+```bash
+dotnet build TSParser.sln
+dotnet test TSParser.Tests/TSParser.Tests.csproj
+dotnet run --project TSParser.Benchmarks -c Release
+```
+
+Optional: `TSPARSER_TEST_FIXTURES` for alternate fixture root (see test helpers).
+
+---
+
+## 8. Manifest / fixture workflow
+
+- [manifest.tables.json](TSParser.Tests/TestResources/manifest.tables.json) — per-table completeness (`missing: true` where noted above).
+- [manifest.descriptors.json](TSParser.Tests/TestResources/manifest.descriptors.json) — grouped descriptor fixtures.
+- **CorpusHarvester:** `harvest`, `select` — build corpus → copy into `TestResources`.
+- **BlessManifest:** refresh CRC/hash entries after fixture changes.
+
+---
+
+## 9. Known gaps
+
+- `TsMode.ATSC` / `TsMode.ISDB` — enum only; `AtscTableFactory` / `IsdbTableFactory` throw.
+- `TransportStream/NAL/` — placeholder folder in csproj.
+- `Decoder` — not implemented.
+- Solution references **AppTest** and **StreamParser** projects not present in tree (`.gitignore` excludes `AppTest/`).
+- Custom tags `0xB3`, legacy `SettingsDescriptorV1/V2` — source files exist, factory wiring incomplete.
+
+---
+
+## 10. Standards
+
+- [ETSI EN 300 468](https://www.etsi.org/) (DVB SI)
+- [ISO/IEC 13818-1](https://www.iso.org/) (MPEG-2 TS)
+- [SCTE-35](https://www.scte.org/) — XML schema: http://www.scte.org/schemas/35
+
+---
+
+## 11. License
+
+Apache 2.0 — [TSParser/LICENCE](TSParser/LICENCE)
