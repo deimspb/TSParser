@@ -134,6 +134,34 @@ public sealed class BitrateMeasurementTests
     }
 
     [Test]
+    public void AssumedTransportRate_stream_without_timestamps_emits_nominal_bitrate()
+    {
+        const ushort pid = 0x0100;
+        const double assumedBps = 10_000_000;
+        const int packetCount = 8000;
+        var samples = new List<BitrateSample>();
+
+        var parser = CreateParser(
+            options =>
+            {
+                options.ClockSource = BitrateClockSource.AssumedTransportRate;
+                options.AssumedBitsPerSecond = assumedBps;
+                options.MeasurementWindow = TimeSpan.FromSeconds(1);
+                options.MeasureStreamBitrate = true;
+                options.MeasurePerPidBitrate = false;
+            },
+            samples);
+
+        PushPacketsWithoutTimestamps(parser, pid, packetCount);
+
+        Assert.That(samples, Is.Not.Empty);
+        var stream = samples.First(s => s.Pid is null);
+        Assert.That(stream.ClockSource, Is.EqualTo(BitrateClockSource.AssumedTransportRate));
+        Assert.That(stream.BitsPerSecond, Is.EqualTo(assumedBps).Within(assumedBps * 0.05));
+        Assert.That(stream.BytesInWindow, Is.GreaterThan(0));
+    }
+
+    [Test]
     public void Legacy_OnRate_fires_when_per_pid_pcr_measurement_enabled()
     {
         var rates = new List<(ushort Pid, ulong Packets, ulong Ticks)>();
@@ -236,6 +264,28 @@ public sealed class BitrateMeasurementTests
             parser.OnBitrateMeasured += samples.Add;
 
         return parser;
+    }
+
+    private static void PushPacketsWithoutTimestamps(TsParser parser, ushort pid, int packetCount)
+    {
+        var bytes = new byte[packetCount * PacketLength];
+        for (var i = 0; i < packetCount; i++)
+        {
+            BuildPayloadOnlyPacket(pid)
+                .CopyTo(bytes.AsSpan(i * PacketLength, PacketLength));
+        }
+
+        parser.PushBytes(bytes, PacketLength);
+    }
+
+    private static byte[] BuildPayloadOnlyPacket(ushort pid)
+    {
+        var packet = new byte[PacketLength];
+        packet[0] = 0x47;
+        packet[1] = (byte)((pid >> 8) & 0x1F);
+        packet[2] = (byte)(pid & 0xFF);
+        packet[3] = 0x10;
+        return packet;
     }
 
     private static void PushUniformPcrStream(TsParser parser, ushort pid, int packetCount, ulong pcrStep)

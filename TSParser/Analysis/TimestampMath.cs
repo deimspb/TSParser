@@ -63,5 +63,25 @@ namespace TSParser.Analysis
 
             return TimeSpan.FromSeconds((double)deltaTicks / tickRate);
         }
+
+        /// <summary>
+        /// Virtual PCR ticks spanned by <paramref name="bytes"/> at an assumed constant transport bitrate.
+        /// </summary>
+        public static ulong AssumedDeltaTicksFromBytes(ulong bytes, ulong tickRate, double assumedBitsPerSecond)
+        {
+            if (bytes == 0 || tickRate == 0 || assumedBitsPerSecond <= 0)
+                return 0;
+
+            return (ulong)(bytes * 8.0 * tickRate / assumedBitsPerSecond);
+        }
+
+        /// <summary>Virtual PCR ticks spanned by a single transport packet at an assumed bitrate.</summary>
+        public static double AssumedTicksFromPacket(int packetSize, ulong tickRate, double assumedBitsPerSecond)
+        {
+            if (packetSize <= 0 || tickRate == 0 || assumedBitsPerSecond <= 0)
+                return 0;
+
+            return packetSize * 8.0 * tickRate / assumedBitsPerSecond;
+        }
     }
 }

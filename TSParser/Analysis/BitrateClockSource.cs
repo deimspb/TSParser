@@ -33,6 +33,13 @@ namespace TSParser.Analysis
         /// Decoding Time Stamp (90 kHz). Present only when both PTS and DTS are carried in PES.
         /// Same whole-TS constraints as <see cref="Pts"/>.
         /// </summary>
-        Dts
+        Dts,
+
+        /// <summary>
+        /// Synthetic clock from accumulated transport bytes at
+        /// <see cref="BitrateMeasurementOptions.AssumedBitsPerSecond"/> (default 10 Mb/s).
+        /// Use when PCR/PTS/DTS are absent so bitrate windows can still advance.
+        /// </summary>
+        AssumedTransportRate
     }
 }

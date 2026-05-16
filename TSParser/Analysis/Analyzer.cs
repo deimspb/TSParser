@@ -51,7 +51,7 @@ namespace TSParser.Analysis
         internal Analyzer(BitrateMeasurementOptions? options = null)
         {
             m_options = options;
-            m_bitrateEnabled = options is { Enabled: true } && options.GetWindowTicks() > 0;
+            m_bitrateEnabled = options is { } o && o.IsMeasurementConfigured();
 
             if (!m_bitrateEnabled)
                 return;
@@ -103,6 +103,12 @@ namespace TSParser.Analysis
             if (packetSize <= 0)
                 return;
 
+            if (m_clockSource == BitrateClockSource.AssumedTransportRate)
+            {
+                PushAssumedBitrate(packet, packetSize);
+                return;
+            }
+
             m_streamMeasurer?.AddBytes(packetSize);
 
             if (m_options!.MeasurePerPidBitrate)
@@ -112,6 +118,14 @@ namespace TSParser.Analysis
                 HandleDiscontinuity(packet.Pid);
 
             ProcessBitrateTimestamps(packet);
+        }
+
+        private void PushAssumedBitrate(TsPacket packet, int packetSize)
+        {
+            TryEmit(m_streamMeasurer?.AddBytes(packetSize));
+
+            if (m_options!.MeasurePerPidBitrate && packet.Pid != 0x1FFF)
+                TryEmit(GetOrCreatePidMeasurer(packet.Pid).AddBytes(packetSize));
         }
 
         private void ProcessLegacyPcr(TsPacket packet)
@@ -258,8 +272,14 @@ namespace TSParser.Analysis
             OnRate?.Invoke(pid, deltaPackets, deltaTicks);
         }
 
-        private BitrateWindowMeasurer CreateMeasurer(ushort? pid) =>
-            new(m_windowTicks, m_tickRate, m_timestampBitWidth, m_clockSource, pid);
+        private BitrateWindowMeasurer CreateMeasurer(ushort? pid)
+        {
+            double? assumedBps = m_clockSource == BitrateClockSource.AssumedTransportRate
+                ? m_options!.AssumedBitsPerSecond
+                : null;
+
+            return new(m_windowTicks, m_tickRate, m_timestampBitWidth, m_clockSource, pid, assumedBps);
+        }
 
         private BitrateWindowMeasurer GetOrCreatePidMeasurer(ushort pid)
         {

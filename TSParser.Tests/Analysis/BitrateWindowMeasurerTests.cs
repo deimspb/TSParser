@@ -107,6 +107,53 @@ public sealed class BitrateWindowMeasurerTests
     }
 
     [Test]
+    public void AssumedTransportRate_emits_at_nominal_bitrate_when_window_fills()
+    {
+        const int packetSize = 188;
+        const double assumedBps = 10_000_000;
+        const ulong windowTicks = TimestampMath.PcrTickRate;
+        const int packetCount = 7000;
+
+        var measurer = new BitrateWindowMeasurer(
+            windowTicks,
+            TimestampMath.PcrTickRate,
+            TimestampMath.PcrTimestampBitWidth,
+            BitrateClockSource.AssumedTransportRate,
+            assumedBitsPerSecond: assumedBps);
+
+        BitrateSample? sample = null;
+        for (var i = 0; i < packetCount && sample == null; i++)
+            sample = measurer.AddBytes(packetSize);
+
+        Assert.That(sample, Is.Not.Null);
+        Assert.That(sample!.Value.ClockSource, Is.EqualTo(BitrateClockSource.AssumedTransportRate));
+        Assert.That(sample.Value.BitsPerSecond, Is.EqualTo(assumedBps).Within(assumedBps * 0.02));
+        Assert.That(sample.Value.WindowDuration.TotalSeconds, Is.EqualTo(1.0).Within(0.02));
+        Assert.That(sample.Value.BytesInWindow, Is.GreaterThan(0));
+    }
+
+    [Test]
+    public void AssumedTransportRate_does_not_emit_before_virtual_window_elapses()
+    {
+        const int packetSize = 188;
+        const double assumedBps = 10_000_000;
+        const ulong windowTicks = TimestampMath.PcrTickRate;
+
+        var measurer = new BitrateWindowMeasurer(
+            windowTicks,
+            TimestampMath.PcrTickRate,
+            TimestampMath.PcrTimestampBitWidth,
+            BitrateClockSource.AssumedTransportRate,
+            assumedBitsPerSecond: assumedBps);
+
+        for (var i = 0; i < 100; i++)
+        {
+            var sample = measurer.AddBytes(packetSize);
+            Assert.That(sample, Is.Null);
+        }
+    }
+
+    [Test]
     public void ResetWindow_clears_accumulated_state()
     {
         var measurer = new BitrateWindowMeasurer(
