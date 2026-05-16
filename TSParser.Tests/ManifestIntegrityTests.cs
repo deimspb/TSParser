@@ -54,19 +54,14 @@ public sealed class ManifestIntegrityTests
     [Test]
     public void Tables_manifest_covers_all_supported_table_types()
     {
-        var expected = new[]
-        {
-            "PAT", "CAT", "PMT", "NIT", "SDT", "BAT", "EIT", "TDT", "TOT", "AIT", "MIP", "SCTE35", "EWS", "EEWS",
-        };
-
         var types = ManifestReader.Default.Tables.Types;
-        Assert.That(types.Keys, Is.EquivalentTo(expected),
+        Assert.That(types.Keys, Is.EquivalentTo(TableTestCatalog.SupportedTypes),
             "manifest.tables.json must list every supported SI table type");
 
-        foreach (var type in expected)
+        foreach (var type in TableTestCatalog.SupportedTypes)
         {
             var stats = types[type];
-            Assert.That(stats.Samples, Is.InRange(0, 4), $"{type} samples");
+            Assert.That(stats.Samples, Is.InRange(0, TableTestCatalog.TargetSamplesPerType), $"{type} samples");
             if (stats.Missing)
             {
                 Assert.That(stats.Samples, Is.EqualTo(0), $"{type} marked missing but has fixtures");
@@ -74,7 +69,8 @@ public sealed class ManifestIntegrityTests
             }
             else if (stats.Complete)
             {
-                Assert.That(stats.Samples, Is.EqualTo(4), $"{type} marked complete without 4 samples");
+                Assert.That(stats.Samples, Is.EqualTo(TableTestCatalog.TargetSamplesPerType),
+                    $"{type} marked complete without {TableTestCatalog.TargetSamplesPerType} samples");
             }
         }
     }

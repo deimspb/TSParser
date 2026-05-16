@@ -20,8 +20,18 @@ namespace TSParser.Tests.Tables;
 [TestFixture]
 public sealed class TableSmokeTests
 {
-    public static IEnumerable<string> TableFixturePaths() =>
-        ManifestReader.Default.EnumerateTableFixtures().Select(e => e.RelativePath);
+    public static IEnumerable<string> TableFixturePaths() => TableTestCatalog.EnumerateFixturePaths();
+
+    [TestCaseSource(nameof(TableFixturePaths))]
+    public void Parsed_table_matches_manifest_clr_type(string relativePath)
+    {
+        var entry = ManifestReader.Default.Tables.Tables[relativePath];
+        var table = FixtureLoader.LoadTable(entry);
+
+        Assert.That(table, Is.InstanceOf(TableTestCatalog.ResolveClrType(entry.ClrType)),
+            () => $"{relativePath} ({entry.Type})");
+        Assert.That(table.GetType().Name, Is.EqualTo(entry.ClrType));
+    }
 
     [TestCaseSource(nameof(TableFixturePaths))]
     public void Section_tail_crc_matches_table_crc32(string relativePath)
@@ -39,7 +49,7 @@ public sealed class TableSmokeTests
     {
         var entry = ManifestReader.Default.Tables.Tables[relativePath];
         var bytes = FixtureLoader.LoadBytes(entry.RelativePath);
-        var mip = entry.Type.Equals("MIP", StringComparison.OrdinalIgnoreCase);
+        var mip = TableTestCatalog.UsesMipLoader(entry.Type);
         var parser = new TsParser();
 
         var first = FixtureLoader.LoadTable(entry);

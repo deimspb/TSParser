@@ -20,14 +20,16 @@ namespace TSParser.Tests.Tables;
 [TestFixture]
 public sealed class TableFixtureTests
 {
-    public static IEnumerable<string> TableFixturePaths() =>
-        ManifestReader.Default.EnumerateTableFixtures().Select(e => e.RelativePath);
+    public static IEnumerable<string> TableFixturePaths() => TableTestCatalog.EnumerateFixturePaths();
 
     [TestCaseSource(nameof(TableFixturePaths))]
     public void Parse_table_sample(string relativePath)
     {
         var entry = ManifestReader.Default.Tables.Tables[relativePath];
         var table = FixtureLoader.LoadTable(entry);
+
+        Assert.That(table, Is.InstanceOf(TableTestCatalog.ResolveClrType(entry.ClrType)),
+            () => $"{relativePath} should parse as {entry.ClrType}");
         ExpectedAssert.AssertTable(table, entry);
     }
 }

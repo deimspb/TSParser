@@ -52,8 +52,7 @@ public static class FixtureLoader
     public static Table LoadTable(TableManifestEntry entry)
     {
         var bytes = LoadBytes(entry.RelativePath);
-        var mip = entry.Type.Equals("MIP", StringComparison.OrdinalIgnoreCase);
-        return TsParser.GetOneTableFromBytes(bytes, mip);
+        return TsParser.GetOneTableFromBytes(bytes, TableTestCatalog.UsesMipLoader(entry.Type));
     }
 
     public static Descriptor LoadDescriptor(DescriptorManifestEntry entry)
