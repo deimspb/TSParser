@@ -48,6 +48,7 @@ namespace TSParser.Analysis
         private readonly List<PidMetric> m_pidMetrics = new(50);
 
         private int m_lastPacketSize = 188;
+        private long? m_streamByteOffset;
 
         internal Analyzer(BitrateMeasurementOptions? options = null)
         {
@@ -77,6 +78,8 @@ namespace TSParser.Analysis
         }
 
         internal void PushPacket(TsPacket packet) => PushPacket(packet, 188);
+
+        internal void SetStreamByteOffset(long? streamByteOffset) => m_streamByteOffset = streamByteOffset;
 
         internal void PushPacket(TsPacket packet, int packetSize)
         {
@@ -292,6 +295,9 @@ namespace TSParser.Analysis
                 return;
 
             var value = sample.Value;
+            if (m_streamByteOffset is long offset)
+                value = value.WithStreamByteOffset(offset);
+
             OnBitrateMeasured?.Invoke(value);
 
             if (value.Pid is ushort pid && m_clockSource == BitrateClockSource.Pcr && m_options!.MeasurePerPidBitrate)

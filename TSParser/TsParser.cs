@@ -181,6 +181,7 @@ namespace TSParser
         private int m_socketTimeOut = 5000;
         private int? m_parserRunTimeIn_ms = null;
         private bool m_allowAnalyzer;
+        private long? m_fileStreamByteOffset;
         private System.Timers.Timer m_timer = null!;
         private int? MaxParserRunTime
         {
@@ -846,7 +847,7 @@ namespace TSParser
             for (int i = 0; i < tsPackets.Length; i++)
             {
                 if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
-                if (m_allowAnalyzer) m_analyzer.PushPacket(tsPackets[i], packetLength);
+                if (m_allowAnalyzer) PushPacketWithFileOffset(tsPackets[i], packetLength, i);
                 SelectedTableFactory(tsPackets[i]);
             }
         }
@@ -857,9 +858,19 @@ namespace TSParser
             for (int i = 0; i < tsPackets.Length; i++)
             {
                 if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
-                if (m_allowAnalyzer) m_analyzer.PushPacket(tsPackets[i], packetLength);
+                if (m_allowAnalyzer) PushPacketWithFileOffset(tsPackets[i], packetLength, i);
                 OnTsPacketReady?.Invoke(tsPackets[i]);
             }
+        }
+
+        private void PushPacketWithFileOffset(TsPacket packet, int packetLength, int packetIndexInBuffer)
+        {
+            if (m_fileStreamByteOffset is long baseOffset)
+                m_analyzer.SetStreamByteOffset(baseOffset + (long)packetIndexInBuffer * packetLength);
+            else
+                m_analyzer.SetStreamByteOffset(null);
+
+            m_analyzer.PushPacket(packet, packetLength);
         }
         private void RunFileParser()
         {
@@ -907,7 +918,9 @@ namespace TSParser
                         fileStream.Seek(offset + gOffset, SeekOrigin.Begin);
                     }
 
+                    m_fileStreamByteOffset = gOffset;
                     ParserModeDel(Buffer[0..BytesRead], packLen);
+                    m_fileStreamByteOffset = null;
                     gOffset += BytesRead;
                 }
 

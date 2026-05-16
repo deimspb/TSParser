@@ -162,6 +162,69 @@ public sealed class BitrateMeasurementTests
     }
 
     [Test]
+    public async Task File_parse_stream_samples_have_monotonic_byte_offset()
+    {
+        const int packetCount = 5000;
+        var samples = new List<BitrateSample>();
+        var path = WriteTempTsWithPcr(packetCount);
+        try
+        {
+            var parser = new TsParser(new ParserConfig
+            {
+                TsFileName = path,
+                CurrentDecodeMode = DecodeMode.Packet,
+                AllowAnalyzer = false,
+                BitrateMeasurement = new BitrateMeasurementOptions
+                {
+                    Enabled = true,
+                    MeasurementWindow = TimeSpan.FromSeconds(1),
+                    ClockSource = BitrateClockSource.Pcr,
+                    MeasureStreamBitrate = true,
+                    MeasurePerPidBitrate = false,
+                },
+            });
+            parser.OnBitrateMeasured += samples.Add;
+
+            await parser.RunParserAsync();
+
+            var streamSamples = samples.Where(s => s.Pid is null).ToList();
+            Assert.That(streamSamples, Is.Not.Empty);
+            Assert.That(streamSamples.All(s => s.StreamByteOffset.HasValue), Is.True);
+
+            for (var i = 1; i < streamSamples.Count; i++)
+            {
+                Assert.That(
+                    streamSamples[i].StreamByteOffset,
+                    Is.GreaterThan(streamSamples[i - 1].StreamByteOffset!.Value));
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Test]
+    public void PushBytes_stream_samples_have_no_byte_offset()
+    {
+        const int packetCount = 1500;
+        var samples = new List<BitrateSample>();
+        var parser = CreateParser(
+            options =>
+            {
+                options.MeasurementWindow = TimeSpan.FromSeconds(1);
+                options.MeasureStreamBitrate = true;
+                options.MeasurePerPidBitrate = false;
+            },
+            samples);
+
+        PushUniformPcrStream(parser, PcrPid, packetCount, PcrStepTicks);
+
+        Assert.That(samples, Is.Not.Empty);
+        Assert.That(samples.Where(s => s.Pid is null).All(s => s.StreamByteOffset is null), Is.True);
+    }
+
+    [Test]
     public void Dual_stream_measurement_reports_total_and_useful_bitrates()
     {
         const int usefulPacketsPerSecond = 800;
@@ -306,6 +369,20 @@ public sealed class BitrateMeasurementTests
         Assert.That(sample.ClockSource, Is.EqualTo(BitrateClockSource.Pts));
         Assert.That(sample.BytesInWindow, Is.EqualTo((ulong)(packetsPerSecond * PacketLength)).Within(PacketLength * 2));
         Assert.That(sample.BitsPerSecond, Is.EqualTo(sample.BytesInWindow * 8.0).Within(sample.BytesInWindow * 0.05));
+    }
+
+    private static string WriteTempTsWithPcr(int packetCount, ushort pcrPid = PcrPid)
+    {
+        var bytes = new byte[packetCount * PacketLength];
+        for (var i = 0; i < packetCount; i++)
+        {
+            BuildPcrPacket(pcrPid, (ulong)i * PcrStepTicks)
+                .CopyTo(bytes.AsSpan(i * PacketLength, PacketLength));
+        }
+
+        var path = Path.Combine(Path.GetTempPath(), $"tsparser-bitrate-offset-{Guid.NewGuid():N}.ts");
+        File.WriteAllBytes(path, bytes);
+        return path;
     }
 
     private static TsParser CreateParser(

@@ -55,8 +55,13 @@ namespace TSParser.Analysis
         /// <summary><see langword="true"/> when <see cref="TotalBitsPerSecond"/> and <see cref="UsefulBitsPerSecond"/> are set.</summary>
         public bool HasDualStreamMeasurement => TotalBitsPerSecond.HasValue && UsefulBitsPerSecond.HasValue;
 
+        /// <summary>
+        /// Byte offset from the start of a file parse when the window closed; <see langword="null"/> for live/UDP or <see cref="TsParser.PushBytes"/>.
+        /// </summary>
+        public long? StreamByteOffset { get; }
+
         public BitrateSample(ushort? pid, double bitsPerSecond, ulong bytesInWindow, TimeSpan windowDuration, BitrateClockSource clockSource)
-            : this(pid, bitsPerSecond, bytesInWindow, windowDuration, clockSource, null, null, null, null)
+            : this(pid, bitsPerSecond, bytesInWindow, windowDuration, clockSource, null, null, null, null, null)
         {
         }
 
@@ -70,6 +75,21 @@ namespace TSParser.Analysis
             double? usefulBitsPerSecond,
             ulong? totalBytesInWindow,
             ulong? usefulBytesInWindow)
+            : this(pid, bitsPerSecond, bytesInWindow, windowDuration, clockSource, totalBitsPerSecond, usefulBitsPerSecond, totalBytesInWindow, usefulBytesInWindow, null)
+        {
+        }
+
+        public BitrateSample(
+            ushort? pid,
+            double bitsPerSecond,
+            ulong bytesInWindow,
+            TimeSpan windowDuration,
+            BitrateClockSource clockSource,
+            double? totalBitsPerSecond,
+            double? usefulBitsPerSecond,
+            ulong? totalBytesInWindow,
+            ulong? usefulBytesInWindow,
+            long? streamByteOffset)
         {
             Pid = pid;
             BitsPerSecond = bitsPerSecond;
@@ -80,6 +100,20 @@ namespace TSParser.Analysis
             UsefulBitsPerSecond = usefulBitsPerSecond;
             TotalBytesInWindow = totalBytesInWindow;
             UsefulBytesInWindow = usefulBytesInWindow;
+            StreamByteOffset = streamByteOffset;
         }
+
+        internal BitrateSample WithStreamByteOffset(long streamByteOffset) =>
+            new(
+                Pid,
+                BitsPerSecond,
+                BytesInWindow,
+                WindowDuration,
+                ClockSource,
+                TotalBitsPerSecond,
+                UsefulBitsPerSecond,
+                TotalBytesInWindow,
+                UsefulBytesInWindow,
+                streamByteOffset);
     }
 }
