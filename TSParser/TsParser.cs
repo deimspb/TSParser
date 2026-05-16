@@ -382,7 +382,7 @@ namespace TSParser
         /// <exception cref="Exception"></exception>
         public TsPacket GetOneTsPacketFromBytes(ReadOnlySpan<byte> bytes, int packetLength)
         {
-            if (bytes.Length > 204 && bytes.Length < 188) throw new Exception("bytes length shall be 188 or 204 bytes");
+            if (bytes.Length != 188 && bytes.Length != 204) throw new Exception("bytes length shall be 188 or 204 bytes");
             if (packetLength != bytes.Length) throw new Exception("Not equal bytes length and packet length");
             return m_tsPacketFactory.GetTsPacket(bytes, packetLength);
         }

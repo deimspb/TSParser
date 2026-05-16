@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Collections.Concurrent;
 using TSParser.Descriptors.AitDescriptors;
 using TSParser.Descriptors.Custom;
 using TSParser.Descriptors.Dvb;
@@ -24,16 +25,17 @@ namespace TSParser.Descriptors
     internal record DescriptorFactory
     {
         private delegate Descriptor GetDescriptorDelegate(ReadOnlySpan<byte> bytes, string descAllocation);
-        private static GetDescriptorDelegate GetDesc = null!;
 
-        private static readonly Lazy<List<byte>> unknownDescriptorListId = new();
-        private static readonly Lazy<List<byte>> unknownExtensionDescList = new();
-        private static readonly Lazy<List<byte>> unknownAitDescList = new();
-        private static readonly Lazy<List<byte>> unknownSpliceDescList = new();
-        private static List<byte> m_unknownDescriptorListId => unknownDescriptorListId.Value;
-        private static List<byte> m_unknownExtensionDescList => unknownExtensionDescList.Value;
-        private static List<byte> m_unknownAitDescList => unknownAitDescList.Value;
-        private static List<byte> m_unknownSpliceDescList => unknownSpliceDescList.Value;
+        private static readonly ConcurrentDictionary<byte, byte> unknownDescriptorTags = new();
+        private static readonly ConcurrentDictionary<byte, byte> unknownExtensionDescTags = new();
+        private static readonly ConcurrentDictionary<byte, byte> unknownAitDescTags = new();
+        private static readonly ConcurrentDictionary<byte, byte> unknownSpliceDescTags = new();
+
+        private static void LogUnknownTagOnce(ConcurrentDictionary<byte, byte> seenTags, byte tag, string message)
+        {
+            if (seenTags.TryAdd(tag, 0))
+                Logger.Send(LogStatus.NotImplement, message);
+        }
         internal static Descriptor GetDescriptor(ReadOnlySpan<byte> bytes, string descAllocation = "")
         {
             try
@@ -92,12 +94,8 @@ namespace TSParser.Descriptors
                     case 0x60: return new ServiceMoveDescriptor_0x60(bytes);
                     default:
                         {
-                            if (!m_unknownDescriptorListId.Contains(bytes[0]))
-                            {
-                                Logger.Send(LogStatus.NotImplement, $"Not specified descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
-                                m_unknownDescriptorListId.Add(bytes[0]);
-                            }
-
+                            LogUnknownTagOnce(unknownDescriptorTags, bytes[0],
+                                $"Not specified descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
                             return new Descriptor(bytes);
                         }
                 }
@@ -123,12 +121,8 @@ namespace TSParser.Descriptors
                     case 0x10: return new ApplicationStorageDescriptor_0x10(bytes);
                     default:
                         {
-                            if (!m_unknownAitDescList.Contains(bytes[0]))
-                            {
-                                Logger.Send(LogStatus.NotImplement, $"Not specified AIT descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
-                                m_unknownAitDescList.Add(bytes[0]);
-                            }
-
+                            LogUnknownTagOnce(unknownAitDescTags, bytes[0],
+                                $"Not specified AIT descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
                             return new AitDescriptor(bytes);
                         }
                 }
@@ -150,12 +144,8 @@ namespace TSParser.Descriptors
                     case 0x04: return new T2DeliverySystemDescriptor_0x04(bytes);
                     default:
                         {
-                            if (!m_unknownExtensionDescList.Contains(bytes[2]))
-                            {
-                                Logger.Send(LogStatus.NotImplement, $"Not specified extension descriptor with tag: 0x{bytes[2]:X2}, descriptor location: {descAllocation}");
-                                m_unknownExtensionDescList.Add(bytes[2]);
-                            }
-
+                            LogUnknownTagOnce(unknownExtensionDescTags, bytes[2],
+                                $"Not specified extension descriptor with tag: 0x{bytes[2]:X2}, descriptor location: {descAllocation}");
                             return new ExtendedDescriptor(bytes);
                         }
                 }
@@ -179,11 +169,8 @@ namespace TSParser.Descriptors
                     case 0x04: return new AudioDescriptor_0x04(bytes);
                     default:
                         {
-                            if (!m_unknownSpliceDescList.Contains(bytes[0]))
-                            {
-                                Logger.Send(LogStatus.NotImplement, $"Not specified Splice descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
-                                m_unknownSpliceDescList.Add(bytes[0]);
-                            }
+                            LogUnknownTagOnce(unknownSpliceDescTags, bytes[0],
+                                $"Not specified Splice descriptor with tag: 0x{bytes[0]:X2}, descriptor location: {descAllocation}");
                             return new Scte35Descriptor(bytes);
                         }
                 }
@@ -196,32 +183,22 @@ namespace TSParser.Descriptors
         }
         internal static List<Descriptor> GetDescriptorList(ReadOnlySpan<byte> bytes, string descAllocation = "", byte callerTableId = 0)
         {
-            switch (callerTableId)
+            GetDescriptorDelegate resolver = callerTableId switch
             {
-                case 0x74:
-                    {
-                        GetDesc = GetAitDescriptor;
-                        return GetDescList(bytes, descAllocation);
-                    }
-                case 0xFC:
-                    {
-                        GetDesc = GetSpliceDescriptor;
-                        return GetDescList(bytes, descAllocation);
-                    }
-                default:
-                    {
-                        GetDesc = GetDescriptor;
-                        return GetDescList(bytes, descAllocation);
-                    }
-            }
+                0x74 => GetAitDescriptor,
+                0xFC => GetSpliceDescriptor,
+                _ => GetDescriptor,
+            };
+            return GetDescList(bytes, resolver, descAllocation);
         }
-        internal static List<Descriptor> GetDescList(ReadOnlySpan<byte> bytes, string descAllocation = "")
+
+        private static List<Descriptor> GetDescList(ReadOnlySpan<byte> bytes, GetDescriptorDelegate getDescriptor, string descAllocation = "")
         {
             var pointer = 0;
             List<Descriptor> descriptors = new List<Descriptor>();
             while (pointer < bytes.Length)
             {
-                var desc = GetDesc(bytes[pointer..], descAllocation);
+                var desc = getDescriptor(bytes[pointer..], descAllocation);
                 descriptors.Add(desc);
                 pointer += desc.DescriptorTotalLength;
             }

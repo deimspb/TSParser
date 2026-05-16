@@ -153,7 +153,7 @@ namespace TSParser.Descriptors.ExtendedDvb
             {
                 FrequencyLoopLength = bytes[pointer++];
                 CentreFrequences = new uint[FrequencyLoopLength / 4];
-                for (int i = 0;CentreFrequences.Length > 0; i++)
+                for (int i = 0; i < CentreFrequences.Length; i++)
                 {
                     CentreFrequences[i] = BinaryPrimitives.ReadUInt32BigEndian(bytes[pointer..]);
                     pointer += 4;
