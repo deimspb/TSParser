@@ -1,7 +1,9 @@
-@using System.Text.Json
-@using ScottPlot
+@using Plotly.Blazor
+@using Plotly.Blazor.ConfigLib
+@using Plotly.Blazor.Traces
+@using Plotly.Blazor.Traces.ScatterLib
+@using Plotly.Blazor.LayoutLib
 @using TSParser.Web.Services
-@inject IWebHostEnvironment WebHostEnvironment
 @inject IJSRuntime Js
 
 <div class="bitrate-chart-panel">
@@ -10,17 +12,15 @@
         <span class="bitrate-chart-stats">@_statsText</span>
     </div>
 
-    <div class="bitrate-chart-plot-wrap" @ref="_wrapRef">
-        @if (_hasData && !string.IsNullOrEmpty(_chartImageUri))
+    <div class="bitrate-chart-plot-wrap">
+        @if (_hasData)
         {
-            <img class="bitrate-chart-plot"
-                 src="@_chartImageUri"
-                 data-revision="@_renderedRevision"
-                 alt="Transport bitrate chart" />
-        }
-        else if (_hasData)
-        {
-            <p class="bitrate-chart-placeholder">@_placeholderText</p>
+            <div class="bitrate-chart-plot">
+                <PlotlyChart @ref="_chart"
+                             Data="_data"
+                             Layout="_layout"
+                             Config="_config" />
+            </div>
         }
         else
         {
@@ -30,17 +30,21 @@
 </div>
 
 @code {
-    private const int MinChartWidth = 320;
-    private const int MinChartHeight = 100;
-    private const int DefaultChartWidth = 800;
-    private const int DefaultChartHeight = 180;
+    private const double AxisPaddingRatio = 0.12;
+    private const double MinAxisPaddingMbps = 0.5;
 
-    private ElementReference _wrapRef;
-    private int _renderedRevision = -1;
-    private int _renderedWidth;
-    private int _renderedHeight;
+    private PlotlyChart? _chart;
+    private Config _config = new() { Responsive = true, ScrollZoom = ScrollZoomFlag.Cartesian };
+    private Layout _layout = new() { AutoSize = true };
+    private IList<ITrace> _data = new List<ITrace>();
+    private int _appliedRevision = -1;
+    private int _appliedFitRevision = -1;
+    private int _lastFitRevisionSeen = -1;
     private bool _hasData;
-    private string? _chartImageUri;
+    private double _xMin;
+    private double _xMax;
+    private double _yMin;
+    private double _yMax;
     private string _statsText = "";
     private string _placeholderText = "Bitrate samples appear while parsing a file or UDP stream.";
 
@@ -49,6 +53,9 @@
 
     [Parameter]
     public int DataRevision { get; set; }
+
+    [Parameter]
+    public int FitRevision { get; set; }
 
     protected override void OnParametersSet()
     {
@@ -73,98 +80,242 @@
 
         if (!_hasData)
         {
-            _chartImageUri = null;
-            _renderedRevision = -1;
+            _appliedRevision = -1;
+            _data = new List<ITrace>();
+            return;
         }
+
+        var fitChanged = FitRevision != _lastFitRevisionSeen;
+        _lastFitRevisionSeen = FitRevision;
+
+        if (!fitChanged && DataRevision == _appliedRevision)
+            return;
+
+        _appliedRevision = DataRevision;
+        ApplySnapshot(snapshot);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!_hasData)
+        if (_chart is null || !_hasData)
             return;
 
         try
         {
-            var size = await Js.InvokeAsync<PlotWrapSize>("bitrateChart.getPlotWrapSize", _wrapRef);
-            var width = size.Width >= MinChartWidth ? size.Width : DefaultChartWidth;
-            var height = size.Height >= MinChartHeight ? size.Height : DefaultChartHeight;
-
-            var sizeChanged = Math.Abs(width - _renderedWidth) > 8 || Math.Abs(height - _renderedHeight) > 8;
-            var dataChanged = DataRevision != _renderedRevision;
-
-            if (dataChanged || sizeChanged || string.IsNullOrEmpty(_chartImageUri))
+            var needsFit = FitRevision != _appliedFitRevision;
+            if (needsFit)
             {
-                var snapshot = Store.GetSnapshot();
-                var plot = new Plot();
-                if (!TryApplySnapshot(plot, snapshot))
-                    return;
-
-                plot.ShowLegend(Alignment.UpperRight);
-                plot.Axes.AutoScale();
-
-                var bytes = plot.GetImageBytes(width, height, ImageFormat.Png);
-                _chartImageUri = $"data:image/png;base64,{Convert.ToBase64String(bytes)}";
-                _renderedRevision = DataRevision;
-                _renderedWidth = width;
-                _renderedHeight = height;
-
-                // #region agent log
-                AgentDebugLog("F", "BitrateChartPanel.razor:OnAfterRenderAsync", "Server PNG chart rendered", new
-                {
-                    renderMode = "server-png-dynamic-zoom",
-                    chartWidth = width,
-                    chartHeight = height,
-                    pngBytes = bytes.Length,
-                    dataRevision = DataRevision,
-                    pointCount = snapshot.Mode == BitrateChartMode.File ? snapshot.FilePoints.Count : snapshot.UdpPoints.Count
-                });
-                // #endregion
-
-                StateHasChanged();
-                return;
+                _appliedFitRevision = FitRevision;
+                await _chart.NewPlot();
+            }
+            else
+            {
+                await _chart.React();
             }
 
-            await Js.InvokeVoidAsync("bitrateChart.attachZoom", _wrapRef);
-            // #region agent log
-            await Js.InvokeVoidAsync("bitrateChart.logDom");
-            // #endregion
-        }
-        catch (Exception ex)
-        {
-            _chartImageUri = null;
-            _placeholderText = "Chart render failed.";
-            // #region agent log
-            AgentDebugLog("F", "BitrateChartPanel.razor:OnAfterRenderAsync", "Chart render failed", new { ex.Message });
-            // #endregion
-        }
-    }
-
-    // #region agent log
-    private void AgentDebugLog(string hypothesisId, string location, string message, object data)
-    {
-        try
-        {
-            var logPath = Path.GetFullPath(Path.Combine(WebHostEnvironment.ContentRootPath, "..", "debug-64f5ce.log"));
-            var payload = new Dictionary<string, object?>
-            {
-                ["sessionId"] = "64f5ce",
-                ["runId"] = "post-fix",
-                ["hypothesisId"] = hypothesisId,
-                ["location"] = location,
-                ["message"] = message,
-                ["data"] = data,
-                ["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-            };
-            File.AppendAllText(logPath, JsonSerializer.Serialize(payload) + Environment.NewLine);
+            await ApplyAxisRangesAsync();
         }
         catch
         {
-            // ignore debug log failures
+            // chart may not be initialized on first paint yet
         }
     }
 
-    private sealed record PlotWrapSize(int Width, int Height);
-    // #endregion
+    private async Task ApplyAxisRangesAsync()
+    {
+        try
+        {
+            var applied = await Js.InvokeAsync<bool>(
+                "tsParserPlotly.applyAxisRanges", _xMin, _xMax, _yMin, _yMax);
+
+            if (applied)
+                return;
+        }
+        catch
+        {
+            // fall through to C# relayout
+        }
+
+        if (_chart is null)
+            return;
+
+        await _chart.Relayout(new
+        {
+            xaxis = new { range = new[] { _xMin, _xMax }, autorange = false },
+            yaxis = new { range = new[] { _yMin, _yMax }, autorange = false }
+        });
+    }
+
+    private void ApplySnapshot(BitrateChartSnapshot snapshot)
+    {
+        switch (snapshot.Mode)
+        {
+            case BitrateChartMode.File when snapshot.FilePoints.Count > 0:
+                BuildFileChart(snapshot);
+                break;
+            case BitrateChartMode.Udp when snapshot.UdpPoints.Count > 0:
+                BuildUdpChart(snapshot);
+                break;
+        }
+    }
+
+    private void BuildFileChart(BitrateChartSnapshot snapshot)
+    {
+        var usePercent = snapshot.FileLengthBytes is > 0;
+        var xs = new List<double>(snapshot.FilePoints.Count);
+        var totalYs = new List<double>(snapshot.FilePoints.Count);
+        var usefulYs = new List<double>(snapshot.FilePoints.Count);
+
+        foreach (var point in snapshot.FilePoints)
+        {
+            xs.Add(usePercent
+                ? 100d * point.ByteOffset / snapshot.FileLengthBytes!.Value
+                : point.ByteOffset / 1_000_000d);
+            totalYs.Add(point.TotalBitsPerSecond / 1_000_000d);
+            usefulYs.Add(point.UsefulBitsPerSecond / 1_000_000d);
+        }
+
+        _data = new List<ITrace>
+        {
+            CreateLineTrace("Total", ToObjectList(xs), ToObjectList(totalYs), "#4682b4"),
+            CreateLineTrace("Useful", ToObjectList(xs), ToObjectList(usefulYs), "#228b22")
+        };
+
+        var xLabel = usePercent ? "File position (%)" : "File offset (MB)";
+        var title = usePercent ? "Bitrate vs file position" : "Bitrate vs byte offset";
+        var xRange = usePercent
+            ? ComputeRange(0, 100)
+            : ComputeRange(xs);
+
+        var yRange = ComputeRange(totalYs.Concat(usefulYs));
+        SetPlotRanges(xRange, yRange);
+        _layout = CreateLayout(title, xLabel, "Mbps", xRange, yRange, FitRevision);
+    }
+
+    private void BuildUdpChart(BitrateChartSnapshot snapshot)
+    {
+        var points = snapshot.UdpPoints;
+        var origin = points[0].TimestampUtc;
+        var xs = new List<double>(points.Count);
+        var totalYs = new List<double>(points.Count);
+        var usefulYs = new List<double>(points.Count);
+
+        foreach (var point in points)
+        {
+            xs.Add((point.TimestampUtc - origin).TotalSeconds);
+            totalYs.Add(point.TotalBitsPerSecond / 1_000_000d);
+            usefulYs.Add(point.UsefulBitsPerSecond / 1_000_000d);
+        }
+
+        _data = new List<ITrace>
+        {
+            CreateLineTrace("Total", ToObjectList(xs), ToObjectList(totalYs), "#4682b4"),
+            CreateLineTrace("Useful", ToObjectList(xs), ToObjectList(usefulYs), "#228b22")
+        };
+
+        var xRange = ComputeRange(xs);
+        var yRange = ComputeRange(totalYs.Concat(usefulYs));
+        SetPlotRanges(xRange, yRange);
+        _layout = CreateLayout("Live transport bitrate", "Time (s)", "Mbps", xRange, yRange, FitRevision);
+    }
+
+    private void SetPlotRanges((double Min, double Max) xRange, (double Min, double Max) yRange)
+    {
+        _xMin = xRange.Min;
+        _xMax = xRange.Max;
+        _yMin = yRange.Min;
+        _yMax = yRange.Max;
+    }
+
+    private static Scatter CreateLineTrace(string name, IList<object> x, IList<object> y, string color) =>
+        new()
+        {
+            Name = name,
+            Mode = ModeFlag.Lines,
+            X = x,
+            Y = y,
+            Line = new Line { Color = color, Width = 2 }
+        };
+
+    private static Layout CreateLayout(
+        string title,
+        string xLabel,
+        string yLabel,
+        (double Min, double Max) xRange,
+        (double Min, double Max) yRange,
+        int uiRevision) =>
+        new()
+        {
+            Title = new Plotly.Blazor.LayoutLib.Title { Text = title },
+            AutoSize = true,
+            UiRevision = uiRevision.ToString(),
+            Margin = new Margin { L = 56, R = 24, T = 48, B = 56 },
+            XAxis = new List<XAxis>
+            {
+                new()
+                {
+                    Title = new Plotly.Blazor.LayoutLib.XAxisLib.Title { Text = xLabel },
+                    ZeroLine = false,
+                    Range = new List<object> { xRange.Min, xRange.Max }
+                }
+            },
+            YAxis = new List<YAxis>
+            {
+                new()
+                {
+                    Title = new Plotly.Blazor.LayoutLib.YAxisLib.Title { Text = yLabel },
+                    ZeroLine = false,
+                    Range = new List<object> { yRange.Min, yRange.Max },
+                    FixedRange = false
+                }
+            },
+            Legend = new List<Legend>
+            {
+                new() { Orientation = Plotly.Blazor.LayoutLib.LegendLib.OrientationEnum.H }
+            }
+        };
+
+    private static (double Min, double Max) ComputeRange(IEnumerable<double> values)
+    {
+        var min = double.PositiveInfinity;
+        var max = double.NegativeInfinity;
+
+        foreach (var value in values)
+        {
+            if (value < min) min = value;
+            if (value > max) max = value;
+        }
+
+        if (double.IsInfinity(min) || double.IsInfinity(max))
+            return (0, 1);
+
+        return ExpandRange(min, max);
+    }
+
+    private static (double Min, double Max) ComputeRange(double min, double max) =>
+        ExpandRange(min, max);
+
+    private static (double Min, double Max) ExpandRange(double min, double max)
+    {
+        if (Math.Abs(max - min) < 1e-9)
+        {
+            var pad = Math.Max(Math.Abs(max) * AxisPaddingRatio, MinAxisPaddingMbps);
+            return (min - pad, max + pad);
+        }
+
+        var span = max - min;
+        var margin = Math.Max(span * AxisPaddingRatio, MinAxisPaddingMbps);
+        return (min - margin, max + margin);
+    }
+
+    private static List<object> ToObjectList(IReadOnlyList<double> values)
+    {
+        var result = new List<object>(values.Count);
+        foreach (var value in values)
+            result.Add(value);
+
+        return result;
+    }
 
     private static string BuildStatsText(BitrateChartSnapshot snapshot)
     {
@@ -183,91 +334,5 @@
         }
 
         return "";
-    }
-
-    private static bool TryApplySnapshot(Plot plot, BitrateChartSnapshot snapshot)
-    {
-        plot.Clear();
-
-        switch (snapshot.Mode)
-        {
-            case BitrateChartMode.File when snapshot.FilePoints.Count > 0:
-                RenderFileSeries(plot, snapshot);
-                return true;
-
-            case BitrateChartMode.Udp when snapshot.UdpPoints.Count > 0:
-                RenderUdpSeries(plot, snapshot);
-                return true;
-
-            default:
-                return false;
-        }
-    }
-
-    private static void RenderFileSeries(Plot plot, BitrateChartSnapshot snapshot)
-    {
-        var usePercent = snapshot.FileLengthBytes is > 0;
-        var xs = new double[snapshot.FilePoints.Count];
-        var totalYs = new double[snapshot.FilePoints.Count];
-        var usefulYs = new double[snapshot.FilePoints.Count];
-
-        for (var i = 0; i < snapshot.FilePoints.Count; i++)
-        {
-            var point = snapshot.FilePoints[i];
-            xs[i] = usePercent
-                ? 100d * point.ByteOffset / snapshot.FileLengthBytes!.Value
-                : point.ByteOffset / 1_000_000d;
-
-            totalYs[i] = point.TotalBitsPerSecond / 1_000_000d;
-            usefulYs[i] = point.UsefulBitsPerSecond / 1_000_000d;
-        }
-
-        var total = plot.Add.Scatter(xs, totalYs);
-        total.LegendText = "Total";
-        total.Color = Colors.SteelBlue;
-        total.LineWidth = 2;
-        total.MarkerSize = 0;
-
-        var useful = plot.Add.Scatter(xs, usefulYs);
-        useful.LegendText = "Useful";
-        useful.Color = Colors.ForestGreen;
-        useful.LineWidth = 2;
-        useful.MarkerSize = 0;
-
-        plot.Axes.Bottom.Label.Text = usePercent ? "File position (%)" : "File offset (MB)";
-        plot.Axes.Left.Label.Text = "Mbps";
-        plot.Title(usePercent ? "Bitrate vs file position" : "Bitrate vs byte offset");
-    }
-
-    private static void RenderUdpSeries(Plot plot, BitrateChartSnapshot snapshot)
-    {
-        var points = snapshot.UdpPoints;
-        var origin = points[0].TimestampUtc;
-        var xs = new double[points.Count];
-        var totalYs = new double[points.Count];
-        var usefulYs = new double[points.Count];
-
-        for (var i = 0; i < points.Count; i++)
-        {
-            xs[i] = (points[i].TimestampUtc - origin).TotalSeconds;
-            totalYs[i] = points[i].TotalBitsPerSecond / 1_000_000d;
-            usefulYs[i] = points[i].UsefulBitsPerSecond / 1_000_000d;
-        }
-
-        var total = plot.Add.Scatter(xs, totalYs);
-        total.LegendText = "Total";
-        total.Color = Colors.SteelBlue;
-        total.LineWidth = 2;
-        total.MarkerSize = 0;
-
-        var useful = plot.Add.Scatter(xs, usefulYs);
-        useful.LegendText = "Useful";
-        useful.Color = Colors.ForestGreen;
-        useful.LineWidth = 2;
-        useful.MarkerSize = 0;
-
-        plot.Axes.Bottom.Label.Text = "Time (s)";
-        plot.Axes.Left.Label.Text = "Mbps";
-        plot.Title("Live transport bitrate");
     }
 }

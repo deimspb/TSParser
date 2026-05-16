@@ -32,7 +32,9 @@
         </div>
 
         <section class="parser-chart-section">
-            <BitrateChartPanel Store="BitrateStore" DataRevision="_bitrateRevision" />
+            <BitrateChartPanel Store="BitrateStore"
+                               DataRevision="_bitrateRevision"
+                               FitRevision="_chartFitRevision" />
         </section>
     </div>
 </div>
@@ -46,6 +48,7 @@
     private TableTreeNode? _selectedNode;
     private string _statusText = "Idle";
     private int _bitrateRevision;
+    private int _chartFitRevision;
     private DateTime _lastChartUiUtc = DateTime.MinValue;
 
     protected override void OnInitialized()
@@ -83,6 +86,7 @@
                         _selectedNodeId = null;
                         _selectedNode = null;
                         _bitrateRevision = BitrateStore.Revision;
+                        _chartFitRevision++;
                         _statusText = "Session reset";
                         needsRefresh = true;
                         break;
@@ -94,6 +98,7 @@
                             BitrateStore.ConfigureForUdp();
 
                         _bitrateRevision = BitrateStore.Revision;
+                        _chartFitRevision++;
                         _statusText = mode switch
                         {
                             TsParserSessionInputMode.File => $"File: {filePath}",
@@ -105,16 +110,17 @@
 
                     case TsParserUiUpdate.ParserStopped:
                         _statusText = "Stopped";
+                        _chartFitRevision++;
                         needsRefresh = true;
                         break;
 
                     case TsParserUiUpdate.ParserCompleted:
                         _statusText = "Parse complete";
                         if (BitrateStore.Revision != _bitrateRevision)
-                        {
                             _bitrateRevision = BitrateStore.Revision;
-                            needsRefresh = true;
-                        }
+
+                        _chartFitRevision++;
+                        needsRefresh = true;
                         break;
 
                     case TsParserUiUpdate.LogMessage(var text, var isError):
