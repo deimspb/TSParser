@@ -36,6 +36,11 @@ namespace TSParser
         /// </summary>
         public bool AllowAnalyzer;
         /// <summary>
+        /// Bitrate measurement settings. When set and <see cref="BitrateMeasurementOptions.Enabled"/> is
+        /// <see langword="true"/>, the analyzer is active regardless of <see cref="AllowAnalyzer"/>.
+        /// </summary>
+        public BitrateMeasurementOptions? BitrateMeasurement;
+        /// <summary>
         /// Set parser run time. If you read big ts file or udp mcast
         /// </summary>
         public int? ParserRunTime;
