@@ -1,63 +1,516 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-16T10:53:11.7797874+00:00",
-  "blessedAt": "2026-05-16T10:53:11.7798871+00:00",
+  "generatedAt": "2026-05-16T15:06:39.3339988+03:00",
+  "stagingRoot": "D:\\Dvb\\ts_harvest\\tables",
   "fixturesRoot": "D:\\OneDrive\\VisualStudio2017\\TSParser\\TSParser.Tests\\TestResources",
   "types": {
+    "AIT": {
+      "available": 26,
+      "unique": 12,
+      "selected": 4,
+      "samples": 4
+    },
+    "BAT": {
+      "available": 253,
+      "unique": 109,
+      "selected": 4,
+      "samples": 4
+    },
+    "CAT": {
+      "available": 34,
+      "unique": 16,
+      "selected": 4,
+      "samples": 4
+    },
+    "EIT": {
+      "available": 10836,
+      "unique": 8837,
+      "selected": 4,
+      "samples": 4
+    },
+    "NIT": {
+      "available": 63,
+      "unique": 28,
+      "selected": 4,
+      "samples": 4
+    },
     "PAT": {
-      "samples": 1
+      "available": 54,
+      "unique": 33,
+      "selected": 4,
+      "samples": 4
     },
     "PMT": {
-      "samples": 1
+      "available": 1186,
+      "unique": 560,
+      "selected": 4,
+      "samples": 4
+    },
+    "SCTE35": {
+      "available": 15,
+      "unique": 0,
+      "selected": 0,
+      "samples": 0
+    },
+    "SDT": {
+      "available": 292,
+      "unique": 130,
+      "selected": 4,
+      "samples": 4
+    },
+    "TDT": {
+      "available": 7473,
+      "unique": 6362,
+      "selected": 4,
+      "samples": 4
+    },
+    "TOT": {
+      "available": 876,
+      "unique": 816,
+      "selected": 4,
+      "samples": 4
     }
   },
   "tables": {
-    "Tables/PAT_0_202201071904221245.tbl": {
-      "relativePath": "Tables/PAT_0_202201071904221245.tbl",
+    "Tables/AIT/AIT_S.tbl": {
+      "relativePath": "Tables/AIT/AIT_S.tbl",
+      "type": "AIT",
+      "sample": "S",
+      "size": 72,
+      "crc32": "0x4A4AEDAF",
+      "sectionLength": 69,
+      "tableId": "0x74",
+      "sourceTs": "MyRec 7TS-hbb",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\AIT\\MyRec 7TS-hbb\\AIT_0_202605161428096586.tbl"
+    },
+    "Tables/AIT/AIT_M1.tbl": {
+      "relativePath": "Tables/AIT/AIT_M1.tbl",
+      "type": "AIT",
+      "sample": "M1",
+      "size": 82,
+      "crc32": "0xBEF680FC",
+      "sectionLength": 79,
+      "tableId": "0x74",
+      "sourceTs": "9ts_22.03.19(scr)",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\AIT\\9ts_22.03.19(scr)\\AIT_0_202605161425076979.tbl"
+    },
+    "Tables/AIT/AIT_M2.tbl": {
+      "relativePath": "Tables/AIT/AIT_M2.tbl",
+      "type": "AIT",
+      "sample": "M2",
+      "size": 82,
+      "crc32": "0xEE31A7D9",
+      "sectionLength": 79,
+      "tableId": "0x74",
+      "sourceTs": "9_60min",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\AIT\\9_60min\\AIT_4_202605161422484291.tbl"
+    },
+    "Tables/AIT/AIT_L.tbl": {
+      "relativePath": "Tables/AIT/AIT_L.tbl",
+      "type": "AIT",
+      "sample": "L",
+      "size": 82,
+      "crc32": "0x66BEB5CF",
+      "sectionLength": 79,
+      "tableId": "0x74",
+      "sourceTs": "9_60min",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\AIT\\9_60min\\AIT_7_202605161422484369.tbl"
+    },
+    "Tables/BAT/BAT_S.tbl": {
+      "relativePath": "Tables/BAT/BAT_S.tbl",
+      "type": "BAT",
+      "sample": "S",
+      "size": 20,
+      "crc32": "0xA94E33D",
+      "sectionLength": 17,
+      "tableId": "0x4A",
+      "sourceTs": "27tsOTA_B5xx_15.05",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\BAT\\27tsOTA_B5xx_15.05\\BAT_0_202605161414243012.tbl"
+    },
+    "Tables/BAT/BAT_M1.tbl": {
+      "relativePath": "Tables/BAT/BAT_M1.tbl",
+      "type": "BAT",
+      "sample": "M1",
+      "size": 115,
+      "crc32": "0x260C41F4",
+      "sectionLength": 112,
+      "tableId": "0x4A",
+      "sourceTs": "27_1_min",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\BAT\\27_1_min\\BAT_2_202605161413102027.tbl"
+    },
+    "Tables/BAT/BAT_M2.tbl": {
+      "relativePath": "Tables/BAT/BAT_M2.tbl",
+      "type": "BAT",
+      "sample": "M2",
+      "size": 333,
+      "crc32": "0x9C05473E",
+      "sectionLength": 330,
+      "tableId": "0x4A",
+      "sourceTs": "27",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\BAT\\27\\BAT_9_202605161414053577.tbl"
+    },
+    "Tables/BAT/BAT_L.tbl": {
+      "relativePath": "Tables/BAT/BAT_L.tbl",
+      "type": "BAT",
+      "sample": "L",
+      "size": 1017,
+      "crc32": "0x24B1E21B",
+      "sectionLength": 1014,
+      "tableId": "0x4A",
+      "sourceTs": "27ts",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\BAT\\27ts\\BAT_19_202605161414163495.tbl"
+    },
+    "Tables/CAT/CAT_S.tbl": {
+      "relativePath": "Tables/CAT/CAT_S.tbl",
+      "type": "CAT",
+      "sample": "S",
+      "size": 12,
+      "crc32": "0xD5DCFB4C",
+      "sectionLength": 9,
+      "tableId": "0x01",
+      "sourceTs": "255_services",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\CAT\\255_services\\CAT_0_202605161412597925.tbl"
+    },
+    "Tables/CAT/CAT_M1.tbl": {
+      "relativePath": "Tables/CAT/CAT_M1.tbl",
+      "type": "CAT",
+      "sample": "M1",
+      "size": 18,
+      "crc32": "0xAD4296B4",
+      "sectionLength": 15,
+      "tableId": "0x01",
+      "sourceTs": "ASI_07.04.2023_13.02_0_min",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\CAT\\ASI_07.04.2023_13.02_0_min\\CAT_0_202605161425400661.tbl"
+    },
+    "Tables/CAT/CAT_M2.tbl": {
+      "relativePath": "Tables/CAT/CAT_M2.tbl",
+      "type": "CAT",
+      "sample": "M2",
+      "size": 132,
+      "crc32": "0xEEEC92BB",
+      "sectionLength": 129,
+      "tableId": "0x01",
+      "sourceTs": "27ts",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\CAT\\27ts\\CAT_0_202605161414136215.tbl"
+    },
+    "Tables/CAT/CAT_L.tbl": {
+      "relativePath": "Tables/CAT/CAT_L.tbl",
+      "type": "CAT",
+      "sample": "L",
+      "size": 152,
+      "crc32": "0x4013E34D",
+      "sectionLength": 149,
+      "tableId": "0x01",
+      "sourceTs": "204byte_with_errors",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\CAT\\204byte_with_errors\\CAT_0_202605161412299639.tbl"
+    },
+    "Tables/EIT/EIT_S.tbl": {
+      "relativePath": "Tables/EIT/EIT_S.tbl",
+      "type": "EIT",
+      "sample": "S",
+      "size": 18,
+      "crc32": "0x19DE898D",
+      "sectionLength": 15,
+      "tableId": "0x4E",
+      "sourceTs": "24_",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\EIT\\24_\\EIT_0_202605161412556671.tbl"
+    },
+    "Tables/EIT/EIT_M1.tbl": {
+      "relativePath": "Tables/EIT/EIT_M1.tbl",
+      "type": "EIT",
+      "sample": "M1",
+      "size": 228,
+      "crc32": "0xDD4B8D4B",
+      "sectionLength": 225,
+      "tableId": "0x51",
+      "sourceTs": "ASI_07.04.2023_13.02_0_min",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\EIT\\ASI_07.04.2023_13.02_0_min\\EIT_117_202605161425460889.tbl"
+    },
+    "Tables/EIT/EIT_M2.tbl": {
+      "relativePath": "Tables/EIT/EIT_M2.tbl",
+      "type": "EIT",
+      "sample": "M2",
+      "size": 628,
+      "crc32": "0xC834C5B9",
+      "sectionLength": 625,
+      "tableId": "0x4F",
+      "sourceTs": "spts",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\EIT\\spts\\EIT_371_202605161430181141.tbl"
+    },
+    "Tables/EIT/EIT_L.tbl": {
+      "relativePath": "Tables/EIT/EIT_L.tbl",
+      "type": "EIT",
+      "sample": "L",
+      "size": 3873,
+      "crc32": "0x2E32BBFF",
+      "sectionLength": 3870,
+      "tableId": "0x50",
+      "sourceTs": "9_60min",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\EIT\\9_60min\\EIT_468_202605161422064124.tbl"
+    },
+    "Tables/NIT/NIT_S.tbl": {
+      "relativePath": "Tables/NIT/NIT_S.tbl",
+      "type": "NIT",
+      "sample": "S",
+      "size": 16,
+      "crc32": "0x406A2CA8",
+      "sectionLength": 13,
+      "tableId": "0x40",
+      "sourceTs": "ТуганТел",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\NIT\\ТуганТел\\NIT_0_202605161425141394.tbl"
+    },
+    "Tables/NIT/NIT_M1.tbl": {
+      "relativePath": "Tables/NIT/NIT_M1.tbl",
+      "type": "NIT",
+      "sample": "M1",
+      "size": 135,
+      "crc32": "0xA56609D6",
+      "sectionLength": 132,
+      "tableId": "0x40",
+      "sourceTs": "MyRec 7TS-hbb",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\NIT\\MyRec 7TS-hbb\\NIT_0_202605161428053786.tbl"
+    },
+    "Tables/NIT/NIT_M2.tbl": {
+      "relativePath": "Tables/NIT/NIT_M2.tbl",
+      "type": "NIT",
+      "sample": "M2",
+      "size": 968,
+      "crc32": "0x11C72D3B",
+      "sectionLength": 965,
+      "tableId": "0x40",
+      "sourceTs": "1ts_pcr_test1",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\NIT\\1ts_pcr_test1\\NIT_1_202605161412192003.tbl"
+    },
+    "Tables/NIT/NIT_L.tbl": {
+      "relativePath": "Tables/NIT/NIT_L.tbl",
+      "type": "NIT",
+      "sample": "L",
+      "size": 1019,
+      "crc32": "0xF17B0036",
+      "sectionLength": 1016,
+      "tableId": "0x40",
+      "sourceTs": "35_15.03.23",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\NIT\\35_15.03.23\\NIT_2_202605161415297084.tbl"
+    },
+    "Tables/PAT/PAT_S.tbl": {
+      "relativePath": "Tables/PAT/PAT_S.tbl",
       "type": "PAT",
+      "sample": "S",
+      "size": 12,
+      "crc32": "0x8B863B6B",
+      "sectionLength": 9,
+      "tableId": "0x00",
+      "sourceTs": "OTA",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\PAT\\OTA\\PAT_0_202605161428295279.tbl"
+    },
+    "Tables/PAT/PAT_M1.tbl": {
+      "relativePath": "Tables/PAT/PAT_M1.tbl",
+      "type": "PAT",
+      "sample": "M1",
+      "size": 20,
+      "crc32": "0x60ABECFD",
+      "sectionLength": 17,
+      "tableId": "0x00",
+      "sourceTs": "ТуганТел",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\PAT\\ТуганТел\\PAT_0_202605161425107512.tbl"
+    },
+    "Tables/PAT/PAT_M2.tbl": {
+      "relativePath": "Tables/PAT/PAT_M2.tbl",
+      "type": "PAT",
+      "sample": "M2",
+      "size": 92,
+      "crc32": "0x62E2C0D8",
+      "sectionLength": 89,
+      "tableId": "0x00",
+      "sourceTs": "27ts",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\PAT\\27ts\\PAT_0_202605161414127051.tbl"
+    },
+    "Tables/PAT/PAT_L.tbl": {
+      "relativePath": "Tables/PAT/PAT_L.tbl",
+      "type": "PAT",
+      "sample": "L",
       "size": 528,
-      "crc32": "0x48734C7",
+      "crc32": "0x5B36EA9D",
       "sectionLength": 525,
       "tableId": "0x00",
-      "clrType": "PAT",
-      "expected": {
-        "crc32": "0x48734C7",
-        "sectionLength": 525,
-        "sectionSyntaxIndicator": true,
-        "versionNumber": 8,
-        "currentNextIndicator": true,
-        "sectionNumber": 0,
-        "lastSectionNumber": 0,
-        "transportStreamId": 27,
-        "patRecordsCount": 129,
-        "firstProgramNumber": 0,
-        "firstProgramPid": 16
-      }
+      "sourceTs": "TSNo2-TP31_12303_27500",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\PAT\\TSNo2-TP31_12303_27500\\PAT_0_202605161432174395.tbl"
     },
-    "Tables/PMT_0_202201072036483826.tbl": {
-      "relativePath": "Tables/PMT_0_202201072036483826.tbl",
+    "Tables/PMT/PMT_S.tbl": {
+      "relativePath": "Tables/PMT/PMT_S.tbl",
       "type": "PMT",
-      "size": 584,
-      "crc32": "0x63517EFD",
-      "sectionLength": 581,
+      "sample": "S",
+      "size": 21,
+      "crc32": "0xEB0F0432",
+      "sectionLength": 18,
       "tableId": "0x02",
-      "clrType": "PMT",
-      "expected": {
-        "crc32": "0x63517EFD",
-        "sectionLength": 581,
-        "sectionSyntaxIndicator": true,
-        "versionNumber": 0,
-        "currentNextIndicator": true,
-        "sectionNumber": 0,
-        "lastSectionNumber": 0,
-        "programNumber": 30104,
-        "pcrPid": 8191,
-        "programInfoLength": 0,
-        "esInfoCount": 19,
-        "firstEsPid": 400,
-        "firstStreamType": 4,
-        "firstEsDescriptorCount": 1
-      }
+      "sourceTs": "27",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\PMT\\27\\PMT_1_202605161414035343.tbl"
+    },
+    "Tables/PMT/PMT_M1.tbl": {
+      "relativePath": "Tables/PMT/PMT_M1.tbl",
+      "type": "PMT",
+      "sample": "M1",
+      "size": 26,
+      "crc32": "0x480FC191",
+      "sectionLength": 23,
+      "tableId": "0x02",
+      "sourceTs": "asi2_290321",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\PMT\\asi2_290321\\PMT_43_202605161426029071.tbl"
+    },
+    "Tables/PMT/PMT_M2.tbl": {
+      "relativePath": "Tables/PMT/PMT_M2.tbl",
+      "type": "PMT",
+      "sample": "M2",
+      "size": 51,
+      "crc32": "0x803D0DD5",
+      "sectionLength": 48,
+      "tableId": "0x02",
+      "sourceTs": "27",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\PMT\\27\\PMT_17_202605161414035444.tbl"
+    },
+    "Tables/PMT/PMT_L.tbl": {
+      "relativePath": "Tables/PMT/PMT_L.tbl",
+      "type": "PMT",
+      "sample": "L",
+      "size": 315,
+      "crc32": "0x88B0D622",
+      "sectionLength": 312,
+      "tableId": "0x02",
+      "sourceTs": "27_10mb",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\PMT\\27_10mb\\PMT_15_202605161413173111.tbl"
+    },
+    "Tables/SDT/SDT_S.tbl": {
+      "relativePath": "Tables/SDT/SDT_S.tbl",
+      "type": "SDT",
+      "sample": "S",
+      "size": 15,
+      "crc32": "0x8320A742",
+      "sectionLength": 12,
+      "tableId": "0x46",
+      "sourceTs": "204byte_with_errors",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\SDT\\204byte_with_errors\\SDT_0_202605161412312068.tbl"
+    },
+    "Tables/SDT/SDT_M1.tbl": {
+      "relativePath": "Tables/SDT/SDT_M1.tbl",
+      "type": "SDT",
+      "sample": "M1",
+      "size": 329,
+      "crc32": "0x859CD915",
+      "sectionLength": 326,
+      "tableId": "0x46",
+      "sourceTs": "29_06_1_2020",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\SDT\\29_06_1_2020\\SDT_10_202605161414314946.tbl"
+    },
+    "Tables/SDT/SDT_M2.tbl": {
+      "relativePath": "Tables/SDT/SDT_M2.tbl",
+      "type": "SDT",
+      "sample": "M2",
+      "size": 772,
+      "crc32": "0x97C46D94",
+      "sectionLength": 769,
+      "tableId": "0x46",
+      "sourceTs": "27_10mb",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\SDT\\27_10mb\\SDT_14_202605161413175321.tbl"
+    },
+    "Tables/SDT/SDT_L.tbl": {
+      "relativePath": "Tables/SDT/SDT_L.tbl",
+      "type": "SDT",
+      "sample": "L",
+      "size": 1023,
+      "crc32": "0xC90397FA",
+      "sectionLength": 1020,
+      "tableId": "0x42",
+      "sourceTs": "TSNo2-TP31_12303_27500",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\SDT\\TSNo2-TP31_12303_27500\\SDT_3_202605161432242027.tbl"
+    },
+    "Tables/TDT/TDT_S.tbl": {
+      "relativePath": "Tables/TDT/TDT_S.tbl",
+      "type": "TDT",
+      "sample": "S",
+      "size": 8,
+      "crc32": "0xD123650",
+      "sectionLength": 5,
+      "tableId": "0x70",
+      "sourceTs": "1ts_pcr_test1",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\TDT\\1ts_pcr_test1\\TDT_0_202605161412207512.tbl"
+    },
+    "Tables/TDT/TDT_M1.tbl": {
+      "relativePath": "Tables/TDT/TDT_M1.tbl",
+      "type": "TDT",
+      "sample": "M1",
+      "size": 8,
+      "crc32": "0x39083501",
+      "sectionLength": 5,
+      "tableId": "0x70",
+      "sourceTs": "sdt_test_stream",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\TDT\\sdt_test_stream\\TDT_2101_202605161429459582.tbl"
+    },
+    "Tables/TDT/TDT_M2.tbl": {
+      "relativePath": "Tables/TDT/TDT_M2.tbl",
+      "type": "TDT",
+      "sample": "M2",
+      "size": 8,
+      "crc32": "0x8E161959",
+      "sectionLength": 5,
+      "tableId": "0x70",
+      "sourceTs": "TSNo1-TP27_12303_27500-256channels",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\TDT\\TSNo1-TP27_12303_27500-256channels\\TDT_352_202605161432039587.tbl"
+    },
+    "Tables/TDT/TDT_L.tbl": {
+      "relativePath": "Tables/TDT/TDT_L.tbl",
+      "type": "TDT",
+      "sample": "L",
+      "size": 8,
+      "crc32": "0x39081639",
+      "sectionLength": 5,
+      "tableId": "0x70",
+      "sourceTs": "sdt_test_stream",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\TDT\\sdt_test_stream\\TDT_999_202605161429455355.tbl"
+    },
+    "Tables/TOT/TOT_S.tbl": {
+      "relativePath": "Tables/TOT/TOT_S.tbl",
+      "type": "TOT",
+      "sample": "S",
+      "size": 14,
+      "crc32": "0xEA902367",
+      "sectionLength": 11,
+      "tableId": "0x73",
+      "sourceTs": "RT DOC HD",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\TOT\\RT DOC HD\\TOT_0_202605161428487484.tbl"
+    },
+    "Tables/TOT/TOT_M1.tbl": {
+      "relativePath": "Tables/TOT/TOT_M1.tbl",
+      "type": "TOT",
+      "sample": "M1",
+      "size": 29,
+      "crc32": "0x32C00CB3",
+      "sectionLength": 26,
+      "tableId": "0x73",
+      "sourceTs": "sdt_test_stream",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\TOT\\sdt_test_stream\\TOT_296_202605161429512725.tbl"
+    },
+    "Tables/TOT/TOT_M2.tbl": {
+      "relativePath": "Tables/TOT/TOT_M2.tbl",
+      "type": "TOT",
+      "sample": "M2",
+      "size": 29,
+      "crc32": "0x8AEDC20D",
+      "sectionLength": 26,
+      "tableId": "0x73",
+      "sourceTs": "sdt_test_stream",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\TOT\\sdt_test_stream\\TOT_515_202605161429513472.tbl"
+    },
+    "Tables/TOT/TOT_L.tbl": {
+      "relativePath": "Tables/TOT/TOT_L.tbl",
+      "type": "TOT",
+      "sample": "L",
+      "size": 29,
+      "crc32": "0x711B6C0F",
+      "sectionLength": 26,
+      "tableId": "0x73",
+      "sourceTs": "sdt_test_stream",
+      "sourceStagingPath": "D:\\Dvb\\ts_harvest\\tables\\TOT\\sdt_test_stream\\TOT_99_202605161429512123.tbl"
     }
   }
 }

@@ -87,7 +87,7 @@ function Invoke-StreamParserHarvest {
     }
 
     Write-Host ">> $DecodeType : $(Split-Path -Leaf $TsFile)"
-    & $Exe @args
+    $null = & $Exe @args 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "StreamParser exited with code $LASTEXITCODE for $DecodeType / $(Split-Path -Leaf $TsFile)"
         return @{ Ok = $false; Skipped = $false }

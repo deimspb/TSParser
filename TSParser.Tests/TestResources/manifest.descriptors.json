@@ -1,8 +1,2127 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-16T10:53:11.8677173+00:00",
-  "blessedAt": "2026-05-16T10:53:11.8677987+00:00",
-  "fixturesRoot": "D:\\OneDrive\\VisualStudio2017\\TSParser\\TSParser.Tests\\TestResources",
-  "types": {},
-  "descriptors": {}
+  "generatedAt": "2026-05-16T11:03:20.7543044+00:00",
+  "blessedAt": "2026-05-16T11:03:21.9133997+00:00",
+  "fixturesRoot": "d:\\OneDrive\\VisualStudio2017\\TSParser\\TSParser.Tests\\TestResources",
+  "stagingRoot": "D:\\Dvb\\ts_harvest\\descriptors",
+  "types": {
+    "Dvb_09": {
+      "samples": 4
+    },
+    "Dvb_0A": {
+      "samples": 3
+    },
+    "Dvb_13": {
+      "samples": 3
+    },
+    "Dvb_14": {
+      "samples": 3
+    },
+    "Dvb_40": {
+      "samples": 1
+    },
+    "Dvb_41": {
+      "samples": 4
+    },
+    "Dvb_43": {
+      "samples": 4
+    },
+    "Dvb_47": {
+      "samples": 4
+    },
+    "Dvb_48": {
+      "samples": 4
+    },
+    "Dvb_4A": {
+      "samples": 4
+    },
+    "Dvb_4D": {
+      "samples": 4
+    },
+    "Dvb_4E": {
+      "samples": 4
+    },
+    "Dvb_52": {
+      "samples": 4
+    },
+    "Dvb_54": {
+      "samples": 4
+    },
+    "Dvb_55": {
+      "samples": 4
+    },
+    "Dvb_56": {
+      "samples": 2
+    },
+    "Dvb_5C": {
+      "samples": 4
+    },
+    "Dvb_64": {
+      "samples": 4
+    },
+    "Dvb_66": {
+      "samples": 4
+    },
+    "Dvb_6A": {
+      "samples": 1
+    },
+    "Dvb_7F_ext00": {
+      "samples": 4
+    },
+    "Dvb_7F_ext11": {
+      "samples": 1
+    },
+    "Dvb_86": {
+      "samples": 4
+    },
+    "Dvb_87": {
+      "samples": 4
+    },
+    "Dvb_88": {
+      "samples": 4
+    },
+    "Dvb_89": {
+      "samples": 3
+    },
+    "Dvb_90": {
+      "samples": 4
+    },
+    "Dvb_91": {
+      "samples": 4
+    },
+    "Dvb_B0": {
+      "samples": 4
+    },
+    "Dvb_B1": {
+      "samples": 3
+    },
+    "Dvb_B2": {
+      "samples": 2
+    },
+    "Dvb_B3": {
+      "samples": 2
+    },
+    "Dvb_B4": {
+      "samples": 2
+    },
+    "Dvb_C0": {
+      "samples": 4
+    },
+    "Dvb_FE": {
+      "samples": 4
+    }
+  },
+  "descriptors": {
+    "Descriptors/Dvb_09/Dvb_09_L.desc": {
+      "relativePath": "Descriptors/Dvb_09/Dvb_09_L.desc",
+      "group": "Dvb_09",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x09",
+      "size": 12,
+      "crc32": "0x15CAFBFF",
+      "clrType": "CaDescriptorCustom_0x09",
+      "expected": {
+        "clrType": "CaDescriptorCustom_0x09",
+        "tag": "0x09",
+        "descriptorLength": 10,
+        "descriptorTotalLength": 12,
+        "descriptorName": "Conditional access system and EMM/ECM PID"
+      }
+    },
+    "Descriptors/Dvb_09/Dvb_09_M1.desc": {
+      "relativePath": "Descriptors/Dvb_09/Dvb_09_M1.desc",
+      "group": "Dvb_09",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x09",
+      "size": 8,
+      "crc32": "0x7BB30FFB",
+      "clrType": "CaDescriptorCustom_0x09",
+      "expected": {
+        "clrType": "CaDescriptorCustom_0x09",
+        "tag": "0x09",
+        "descriptorLength": 6,
+        "descriptorTotalLength": 8,
+        "descriptorName": "Conditional access system and EMM/ECM PID"
+      }
+    },
+    "Descriptors/Dvb_09/Dvb_09_M2.desc": {
+      "relativePath": "Descriptors/Dvb_09/Dvb_09_M2.desc",
+      "group": "Dvb_09",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x09",
+      "size": 12,
+      "crc32": "0xE160BA0B",
+      "clrType": "CaDescriptorCustom_0x09",
+      "expected": {
+        "clrType": "CaDescriptorCustom_0x09",
+        "tag": "0x09",
+        "descriptorLength": 10,
+        "descriptorTotalLength": 12,
+        "descriptorName": "Conditional access system and EMM/ECM PID"
+      }
+    },
+    "Descriptors/Dvb_09/Dvb_09_S.desc": {
+      "relativePath": "Descriptors/Dvb_09/Dvb_09_S.desc",
+      "group": "Dvb_09",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x09",
+      "size": 7,
+      "crc32": "0xF3527C13",
+      "clrType": "CaDescriptorCustom_0x09",
+      "expected": {
+        "clrType": "CaDescriptorCustom_0x09",
+        "tag": "0x09",
+        "descriptorLength": 5,
+        "descriptorTotalLength": 7,
+        "descriptorName": "Conditional access system and EMM/ECM PID"
+      }
+    },
+    "Descriptors/Dvb_0A/Dvb_0A_M1.desc": {
+      "relativePath": "Descriptors/Dvb_0A/Dvb_0A_M1.desc",
+      "group": "Dvb_0A",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x0A",
+      "size": 6,
+      "crc32": "0x81D4387E",
+      "clrType": "Iso639LanguageDescriptor_0x0A",
+      "expected": {
+        "clrType": "Iso639LanguageDescriptor_0x0A",
+        "tag": "0x0A",
+        "descriptorLength": 4,
+        "descriptorTotalLength": 6,
+        "descriptorName": "ISO 639 language and audio type"
+      }
+    },
+    "Descriptors/Dvb_0A/Dvb_0A_M2.desc": {
+      "relativePath": "Descriptors/Dvb_0A/Dvb_0A_M2.desc",
+      "group": "Dvb_0A",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x0A",
+      "size": 6,
+      "crc32": "0x72C7CC9C",
+      "clrType": "Iso639LanguageDescriptor_0x0A",
+      "expected": {
+        "clrType": "Iso639LanguageDescriptor_0x0A",
+        "tag": "0x0A",
+        "descriptorLength": 4,
+        "descriptorTotalLength": 6,
+        "descriptorName": "ISO 639 language and audio type"
+      }
+    },
+    "Descriptors/Dvb_0A/Dvb_0A_S.desc": {
+      "relativePath": "Descriptors/Dvb_0A/Dvb_0A_S.desc",
+      "group": "Dvb_0A",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x0A",
+      "size": 6,
+      "crc32": "0xD0076A02",
+      "clrType": "Iso639LanguageDescriptor_0x0A",
+      "expected": {
+        "clrType": "Iso639LanguageDescriptor_0x0A",
+        "tag": "0x0A",
+        "descriptorLength": 4,
+        "descriptorTotalLength": 6,
+        "descriptorName": "ISO 639 language and audio type"
+      }
+    },
+    "Descriptors/Dvb_13/Dvb_13_M1.desc": {
+      "relativePath": "Descriptors/Dvb_13/Dvb_13_M1.desc",
+      "group": "Dvb_13",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x13",
+      "size": 7,
+      "crc32": "0x210D8434",
+      "clrType": "CarouselIdentifierDescriptor_0x13",
+      "expected": {
+        "clrType": "CarouselIdentifierDescriptor_0x13",
+        "tag": "0x13",
+        "descriptorLength": 5,
+        "descriptorTotalLength": 7,
+        "descriptorName": "ISO/IEC13818-6 DSM CC carousel identifier"
+      }
+    },
+    "Descriptors/Dvb_13/Dvb_13_M2.desc": {
+      "relativePath": "Descriptors/Dvb_13/Dvb_13_M2.desc",
+      "group": "Dvb_13",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x13",
+      "size": 7,
+      "crc32": "0x828CF9DF",
+      "clrType": "CarouselIdentifierDescriptor_0x13",
+      "expected": {
+        "clrType": "CarouselIdentifierDescriptor_0x13",
+        "tag": "0x13",
+        "descriptorLength": 5,
+        "descriptorTotalLength": 7,
+        "descriptorName": "ISO/IEC13818-6 DSM CC carousel identifier"
+      }
+    },
+    "Descriptors/Dvb_13/Dvb_13_S.desc": {
+      "relativePath": "Descriptors/Dvb_13/Dvb_13_S.desc",
+      "group": "Dvb_13",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x13",
+      "size": 7,
+      "crc32": "0xA9A1AA1C",
+      "clrType": "CarouselIdentifierDescriptor_0x13",
+      "expected": {
+        "clrType": "CarouselIdentifierDescriptor_0x13",
+        "tag": "0x13",
+        "descriptorLength": 5,
+        "descriptorTotalLength": 7,
+        "descriptorName": "ISO/IEC13818-6 DSM CC carousel identifier"
+      }
+    },
+    "Descriptors/Dvb_14/Dvb_14_M1.desc": {
+      "relativePath": "Descriptors/Dvb_14/Dvb_14_M1.desc",
+      "group": "Dvb_14",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x14",
+      "size": 15,
+      "crc32": "0xCF8CB236",
+      "clrType": "AssociationTagDescriptor_0x14",
+      "expected": {
+        "clrType": "AssociationTagDescriptor_0x14",
+        "tag": "0x14",
+        "descriptorLength": 13,
+        "descriptorTotalLength": 15,
+        "descriptorName": "ISO/IEC13818-6 DSM CC association tag"
+      }
+    },
+    "Descriptors/Dvb_14/Dvb_14_M2.desc": {
+      "relativePath": "Descriptors/Dvb_14/Dvb_14_M2.desc",
+      "group": "Dvb_14",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x14",
+      "size": 15,
+      "crc32": "0xB81260C6",
+      "clrType": "AssociationTagDescriptor_0x14",
+      "expected": {
+        "clrType": "AssociationTagDescriptor_0x14",
+        "tag": "0x14",
+        "descriptorLength": 13,
+        "descriptorTotalLength": 15,
+        "descriptorName": "ISO/IEC13818-6 DSM CC association tag"
+      }
+    },
+    "Descriptors/Dvb_14/Dvb_14_S.desc": {
+      "relativePath": "Descriptors/Dvb_14/Dvb_14_S.desc",
+      "group": "Dvb_14",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x14",
+      "size": 15,
+      "crc32": "0x539DC826",
+      "clrType": "AssociationTagDescriptor_0x14",
+      "expected": {
+        "clrType": "AssociationTagDescriptor_0x14",
+        "tag": "0x14",
+        "descriptorLength": 13,
+        "descriptorTotalLength": 15,
+        "descriptorName": "ISO/IEC13818-6 DSM CC association tag"
+      }
+    },
+    "Descriptors/Dvb_40/Dvb_40_S.desc": {
+      "relativePath": "Descriptors/Dvb_40/Dvb_40_S.desc",
+      "group": "Dvb_40",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x40",
+      "size": 12,
+      "crc32": "0x7FC619AB",
+      "clrType": "NetworkNameDescriptor_0x40",
+      "expected": {
+        "clrType": "NetworkNameDescriptor_0x40",
+        "tag": "0x40",
+        "descriptorLength": 10,
+        "descriptorTotalLength": 12,
+        "descriptorName": "Network Name"
+      }
+    },
+    "Descriptors/Dvb_41/Dvb_41_L.desc": {
+      "relativePath": "Descriptors/Dvb_41/Dvb_41_L.desc",
+      "group": "Dvb_41",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x41",
+      "size": 254,
+      "crc32": "0x50D77289",
+      "clrType": "ServiceListDescriptor_0x41",
+      "expected": {
+        "clrType": "ServiceListDescriptor_0x41",
+        "tag": "0x41",
+        "descriptorLength": 252,
+        "descriptorTotalLength": 254,
+        "descriptorName": "Service List"
+      }
+    },
+    "Descriptors/Dvb_41/Dvb_41_M1.desc": {
+      "relativePath": "Descriptors/Dvb_41/Dvb_41_M1.desc",
+      "group": "Dvb_41",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x41",
+      "size": 38,
+      "crc32": "0xB71B6024",
+      "clrType": "ServiceListDescriptor_0x41",
+      "expected": {
+        "clrType": "ServiceListDescriptor_0x41",
+        "tag": "0x41",
+        "descriptorLength": 36,
+        "descriptorTotalLength": 38,
+        "descriptorName": "Service List"
+      }
+    },
+    "Descriptors/Dvb_41/Dvb_41_M2.desc": {
+      "relativePath": "Descriptors/Dvb_41/Dvb_41_M2.desc",
+      "group": "Dvb_41",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x41",
+      "size": 134,
+      "crc32": "0xC03BDBFC",
+      "clrType": "ServiceListDescriptor_0x41",
+      "expected": {
+        "clrType": "ServiceListDescriptor_0x41",
+        "tag": "0x41",
+        "descriptorLength": 132,
+        "descriptorTotalLength": 134,
+        "descriptorName": "Service List"
+      }
+    },
+    "Descriptors/Dvb_41/Dvb_41_S.desc": {
+      "relativePath": "Descriptors/Dvb_41/Dvb_41_S.desc",
+      "group": "Dvb_41",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x41",
+      "size": 8,
+      "crc32": "0xAE9DEC4B",
+      "clrType": "ServiceListDescriptor_0x41",
+      "expected": {
+        "clrType": "ServiceListDescriptor_0x41",
+        "tag": "0x41",
+        "descriptorLength": 6,
+        "descriptorTotalLength": 8,
+        "descriptorName": "Service List"
+      }
+    },
+    "Descriptors/Dvb_43/Dvb_43_L.desc": {
+      "relativePath": "Descriptors/Dvb_43/Dvb_43_L.desc",
+      "group": "Dvb_43",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x43",
+      "size": 13,
+      "crc32": "0xE70A68FD",
+      "clrType": "SatelliteDeliverySystemDescriptor_0x43",
+      "expected": {
+        "clrType": "SatelliteDeliverySystemDescriptor_0x43",
+        "tag": "0x43",
+        "descriptorLength": 11,
+        "descriptorTotalLength": 13,
+        "descriptorName": "Satellite Delivery System"
+      }
+    },
+    "Descriptors/Dvb_43/Dvb_43_M1.desc": {
+      "relativePath": "Descriptors/Dvb_43/Dvb_43_M1.desc",
+      "group": "Dvb_43",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x43",
+      "size": 13,
+      "crc32": "0x3F1C2044",
+      "clrType": "SatelliteDeliverySystemDescriptor_0x43",
+      "expected": {
+        "clrType": "SatelliteDeliverySystemDescriptor_0x43",
+        "tag": "0x43",
+        "descriptorLength": 11,
+        "descriptorTotalLength": 13,
+        "descriptorName": "Satellite Delivery System"
+      }
+    },
+    "Descriptors/Dvb_43/Dvb_43_M2.desc": {
+      "relativePath": "Descriptors/Dvb_43/Dvb_43_M2.desc",
+      "group": "Dvb_43",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x43",
+      "size": 13,
+      "crc32": "0xAC962293",
+      "clrType": "SatelliteDeliverySystemDescriptor_0x43",
+      "expected": {
+        "clrType": "SatelliteDeliverySystemDescriptor_0x43",
+        "tag": "0x43",
+        "descriptorLength": 11,
+        "descriptorTotalLength": 13,
+        "descriptorName": "Satellite Delivery System"
+      }
+    },
+    "Descriptors/Dvb_43/Dvb_43_S.desc": {
+      "relativePath": "Descriptors/Dvb_43/Dvb_43_S.desc",
+      "group": "Dvb_43",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x43",
+      "size": 13,
+      "crc32": "0x1CBB7F09",
+      "clrType": "SatelliteDeliverySystemDescriptor_0x43",
+      "expected": {
+        "clrType": "SatelliteDeliverySystemDescriptor_0x43",
+        "tag": "0x43",
+        "descriptorLength": 11,
+        "descriptorTotalLength": 13,
+        "descriptorName": "Satellite Delivery System"
+      }
+    },
+    "Descriptors/Dvb_47/Dvb_47_L.desc": {
+      "relativePath": "Descriptors/Dvb_47/Dvb_47_L.desc",
+      "group": "Dvb_47",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x47",
+      "size": 19,
+      "crc32": "0x57FD46D2",
+      "clrType": "BouquetNameDescriptor_0x47",
+      "expected": {
+        "clrType": "BouquetNameDescriptor_0x47",
+        "tag": "0x47",
+        "descriptorLength": 17,
+        "descriptorTotalLength": 19,
+        "descriptorName": "Bouquet Name"
+      }
+    },
+    "Descriptors/Dvb_47/Dvb_47_M1.desc": {
+      "relativePath": "Descriptors/Dvb_47/Dvb_47_M1.desc",
+      "group": "Dvb_47",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x47",
+      "size": 9,
+      "crc32": "0xE311D99F",
+      "clrType": "BouquetNameDescriptor_0x47",
+      "expected": {
+        "clrType": "BouquetNameDescriptor_0x47",
+        "tag": "0x47",
+        "descriptorLength": 7,
+        "descriptorTotalLength": 9,
+        "descriptorName": "Bouquet Name"
+      }
+    },
+    "Descriptors/Dvb_47/Dvb_47_M2.desc": {
+      "relativePath": "Descriptors/Dvb_47/Dvb_47_M2.desc",
+      "group": "Dvb_47",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x47",
+      "size": 13,
+      "crc32": "0x275441C8",
+      "clrType": "BouquetNameDescriptor_0x47",
+      "expected": {
+        "clrType": "BouquetNameDescriptor_0x47",
+        "tag": "0x47",
+        "descriptorLength": 11,
+        "descriptorTotalLength": 13,
+        "descriptorName": "Bouquet Name"
+      }
+    },
+    "Descriptors/Dvb_47/Dvb_47_S.desc": {
+      "relativePath": "Descriptors/Dvb_47/Dvb_47_S.desc",
+      "group": "Dvb_47",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x47",
+      "size": 4,
+      "crc32": "0x78DC0767",
+      "clrType": "BouquetNameDescriptor_0x47",
+      "expected": {
+        "clrType": "BouquetNameDescriptor_0x47",
+        "tag": "0x47",
+        "descriptorLength": 2,
+        "descriptorTotalLength": 4,
+        "descriptorName": "Bouquet Name"
+      }
+    },
+    "Descriptors/Dvb_48/Dvb_48_L.desc": {
+      "relativePath": "Descriptors/Dvb_48/Dvb_48_L.desc",
+      "group": "Dvb_48",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x48",
+      "size": 46,
+      "crc32": "0x48EF5C43",
+      "clrType": "ServiceDescriptor_0x48",
+      "expected": {
+        "clrType": "ServiceDescriptor_0x48",
+        "tag": "0x48",
+        "descriptorLength": 44,
+        "descriptorTotalLength": 46,
+        "descriptorName": "Service"
+      }
+    },
+    "Descriptors/Dvb_48/Dvb_48_M1.desc": {
+      "relativePath": "Descriptors/Dvb_48/Dvb_48_M1.desc",
+      "group": "Dvb_48",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x48",
+      "size": 21,
+      "crc32": "0xCBA3A1D",
+      "clrType": "ServiceDescriptor_0x48",
+      "expected": {
+        "clrType": "ServiceDescriptor_0x48",
+        "tag": "0x48",
+        "descriptorLength": 19,
+        "descriptorTotalLength": 21,
+        "descriptorName": "Service"
+      }
+    },
+    "Descriptors/Dvb_48/Dvb_48_M2.desc": {
+      "relativePath": "Descriptors/Dvb_48/Dvb_48_M2.desc",
+      "group": "Dvb_48",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x48",
+      "size": 26,
+      "crc32": "0x7ED36930",
+      "clrType": "ServiceDescriptor_0x48",
+      "expected": {
+        "clrType": "ServiceDescriptor_0x48",
+        "tag": "0x48",
+        "descriptorLength": 24,
+        "descriptorTotalLength": 26,
+        "descriptorName": "Service"
+      }
+    },
+    "Descriptors/Dvb_48/Dvb_48_S.desc": {
+      "relativePath": "Descriptors/Dvb_48/Dvb_48_S.desc",
+      "group": "Dvb_48",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x48",
+      "size": 15,
+      "crc32": "0x54D66A2E",
+      "clrType": "ServiceDescriptor_0x48",
+      "expected": {
+        "clrType": "ServiceDescriptor_0x48",
+        "tag": "0x48",
+        "descriptorLength": 13,
+        "descriptorTotalLength": 15,
+        "descriptorName": "Service"
+      }
+    },
+    "Descriptors/Dvb_4A/Dvb_4A_L.desc": {
+      "relativePath": "Descriptors/Dvb_4A/Dvb_4A_L.desc",
+      "group": "Dvb_4A",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x4A",
+      "size": 55,
+      "crc32": "0x5AA9EBF7",
+      "clrType": "LinkageDescriptor_0x4A",
+      "expected": {
+        "clrType": "LinkageDescriptor_0x4A",
+        "tag": "0x4A",
+        "descriptorLength": 53,
+        "descriptorTotalLength": 55,
+        "descriptorName": "Linkage"
+      }
+    },
+    "Descriptors/Dvb_4A/Dvb_4A_M1.desc": {
+      "relativePath": "Descriptors/Dvb_4A/Dvb_4A_M1.desc",
+      "group": "Dvb_4A",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x4A",
+      "size": 52,
+      "crc32": "0xCD1681E2",
+      "clrType": "LinkageDescriptor_0x4A",
+      "expected": {
+        "clrType": "LinkageDescriptor_0x4A",
+        "tag": "0x4A",
+        "descriptorLength": 50,
+        "descriptorTotalLength": 52,
+        "descriptorName": "Linkage"
+      }
+    },
+    "Descriptors/Dvb_4A/Dvb_4A_M2.desc": {
+      "relativePath": "Descriptors/Dvb_4A/Dvb_4A_M2.desc",
+      "group": "Dvb_4A",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x4A",
+      "size": 55,
+      "crc32": "0x576DD08B",
+      "clrType": "LinkageDescriptor_0x4A",
+      "expected": {
+        "clrType": "LinkageDescriptor_0x4A",
+        "tag": "0x4A",
+        "descriptorLength": 53,
+        "descriptorTotalLength": 55,
+        "descriptorName": "Linkage"
+      }
+    },
+    "Descriptors/Dvb_4A/Dvb_4A_S.desc": {
+      "relativePath": "Descriptors/Dvb_4A/Dvb_4A_S.desc",
+      "group": "Dvb_4A",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x4A",
+      "size": 17,
+      "crc32": "0xFEA937B2",
+      "clrType": "LinkageDescriptor_0x4A",
+      "expected": {
+        "clrType": "LinkageDescriptor_0x4A",
+        "tag": "0x4A",
+        "descriptorLength": 15,
+        "descriptorTotalLength": 17,
+        "descriptorName": "Linkage"
+      }
+    },
+    "Descriptors/Dvb_4D/Dvb_4D_L.desc": {
+      "relativePath": "Descriptors/Dvb_4D/Dvb_4D_L.desc",
+      "group": "Dvb_4D",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x4D",
+      "size": 179,
+      "crc32": "0xCA677DEA",
+      "clrType": "ShortEventDescriptor_0x4D",
+      "expected": {
+        "clrType": "ShortEventDescriptor_0x4D",
+        "tag": "0x4D",
+        "descriptorLength": 177,
+        "descriptorTotalLength": 179,
+        "descriptorName": "Short Event"
+      }
+    },
+    "Descriptors/Dvb_4D/Dvb_4D_M1.desc": {
+      "relativePath": "Descriptors/Dvb_4D/Dvb_4D_M1.desc",
+      "group": "Dvb_4D",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x4D",
+      "size": 46,
+      "crc32": "0xA4F5A1F2",
+      "clrType": "ShortEventDescriptor_0x4D",
+      "expected": {
+        "clrType": "ShortEventDescriptor_0x4D",
+        "tag": "0x4D",
+        "descriptorLength": 44,
+        "descriptorTotalLength": 46,
+        "descriptorName": "Short Event"
+      }
+    },
+    "Descriptors/Dvb_4D/Dvb_4D_M2.desc": {
+      "relativePath": "Descriptors/Dvb_4D/Dvb_4D_M2.desc",
+      "group": "Dvb_4D",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x4D",
+      "size": 64,
+      "crc32": "0xFE88EE74",
+      "clrType": "ShortEventDescriptor_0x4D",
+      "expected": {
+        "clrType": "ShortEventDescriptor_0x4D",
+        "tag": "0x4D",
+        "descriptorLength": 62,
+        "descriptorTotalLength": 64,
+        "descriptorName": "Short Event"
+      }
+    },
+    "Descriptors/Dvb_4D/Dvb_4D_S.desc": {
+      "relativePath": "Descriptors/Dvb_4D/Dvb_4D_S.desc",
+      "group": "Dvb_4D",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x4D",
+      "size": 11,
+      "crc32": "0xD1B8ED6A",
+      "clrType": "ShortEventDescriptor_0x4D",
+      "expected": {
+        "clrType": "ShortEventDescriptor_0x4D",
+        "tag": "0x4D",
+        "descriptorLength": 9,
+        "descriptorTotalLength": 11,
+        "descriptorName": "Short Event"
+      }
+    },
+    "Descriptors/Dvb_4E/Dvb_4E_L.desc": {
+      "relativePath": "Descriptors/Dvb_4E/Dvb_4E_L.desc",
+      "group": "Dvb_4E",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x4E",
+      "size": 249,
+      "crc32": "0x6ACEFAFF",
+      "clrType": "ExtendedEventDescriptor_0x4E",
+      "expected": {
+        "clrType": "ExtendedEventDescriptor_0x4E",
+        "tag": "0x4E",
+        "descriptorLength": 247,
+        "descriptorTotalLength": 249,
+        "descriptorName": "Extended Event"
+      }
+    },
+    "Descriptors/Dvb_4E/Dvb_4E_M1.desc": {
+      "relativePath": "Descriptors/Dvb_4E/Dvb_4E_M1.desc",
+      "group": "Dvb_4E",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x4E",
+      "size": 105,
+      "crc32": "0x26CDD27C",
+      "clrType": "ExtendedEventDescriptor_0x4E",
+      "expected": {
+        "clrType": "ExtendedEventDescriptor_0x4E",
+        "tag": "0x4E",
+        "descriptorLength": 103,
+        "descriptorTotalLength": 105,
+        "descriptorName": "Extended Event"
+      }
+    },
+    "Descriptors/Dvb_4E/Dvb_4E_M2.desc": {
+      "relativePath": "Descriptors/Dvb_4E/Dvb_4E_M2.desc",
+      "group": "Dvb_4E",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x4E",
+      "size": 211,
+      "crc32": "0x53B08940",
+      "clrType": "ExtendedEventDescriptor_0x4E",
+      "expected": {
+        "clrType": "ExtendedEventDescriptor_0x4E",
+        "tag": "0x4E",
+        "descriptorLength": 209,
+        "descriptorTotalLength": 211,
+        "descriptorName": "Extended Event"
+      }
+    },
+    "Descriptors/Dvb_4E/Dvb_4E_S.desc": {
+      "relativePath": "Descriptors/Dvb_4E/Dvb_4E_S.desc",
+      "group": "Dvb_4E",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x4E",
+      "size": 10,
+      "crc32": "0xABEEAA48",
+      "clrType": "ExtendedEventDescriptor_0x4E",
+      "expected": {
+        "clrType": "ExtendedEventDescriptor_0x4E",
+        "tag": "0x4E",
+        "descriptorLength": 8,
+        "descriptorTotalLength": 10,
+        "descriptorName": "Extended Event"
+      }
+    },
+    "Descriptors/Dvb_52/Dvb_52_L.desc": {
+      "relativePath": "Descriptors/Dvb_52/Dvb_52_L.desc",
+      "group": "Dvb_52",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x52",
+      "size": 3,
+      "crc32": "0x676C73A1",
+      "clrType": "StreamIdentifierDescriptor_0x52",
+      "expected": {
+        "clrType": "StreamIdentifierDescriptor_0x52",
+        "tag": "0x52",
+        "descriptorLength": 1,
+        "descriptorTotalLength": 3,
+        "descriptorName": "Stream Identifier"
+      }
+    },
+    "Descriptors/Dvb_52/Dvb_52_M1.desc": {
+      "relativePath": "Descriptors/Dvb_52/Dvb_52_M1.desc",
+      "group": "Dvb_52",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x52",
+      "size": 3,
+      "crc32": "0xFE65221B",
+      "clrType": "StreamIdentifierDescriptor_0x52",
+      "expected": {
+        "clrType": "StreamIdentifierDescriptor_0x52",
+        "tag": "0x52",
+        "descriptorLength": 1,
+        "descriptorTotalLength": 3,
+        "descriptorName": "Stream Identifier"
+      }
+    },
+    "Descriptors/Dvb_52/Dvb_52_M2.desc": {
+      "relativePath": "Descriptors/Dvb_52/Dvb_52_M2.desc",
+      "group": "Dvb_52",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x52",
+      "size": 3,
+      "crc32": "0x8E0FD694",
+      "clrType": "StreamIdentifierDescriptor_0x52",
+      "expected": {
+        "clrType": "StreamIdentifierDescriptor_0x52",
+        "tag": "0x52",
+        "descriptorLength": 1,
+        "descriptorTotalLength": 3,
+        "descriptorName": "Stream Identifier"
+      }
+    },
+    "Descriptors/Dvb_52/Dvb_52_S.desc": {
+      "relativePath": "Descriptors/Dvb_52/Dvb_52_S.desc",
+      "group": "Dvb_52",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x52",
+      "size": 3,
+      "crc32": "0xF908E602",
+      "clrType": "StreamIdentifierDescriptor_0x52",
+      "expected": {
+        "clrType": "StreamIdentifierDescriptor_0x52",
+        "tag": "0x52",
+        "descriptorLength": 1,
+        "descriptorTotalLength": 3,
+        "descriptorName": "Stream Identifier"
+      }
+    },
+    "Descriptors/Dvb_54/Dvb_54_L.desc": {
+      "relativePath": "Descriptors/Dvb_54/Dvb_54_L.desc",
+      "group": "Dvb_54",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x54",
+      "size": 4,
+      "crc32": "0x2C6D81D6",
+      "clrType": "ContentDescriptor_0x54",
+      "expected": {
+        "clrType": "ContentDescriptor_0x54",
+        "tag": "0x54",
+        "descriptorLength": 2,
+        "descriptorTotalLength": 4,
+        "descriptorName": "Content"
+      }
+    },
+    "Descriptors/Dvb_54/Dvb_54_M1.desc": {
+      "relativePath": "Descriptors/Dvb_54/Dvb_54_M1.desc",
+      "group": "Dvb_54",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x54",
+      "size": 4,
+      "crc32": "0x1A49C961",
+      "clrType": "ContentDescriptor_0x54",
+      "expected": {
+        "clrType": "ContentDescriptor_0x54",
+        "tag": "0x54",
+        "descriptorLength": 2,
+        "descriptorTotalLength": 4,
+        "descriptorName": "Content"
+      }
+    },
+    "Descriptors/Dvb_54/Dvb_54_M2.desc": {
+      "relativePath": "Descriptors/Dvb_54/Dvb_54_M2.desc",
+      "group": "Dvb_54",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x54",
+      "size": 4,
+      "crc32": "0x3576B097",
+      "clrType": "ContentDescriptor_0x54",
+      "expected": {
+        "clrType": "ContentDescriptor_0x54",
+        "tag": "0x54",
+        "descriptorLength": 2,
+        "descriptorTotalLength": 4,
+        "descriptorName": "Content"
+      }
+    },
+    "Descriptors/Dvb_54/Dvb_54_S.desc": {
+      "relativePath": "Descriptors/Dvb_54/Dvb_54_S.desc",
+      "group": "Dvb_54",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x54",
+      "size": 4,
+      "crc32": "0x632C1711",
+      "clrType": "ContentDescriptor_0x54",
+      "expected": {
+        "clrType": "ContentDescriptor_0x54",
+        "tag": "0x54",
+        "descriptorLength": 2,
+        "descriptorTotalLength": 4,
+        "descriptorName": "Content"
+      }
+    },
+    "Descriptors/Dvb_55/Dvb_55_L.desc": {
+      "relativePath": "Descriptors/Dvb_55/Dvb_55_L.desc",
+      "group": "Dvb_55",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x55",
+      "size": 6,
+      "crc32": "0x82E4BBC2",
+      "clrType": "ParentalRatingDescriptor_0x55",
+      "expected": {
+        "clrType": "ParentalRatingDescriptor_0x55",
+        "tag": "0x55",
+        "descriptorLength": 4,
+        "descriptorTotalLength": 6,
+        "descriptorName": "Parental Rating"
+      }
+    },
+    "Descriptors/Dvb_55/Dvb_55_M1.desc": {
+      "relativePath": "Descriptors/Dvb_55/Dvb_55_M1.desc",
+      "group": "Dvb_55",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x55",
+      "size": 6,
+      "crc32": "0xFB380366",
+      "clrType": "ParentalRatingDescriptor_0x55",
+      "expected": {
+        "clrType": "ParentalRatingDescriptor_0x55",
+        "tag": "0x55",
+        "descriptorLength": 4,
+        "descriptorTotalLength": 6,
+        "descriptorName": "Parental Rating"
+      }
+    },
+    "Descriptors/Dvb_55/Dvb_55_M2.desc": {
+      "relativePath": "Descriptors/Dvb_55/Dvb_55_M2.desc",
+      "group": "Dvb_55",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x55",
+      "size": 6,
+      "crc32": "0xFC55C77F",
+      "clrType": "ParentalRatingDescriptor_0x55",
+      "expected": {
+        "clrType": "ParentalRatingDescriptor_0x55",
+        "tag": "0x55",
+        "descriptorLength": 4,
+        "descriptorTotalLength": 6,
+        "descriptorName": "Parental Rating"
+      }
+    },
+    "Descriptors/Dvb_55/Dvb_55_S.desc": {
+      "relativePath": "Descriptors/Dvb_55/Dvb_55_S.desc",
+      "group": "Dvb_55",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x55",
+      "size": 6,
+      "crc32": "0x125BA653",
+      "clrType": "ParentalRatingDescriptor_0x55",
+      "expected": {
+        "clrType": "ParentalRatingDescriptor_0x55",
+        "tag": "0x55",
+        "descriptorLength": 4,
+        "descriptorTotalLength": 6,
+        "descriptorName": "Parental Rating"
+      }
+    },
+    "Descriptors/Dvb_56/Dvb_56_M1.desc": {
+      "relativePath": "Descriptors/Dvb_56/Dvb_56_M1.desc",
+      "group": "Dvb_56",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x56",
+      "size": 12,
+      "crc32": "0xEDD0A071",
+      "clrType": "TeletextDescriptor_0x56",
+      "expected": {
+        "clrType": "TeletextDescriptor_0x56",
+        "tag": "0x56",
+        "descriptorLength": 10,
+        "descriptorTotalLength": 12,
+        "descriptorName": "Teletext"
+      }
+    },
+    "Descriptors/Dvb_56/Dvb_56_S.desc": {
+      "relativePath": "Descriptors/Dvb_56/Dvb_56_S.desc",
+      "group": "Dvb_56",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x56",
+      "size": 7,
+      "crc32": "0xAD41BE0B",
+      "clrType": "TeletextDescriptor_0x56",
+      "expected": {
+        "clrType": "TeletextDescriptor_0x56",
+        "tag": "0x56",
+        "descriptorLength": 5,
+        "descriptorTotalLength": 7,
+        "descriptorName": "Teletext"
+      }
+    },
+    "Descriptors/Dvb_5C/Dvb_5C_L.desc": {
+      "relativePath": "Descriptors/Dvb_5C/Dvb_5C_L.desc",
+      "group": "Dvb_5C",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x5C",
+      "size": 22,
+      "crc32": "0x82B09D07",
+      "clrType": "MultilingualBouquetNameDescriptor_0x5C",
+      "expected": {
+        "clrType": "MultilingualBouquetNameDescriptor_0x5C",
+        "tag": "0x5C",
+        "descriptorLength": 20,
+        "descriptorTotalLength": 22,
+        "descriptorName": "Multilingual Bouquet Name"
+      }
+    },
+    "Descriptors/Dvb_5C/Dvb_5C_M1.desc": {
+      "relativePath": "Descriptors/Dvb_5C/Dvb_5C_M1.desc",
+      "group": "Dvb_5C",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x5C",
+      "size": 18,
+      "crc32": "0x946A8717",
+      "clrType": "MultilingualBouquetNameDescriptor_0x5C",
+      "expected": {
+        "clrType": "MultilingualBouquetNameDescriptor_0x5C",
+        "tag": "0x5C",
+        "descriptorLength": 16,
+        "descriptorTotalLength": 18,
+        "descriptorName": "Multilingual Bouquet Name"
+      }
+    },
+    "Descriptors/Dvb_5C/Dvb_5C_M2.desc": {
+      "relativePath": "Descriptors/Dvb_5C/Dvb_5C_M2.desc",
+      "group": "Dvb_5C",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x5C",
+      "size": 21,
+      "crc32": "0xB1492157",
+      "clrType": "MultilingualBouquetNameDescriptor_0x5C",
+      "expected": {
+        "clrType": "MultilingualBouquetNameDescriptor_0x5C",
+        "tag": "0x5C",
+        "descriptorLength": 19,
+        "descriptorTotalLength": 21,
+        "descriptorName": "Multilingual Bouquet Name"
+      }
+    },
+    "Descriptors/Dvb_5C/Dvb_5C_S.desc": {
+      "relativePath": "Descriptors/Dvb_5C/Dvb_5C_S.desc",
+      "group": "Dvb_5C",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x5C",
+      "size": 9,
+      "crc32": "0xBCA6EDE7",
+      "clrType": "MultilingualBouquetNameDescriptor_0x5C",
+      "expected": {
+        "clrType": "MultilingualBouquetNameDescriptor_0x5C",
+        "tag": "0x5C",
+        "descriptorLength": 7,
+        "descriptorTotalLength": 9,
+        "descriptorName": "Multilingual Bouquet Name"
+      }
+    },
+    "Descriptors/Dvb_64/Dvb_64_L.desc": {
+      "relativePath": "Descriptors/Dvb_64/Dvb_64_L.desc",
+      "group": "Dvb_64",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x64",
+      "size": 28,
+      "crc32": "0xD3D842F1",
+      "clrType": "DataBroadcastDescriptor_0x64",
+      "expected": {
+        "clrType": "DataBroadcastDescriptor_0x64",
+        "tag": "0x64",
+        "descriptorLength": 26,
+        "descriptorTotalLength": 28,
+        "descriptorName": "Data Broadcast Descriptor"
+      }
+    },
+    "Descriptors/Dvb_64/Dvb_64_M1.desc": {
+      "relativePath": "Descriptors/Dvb_64/Dvb_64_M1.desc",
+      "group": "Dvb_64",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x64",
+      "size": 28,
+      "crc32": "0x732C1642",
+      "clrType": "DataBroadcastDescriptor_0x64",
+      "expected": {
+        "clrType": "DataBroadcastDescriptor_0x64",
+        "tag": "0x64",
+        "descriptorLength": 26,
+        "descriptorTotalLength": 28,
+        "descriptorName": "Data Broadcast Descriptor"
+      }
+    },
+    "Descriptors/Dvb_64/Dvb_64_M2.desc": {
+      "relativePath": "Descriptors/Dvb_64/Dvb_64_M2.desc",
+      "group": "Dvb_64",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x64",
+      "size": 28,
+      "crc32": "0xBAFF4287",
+      "clrType": "DataBroadcastDescriptor_0x64",
+      "expected": {
+        "clrType": "DataBroadcastDescriptor_0x64",
+        "tag": "0x64",
+        "descriptorLength": 26,
+        "descriptorTotalLength": 28,
+        "descriptorName": "Data Broadcast Descriptor"
+      }
+    },
+    "Descriptors/Dvb_64/Dvb_64_S.desc": {
+      "relativePath": "Descriptors/Dvb_64/Dvb_64_S.desc",
+      "group": "Dvb_64",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x64",
+      "size": 28,
+      "crc32": "0x3D7FC519",
+      "clrType": "DataBroadcastDescriptor_0x64",
+      "expected": {
+        "clrType": "DataBroadcastDescriptor_0x64",
+        "tag": "0x64",
+        "descriptorLength": 26,
+        "descriptorTotalLength": 28,
+        "descriptorName": "Data Broadcast Descriptor"
+      }
+    },
+    "Descriptors/Dvb_66/Dvb_66_L.desc": {
+      "relativePath": "Descriptors/Dvb_66/Dvb_66_L.desc",
+      "group": "Dvb_66",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x66",
+      "size": 15,
+      "crc32": "0x8DF4EAFA",
+      "clrType": "DataBroadcastIdDescriptor_0x66",
+      "expected": {
+        "clrType": "DataBroadcastIdDescriptor_0x66",
+        "tag": "0x66",
+        "descriptorLength": 13,
+        "descriptorTotalLength": 15,
+        "descriptorName": "Data Broadcast"
+      }
+    },
+    "Descriptors/Dvb_66/Dvb_66_M1.desc": {
+      "relativePath": "Descriptors/Dvb_66/Dvb_66_M1.desc",
+      "group": "Dvb_66",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x66",
+      "size": 15,
+      "crc32": "0x534F743F",
+      "clrType": "DataBroadcastIdDescriptor_0x66",
+      "expected": {
+        "clrType": "DataBroadcastIdDescriptor_0x66",
+        "tag": "0x66",
+        "descriptorLength": 13,
+        "descriptorTotalLength": 15,
+        "descriptorName": "Data Broadcast"
+      }
+    },
+    "Descriptors/Dvb_66/Dvb_66_M2.desc": {
+      "relativePath": "Descriptors/Dvb_66/Dvb_66_M2.desc",
+      "group": "Dvb_66",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x66",
+      "size": 15,
+      "crc32": "0x232580B0",
+      "clrType": "DataBroadcastIdDescriptor_0x66",
+      "expected": {
+        "clrType": "DataBroadcastIdDescriptor_0x66",
+        "tag": "0x66",
+        "descriptorLength": 13,
+        "descriptorTotalLength": 15,
+        "descriptorName": "Data Broadcast"
+      }
+    },
+    "Descriptors/Dvb_66/Dvb_66_S.desc": {
+      "relativePath": "Descriptors/Dvb_66/Dvb_66_S.desc",
+      "group": "Dvb_66",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x66",
+      "size": 4,
+      "crc32": "0xA2E9360E",
+      "clrType": "DataBroadcastIdDescriptor_0x66",
+      "expected": {
+        "clrType": "DataBroadcastIdDescriptor_0x66",
+        "tag": "0x66",
+        "descriptorLength": 2,
+        "descriptorTotalLength": 4,
+        "descriptorName": "Data Broadcast"
+      }
+    },
+    "Descriptors/Dvb_6A/Dvb_6A_S.desc": {
+      "relativePath": "Descriptors/Dvb_6A/Dvb_6A_S.desc",
+      "group": "Dvb_6A",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x6A",
+      "size": 7,
+      "crc32": "0xFF61966F",
+      "clrType": "AC3Descriptor_0x6A",
+      "expected": {
+        "clrType": "AC3Descriptor_0x6A",
+        "tag": "0x6A",
+        "descriptorLength": 5,
+        "descriptorTotalLength": 7,
+        "descriptorName": "AC-3 / Dolby Digital"
+      }
+    },
+    "Descriptors/Dvb_7F_ext00/Dvb_7F_ext00_L.desc": {
+      "relativePath": "Descriptors/Dvb_7F_ext00/Dvb_7F_ext00_L.desc",
+      "group": "Dvb_7F_ext00",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x7F",
+      "extensionTag": "0x00",
+      "size": 84,
+      "crc32": "0xE728452",
+      "clrType": "ImageIconDescriptor_0x00",
+      "expected": {
+        "clrType": "ImageIconDescriptor_0x00",
+        "tag": "0x7F",
+        "descriptorLength": 82,
+        "descriptorTotalLength": 84,
+        "descriptorName": "Extension descriptor"
+      }
+    },
+    "Descriptors/Dvb_7F_ext00/Dvb_7F_ext00_M1.desc": {
+      "relativePath": "Descriptors/Dvb_7F_ext00/Dvb_7F_ext00_M1.desc",
+      "group": "Dvb_7F_ext00",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x7F",
+      "extensionTag": "0x00",
+      "size": 81,
+      "crc32": "0xFB3F48E1",
+      "clrType": "ImageIconDescriptor_0x00",
+      "expected": {
+        "clrType": "ImageIconDescriptor_0x00",
+        "tag": "0x7F",
+        "descriptorLength": 79,
+        "descriptorTotalLength": 81,
+        "descriptorName": "Extension descriptor"
+      }
+    },
+    "Descriptors/Dvb_7F_ext00/Dvb_7F_ext00_M2.desc": {
+      "relativePath": "Descriptors/Dvb_7F_ext00/Dvb_7F_ext00_M2.desc",
+      "group": "Dvb_7F_ext00",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x7F",
+      "extensionTag": "0x00",
+      "size": 83,
+      "crc32": "0xD7BD8C2A",
+      "clrType": "ImageIconDescriptor_0x00",
+      "expected": {
+        "clrType": "ImageIconDescriptor_0x00",
+        "tag": "0x7F",
+        "descriptorLength": 81,
+        "descriptorTotalLength": 83,
+        "descriptorName": "Extension descriptor"
+      }
+    },
+    "Descriptors/Dvb_7F_ext00/Dvb_7F_ext00_S.desc": {
+      "relativePath": "Descriptors/Dvb_7F_ext00/Dvb_7F_ext00_S.desc",
+      "group": "Dvb_7F_ext00",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x7F",
+      "extensionTag": "0x00",
+      "size": 81,
+      "crc32": "0x1BF1BB00",
+      "clrType": "ImageIconDescriptor_0x00",
+      "expected": {
+        "clrType": "ImageIconDescriptor_0x00",
+        "tag": "0x7F",
+        "descriptorLength": 79,
+        "descriptorTotalLength": 81,
+        "descriptorName": "Extension descriptor"
+      }
+    },
+    "Descriptors/Dvb_7F_ext11/Dvb_7F_ext11_S.desc": {
+      "relativePath": "Descriptors/Dvb_7F_ext11/Dvb_7F_ext11_S.desc",
+      "group": "Dvb_7F_ext11",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x7F",
+      "extensionTag": "0x11",
+      "size": 6,
+      "crc32": "0x5693888D",
+      "clrType": "ExtendedDescriptor",
+      "expected": {
+        "clrType": "ExtendedDescriptor",
+        "tag": "0x7F",
+        "descriptorLength": 4,
+        "descriptorTotalLength": 6,
+        "descriptorName": "Extension descriptor"
+      }
+    },
+    "Descriptors/Dvb_86/Dvb_86_L.desc": {
+      "relativePath": "Descriptors/Dvb_86/Dvb_86_L.desc",
+      "group": "Dvb_86",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x86",
+      "size": 236,
+      "crc32": "0xDEA1B3E8",
+      "clrType": "GnrDescriptor_0x86",
+      "expected": {
+        "clrType": "GnrDescriptor_0x86",
+        "tag": "0x86",
+        "descriptorLength": 234,
+        "descriptorTotalLength": 236,
+        "descriptorName": "GNR desciptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_86/Dvb_86_M1.desc": {
+      "relativePath": "Descriptors/Dvb_86/Dvb_86_M1.desc",
+      "group": "Dvb_86",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x86",
+      "size": 92,
+      "crc32": "0x4F2A3BFF",
+      "clrType": "GnrDescriptor_0x86",
+      "expected": {
+        "clrType": "GnrDescriptor_0x86",
+        "tag": "0x86",
+        "descriptorLength": 90,
+        "descriptorTotalLength": 92,
+        "descriptorName": "GNR desciptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_86/Dvb_86_M2.desc": {
+      "relativePath": "Descriptors/Dvb_86/Dvb_86_M2.desc",
+      "group": "Dvb_86",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x86",
+      "size": 170,
+      "crc32": "0x956176B",
+      "clrType": "GnrDescriptor_0x86",
+      "expected": {
+        "clrType": "GnrDescriptor_0x86",
+        "tag": "0x86",
+        "descriptorLength": 168,
+        "descriptorTotalLength": 170,
+        "descriptorName": "GNR desciptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_86/Dvb_86_S.desc": {
+      "relativePath": "Descriptors/Dvb_86/Dvb_86_S.desc",
+      "group": "Dvb_86",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x86",
+      "size": 32,
+      "crc32": "0xE34B9FAB",
+      "clrType": "GnrDescriptor_0x86",
+      "expected": {
+        "clrType": "GnrDescriptor_0x86",
+        "tag": "0x86",
+        "descriptorLength": 30,
+        "descriptorTotalLength": 32,
+        "descriptorName": "GNR desciptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_87/Dvb_87_L.desc": {
+      "relativePath": "Descriptors/Dvb_87/Dvb_87_L.desc",
+      "group": "Dvb_87",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x87",
+      "size": 228,
+      "crc32": "0x42F985B3",
+      "clrType": "LogicalChannelNumberDescriptorV2_0x87",
+      "expected": {
+        "clrType": "LogicalChannelNumberDescriptorV2_0x87",
+        "tag": "0x87",
+        "descriptorLength": 226,
+        "descriptorTotalLength": 228,
+        "descriptorName": "LCN descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_87/Dvb_87_M1.desc": {
+      "relativePath": "Descriptors/Dvb_87/Dvb_87_M1.desc",
+      "group": "Dvb_87",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x87",
+      "size": 130,
+      "crc32": "0x87EFE3CA",
+      "clrType": "LogicalChannelNumberDescriptorV2_0x87",
+      "expected": {
+        "clrType": "LogicalChannelNumberDescriptorV2_0x87",
+        "tag": "0x87",
+        "descriptorLength": 128,
+        "descriptorTotalLength": 130,
+        "descriptorName": "LCN descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_87/Dvb_87_M2.desc": {
+      "relativePath": "Descriptors/Dvb_87/Dvb_87_M2.desc",
+      "group": "Dvb_87",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x87",
+      "size": 191,
+      "crc32": "0x16D75201",
+      "clrType": "LogicalChannelNumberDescriptorV2_0x87",
+      "expected": {
+        "clrType": "LogicalChannelNumberDescriptorV2_0x87",
+        "tag": "0x87",
+        "descriptorLength": 189,
+        "descriptorTotalLength": 191,
+        "descriptorName": "LCN descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_87/Dvb_87_S.desc": {
+      "relativePath": "Descriptors/Dvb_87/Dvb_87_S.desc",
+      "group": "Dvb_87",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x87",
+      "size": 22,
+      "crc32": "0xDCAF7C3D",
+      "clrType": "LogicalChannelNumberDescriptorV2_0x87",
+      "expected": {
+        "clrType": "LogicalChannelNumberDescriptorV2_0x87",
+        "tag": "0x87",
+        "descriptorLength": 20,
+        "descriptorTotalLength": 22,
+        "descriptorName": "LCN descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_88/Dvb_88_L.desc": {
+      "relativePath": "Descriptors/Dvb_88/Dvb_88_L.desc",
+      "group": "Dvb_88",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x88",
+      "size": 30,
+      "crc32": "0xF0FAC813",
+      "clrType": "MultilingualRegionNameDescriptor_0x88",
+      "expected": {
+        "clrType": "MultilingualRegionNameDescriptor_0x88",
+        "tag": "0x88",
+        "descriptorLength": 28,
+        "descriptorTotalLength": 30,
+        "descriptorName": "Multilingual region name descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_88/Dvb_88_M1.desc": {
+      "relativePath": "Descriptors/Dvb_88/Dvb_88_M1.desc",
+      "group": "Dvb_88",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x88",
+      "size": 27,
+      "crc32": "0x62E66830",
+      "clrType": "MultilingualRegionNameDescriptor_0x88",
+      "expected": {
+        "clrType": "MultilingualRegionNameDescriptor_0x88",
+        "tag": "0x88",
+        "descriptorLength": 25,
+        "descriptorTotalLength": 27,
+        "descriptorName": "Multilingual region name descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_88/Dvb_88_M2.desc": {
+      "relativePath": "Descriptors/Dvb_88/Dvb_88_M2.desc",
+      "group": "Dvb_88",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x88",
+      "size": 30,
+      "crc32": "0xD9ABE10",
+      "clrType": "MultilingualRegionNameDescriptor_0x88",
+      "expected": {
+        "clrType": "MultilingualRegionNameDescriptor_0x88",
+        "tag": "0x88",
+        "descriptorLength": 28,
+        "descriptorTotalLength": 30,
+        "descriptorName": "Multilingual region name descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_88/Dvb_88_S.desc": {
+      "relativePath": "Descriptors/Dvb_88/Dvb_88_S.desc",
+      "group": "Dvb_88",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x88",
+      "size": 26,
+      "crc32": "0x13877769",
+      "clrType": "MultilingualRegionNameDescriptor_0x88",
+      "expected": {
+        "clrType": "MultilingualRegionNameDescriptor_0x88",
+        "tag": "0x88",
+        "descriptorLength": 24,
+        "descriptorTotalLength": 26,
+        "descriptorName": "Multilingual region name descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_89/Dvb_89_M1.desc": {
+      "relativePath": "Descriptors/Dvb_89/Dvb_89_M1.desc",
+      "group": "Dvb_89",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x89",
+      "size": 11,
+      "crc32": "0x510D221C",
+      "clrType": "EwsRegionDescriptor_0x89",
+      "expected": {
+        "clrType": "EwsRegionDescriptor_0x89",
+        "tag": "0x89",
+        "descriptorLength": 9,
+        "descriptorTotalLength": 11,
+        "descriptorName": "EwsReady Region descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_89/Dvb_89_M2.desc": {
+      "relativePath": "Descriptors/Dvb_89/Dvb_89_M2.desc",
+      "group": "Dvb_89",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x89",
+      "size": 11,
+      "crc32": "0xF83ABDC2",
+      "clrType": "EwsRegionDescriptor_0x89",
+      "expected": {
+        "clrType": "EwsRegionDescriptor_0x89",
+        "tag": "0x89",
+        "descriptorLength": 9,
+        "descriptorTotalLength": 11,
+        "descriptorName": "EwsReady Region descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_89/Dvb_89_S.desc": {
+      "relativePath": "Descriptors/Dvb_89/Dvb_89_S.desc",
+      "group": "Dvb_89",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x89",
+      "size": 11,
+      "crc32": "0x5B374607",
+      "clrType": "EwsRegionDescriptor_0x89",
+      "expected": {
+        "clrType": "EwsRegionDescriptor_0x89",
+        "tag": "0x89",
+        "descriptorLength": 9,
+        "descriptorTotalLength": 11,
+        "descriptorName": "EwsReady Region descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_90/Dvb_90_L.desc": {
+      "relativePath": "Descriptors/Dvb_90/Dvb_90_L.desc",
+      "group": "Dvb_90",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x90",
+      "size": 11,
+      "crc32": "0x486B28A1",
+      "clrType": "EwsZoneDescriptor_0x90",
+      "expected": {
+        "clrType": "EwsZoneDescriptor_0x90",
+        "tag": "0x90",
+        "descriptorLength": 9,
+        "descriptorTotalLength": 11,
+        "descriptorName": "EWS Zone descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_90/Dvb_90_M1.desc": {
+      "relativePath": "Descriptors/Dvb_90/Dvb_90_M1.desc",
+      "group": "Dvb_90",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x90",
+      "size": 11,
+      "crc32": "0x3E750460",
+      "clrType": "EwsZoneDescriptor_0x90",
+      "expected": {
+        "clrType": "EwsZoneDescriptor_0x90",
+        "tag": "0x90",
+        "descriptorLength": 9,
+        "descriptorTotalLength": 11,
+        "descriptorName": "EWS Zone descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_90/Dvb_90_M2.desc": {
+      "relativePath": "Descriptors/Dvb_90/Dvb_90_M2.desc",
+      "group": "Dvb_90",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x90",
+      "size": 11,
+      "crc32": "0x53F29E61",
+      "clrType": "EwsZoneDescriptor_0x90",
+      "expected": {
+        "clrType": "EwsZoneDescriptor_0x90",
+        "tag": "0x90",
+        "descriptorLength": 9,
+        "descriptorTotalLength": 11,
+        "descriptorName": "EWS Zone descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_90/Dvb_90_S.desc": {
+      "relativePath": "Descriptors/Dvb_90/Dvb_90_S.desc",
+      "group": "Dvb_90",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x90",
+      "size": 11,
+      "crc32": "0x9C876819",
+      "clrType": "EwsZoneDescriptor_0x90",
+      "expected": {
+        "clrType": "EwsZoneDescriptor_0x90",
+        "tag": "0x90",
+        "descriptorLength": 9,
+        "descriptorTotalLength": 11,
+        "descriptorName": "EWS Zone descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_91/Dvb_91_L.desc": {
+      "relativePath": "Descriptors/Dvb_91/Dvb_91_L.desc",
+      "group": "Dvb_91",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0x91",
+      "size": 19,
+      "crc32": "0x2247A8FF",
+      "clrType": "Descriptor",
+      "expected": {
+        "clrType": "Descriptor",
+        "tag": "0x91",
+        "descriptorLength": 17,
+        "descriptorTotalLength": 19,
+        "descriptorName": "ATSC"
+      }
+    },
+    "Descriptors/Dvb_91/Dvb_91_M1.desc": {
+      "relativePath": "Descriptors/Dvb_91/Dvb_91_M1.desc",
+      "group": "Dvb_91",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0x91",
+      "size": 19,
+      "crc32": "0x2A1B0355",
+      "clrType": "Descriptor",
+      "expected": {
+        "clrType": "Descriptor",
+        "tag": "0x91",
+        "descriptorLength": 17,
+        "descriptorTotalLength": 19,
+        "descriptorName": "ATSC"
+      }
+    },
+    "Descriptors/Dvb_91/Dvb_91_M2.desc": {
+      "relativePath": "Descriptors/Dvb_91/Dvb_91_M2.desc",
+      "group": "Dvb_91",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0x91",
+      "size": 19,
+      "crc32": "0xEBC301AA",
+      "clrType": "Descriptor",
+      "expected": {
+        "clrType": "Descriptor",
+        "tag": "0x91",
+        "descriptorLength": 17,
+        "descriptorTotalLength": 19,
+        "descriptorName": "ATSC"
+      }
+    },
+    "Descriptors/Dvb_91/Dvb_91_S.desc": {
+      "relativePath": "Descriptors/Dvb_91/Dvb_91_S.desc",
+      "group": "Dvb_91",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0x91",
+      "size": 19,
+      "crc32": "0x7901E800",
+      "clrType": "Descriptor",
+      "expected": {
+        "clrType": "Descriptor",
+        "tag": "0x91",
+        "descriptorLength": 17,
+        "descriptorTotalLength": 19,
+        "descriptorName": "ATSC"
+      }
+    },
+    "Descriptors/Dvb_B0/Dvb_B0_L.desc": {
+      "relativePath": "Descriptors/Dvb_B0/Dvb_B0_L.desc",
+      "group": "Dvb_B0",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0xB0",
+      "size": 12,
+      "crc32": "0x308DEDF2",
+      "clrType": "SettingsDescriptorV3_0xB0",
+      "expected": {
+        "clrType": "SettingsDescriptorV3_0xB0",
+        "tag": "0xB0",
+        "descriptorLength": 10,
+        "descriptorTotalLength": 12,
+        "descriptorName": "Settings descriptor v3 -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_B0/Dvb_B0_M1.desc": {
+      "relativePath": "Descriptors/Dvb_B0/Dvb_B0_M1.desc",
+      "group": "Dvb_B0",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0xB0",
+      "size": 12,
+      "crc32": "0xB6199F5C",
+      "clrType": "SettingsDescriptorV3_0xB0",
+      "expected": {
+        "clrType": "SettingsDescriptorV3_0xB0",
+        "tag": "0xB0",
+        "descriptorLength": 10,
+        "descriptorTotalLength": 12,
+        "descriptorName": "Settings descriptor v3 -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_B0/Dvb_B0_M2.desc": {
+      "relativePath": "Descriptors/Dvb_B0/Dvb_B0_M2.desc",
+      "group": "Dvb_B0",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0xB0",
+      "size": 12,
+      "crc32": "0x853848EA",
+      "clrType": "SettingsDescriptorV3_0xB0",
+      "expected": {
+        "clrType": "SettingsDescriptorV3_0xB0",
+        "tag": "0xB0",
+        "descriptorLength": 10,
+        "descriptorTotalLength": 12,
+        "descriptorName": "Settings descriptor v3 -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_B0/Dvb_B0_S.desc": {
+      "relativePath": "Descriptors/Dvb_B0/Dvb_B0_S.desc",
+      "group": "Dvb_B0",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0xB0",
+      "size": 12,
+      "crc32": "0x3AC3A44",
+      "clrType": "SettingsDescriptorV3_0xB0",
+      "expected": {
+        "clrType": "SettingsDescriptorV3_0xB0",
+        "tag": "0xB0",
+        "descriptorLength": 10,
+        "descriptorTotalLength": 12,
+        "descriptorName": "Settings descriptor v3 -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_B1/Dvb_B1_M1.desc": {
+      "relativePath": "Descriptors/Dvb_B1/Dvb_B1_M1.desc",
+      "group": "Dvb_B1",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0xB1",
+      "size": 19,
+      "crc32": "0xCCF247CF",
+      "clrType": "SettingsDescriptorV4_0xB1",
+      "expected": {
+        "clrType": "SettingsDescriptorV4_0xB1",
+        "tag": "0xB1",
+        "descriptorLength": 17,
+        "descriptorTotalLength": 19,
+        "descriptorName": "Settings descriptor v4 -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_B1/Dvb_B1_M2.desc": {
+      "relativePath": "Descriptors/Dvb_B1/Dvb_B1_M2.desc",
+      "group": "Dvb_B1",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0xB1",
+      "size": 21,
+      "crc32": "0x9087E5C5",
+      "clrType": "SettingsDescriptorV4_0xB1",
+      "expected": {
+        "clrType": "SettingsDescriptorV4_0xB1",
+        "tag": "0xB1",
+        "descriptorLength": 19,
+        "descriptorTotalLength": 21,
+        "descriptorName": "Settings descriptor v4 -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_B1/Dvb_B1_S.desc": {
+      "relativePath": "Descriptors/Dvb_B1/Dvb_B1_S.desc",
+      "group": "Dvb_B1",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0xB1",
+      "size": 19,
+      "crc32": "0xAC5B8226",
+      "clrType": "SettingsDescriptorV4_0xB1",
+      "expected": {
+        "clrType": "SettingsDescriptorV4_0xB1",
+        "tag": "0xB1",
+        "descriptorLength": 17,
+        "descriptorTotalLength": 19,
+        "descriptorName": "Settings descriptor v4 -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_B2/Dvb_B2_M1.desc": {
+      "relativePath": "Descriptors/Dvb_B2/Dvb_B2_M1.desc",
+      "group": "Dvb_B2",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0xB2",
+      "size": 44,
+      "crc32": "0xB798A13",
+      "clrType": "ChannelListTypeDescriptor_0xB2",
+      "expected": {
+        "clrType": "ChannelListTypeDescriptor_0xB2",
+        "tag": "0xB2",
+        "descriptorLength": 42,
+        "descriptorTotalLength": 44,
+        "descriptorName": "Channel List type descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_B2/Dvb_B2_S.desc": {
+      "relativePath": "Descriptors/Dvb_B2/Dvb_B2_S.desc",
+      "group": "Dvb_B2",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0xB2",
+      "size": 11,
+      "crc32": "0xE2BA4FBF",
+      "clrType": "ChannelListTypeDescriptor_0xB2",
+      "expected": {
+        "clrType": "ChannelListTypeDescriptor_0xB2",
+        "tag": "0xB2",
+        "descriptorLength": 9,
+        "descriptorTotalLength": 11,
+        "descriptorName": "Channel List type descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_B3/Dvb_B3_M1.desc": {
+      "relativePath": "Descriptors/Dvb_B3/Dvb_B3_M1.desc",
+      "group": "Dvb_B3",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0xB3",
+      "size": 13,
+      "crc32": "0x1A7C8595",
+      "clrType": "Descriptor",
+      "expected": {
+        "clrType": "Descriptor",
+        "tag": "0xB3",
+        "descriptorLength": 11,
+        "descriptorTotalLength": 13,
+        "descriptorName": "Time Zone descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_B3/Dvb_B3_S.desc": {
+      "relativePath": "Descriptors/Dvb_B3/Dvb_B3_S.desc",
+      "group": "Dvb_B3",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0xB3",
+      "size": 13,
+      "crc32": "0x4FA2F67D",
+      "clrType": "Descriptor",
+      "expected": {
+        "clrType": "Descriptor",
+        "tag": "0xB3",
+        "descriptorLength": 11,
+        "descriptorTotalLength": 13,
+        "descriptorName": "Time Zone descriptor -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_B4/Dvb_B4_M1.desc": {
+      "relativePath": "Descriptors/Dvb_B4/Dvb_B4_M1.desc",
+      "group": "Dvb_B4",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0xB4",
+      "size": 13,
+      "crc32": "0x670F83CD",
+      "clrType": "TimeZoneDescriptorLG_0xB4",
+      "expected": {
+        "clrType": "TimeZoneDescriptorLG_0xB4",
+        "tag": "0xB4",
+        "descriptorLength": 11,
+        "descriptorTotalLength": 13,
+        "descriptorName": "Time Zone descriptor LG -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_B4/Dvb_B4_S.desc": {
+      "relativePath": "Descriptors/Dvb_B4/Dvb_B4_S.desc",
+      "group": "Dvb_B4",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0xB4",
+      "size": 13,
+      "crc32": "0x32D1F025",
+      "clrType": "TimeZoneDescriptorLG_0xB4",
+      "expected": {
+        "clrType": "TimeZoneDescriptorLG_0xB4",
+        "tag": "0xB4",
+        "descriptorLength": 11,
+        "descriptorTotalLength": 13,
+        "descriptorName": "Time Zone descriptor LG -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_C0/Dvb_C0_L.desc": {
+      "relativePath": "Descriptors/Dvb_C0/Dvb_C0_L.desc",
+      "group": "Dvb_C0",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0xC0",
+      "size": 83,
+      "crc32": "0x8891755B",
+      "clrType": "WhiteListDescriptor_0xC0",
+      "expected": {
+        "clrType": "WhiteListDescriptor_0xC0",
+        "tag": "0xC0",
+        "descriptorLength": 81,
+        "descriptorTotalLength": 83,
+        "descriptorName": "White list -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_C0/Dvb_C0_M1.desc": {
+      "relativePath": "Descriptors/Dvb_C0/Dvb_C0_M1.desc",
+      "group": "Dvb_C0",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0xC0",
+      "size": 70,
+      "crc32": "0x584FEBC4",
+      "clrType": "WhiteListDescriptor_0xC0",
+      "expected": {
+        "clrType": "WhiteListDescriptor_0xC0",
+        "tag": "0xC0",
+        "descriptorLength": 68,
+        "descriptorTotalLength": 70,
+        "descriptorName": "White list -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_C0/Dvb_C0_M2.desc": {
+      "relativePath": "Descriptors/Dvb_C0/Dvb_C0_M2.desc",
+      "group": "Dvb_C0",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0xC0",
+      "size": 72,
+      "crc32": "0x306C3B0B",
+      "clrType": "WhiteListDescriptor_0xC0",
+      "expected": {
+        "clrType": "WhiteListDescriptor_0xC0",
+        "tag": "0xC0",
+        "descriptorLength": 70,
+        "descriptorTotalLength": 72,
+        "descriptorName": "White list -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_C0/Dvb_C0_S.desc": {
+      "relativePath": "Descriptors/Dvb_C0/Dvb_C0_S.desc",
+      "group": "Dvb_C0",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0xC0",
+      "size": 67,
+      "crc32": "0x5D48B418",
+      "clrType": "WhiteListDescriptor_0xC0",
+      "expected": {
+        "clrType": "WhiteListDescriptor_0xC0",
+        "tag": "0xC0",
+        "descriptorLength": 65,
+        "descriptorTotalLength": 67,
+        "descriptorName": "White list -=Custom=-"
+      }
+    },
+    "Descriptors/Dvb_FE/Dvb_FE_L.desc": {
+      "relativePath": "Descriptors/Dvb_FE/Dvb_FE_L.desc",
+      "group": "Dvb_FE",
+      "sample": "L",
+      "family": "Dvb",
+      "tag": "0xFE",
+      "size": 6,
+      "crc32": "0x50B45FC2",
+      "clrType": "Descriptor",
+      "expected": {
+        "clrType": "Descriptor",
+        "tag": "0xFE",
+        "descriptorLength": 4,
+        "descriptorTotalLength": 6,
+        "descriptorName": "Custom"
+      }
+    },
+    "Descriptors/Dvb_FE/Dvb_FE_M1.desc": {
+      "relativePath": "Descriptors/Dvb_FE/Dvb_FE_M1.desc",
+      "group": "Dvb_FE",
+      "sample": "M1",
+      "family": "Dvb",
+      "tag": "0xFE",
+      "size": 6,
+      "crc32": "0x97AE8E",
+      "clrType": "Descriptor",
+      "expected": {
+        "clrType": "Descriptor",
+        "tag": "0xFE",
+        "descriptorLength": 4,
+        "descriptorTotalLength": 6,
+        "descriptorName": "Custom"
+      }
+    },
+    "Descriptors/Dvb_FE/Dvb_FE_M2.desc": {
+      "relativePath": "Descriptors/Dvb_FE/Dvb_FE_M2.desc",
+      "group": "Dvb_FE",
+      "sample": "M2",
+      "family": "Dvb",
+      "tag": "0xFE",
+      "size": 6,
+      "crc32": "0x4CD83EA0",
+      "clrType": "Descriptor",
+      "expected": {
+        "clrType": "Descriptor",
+        "tag": "0xFE",
+        "descriptorLength": 4,
+        "descriptorTotalLength": 6,
+        "descriptorName": "Custom"
+      }
+    },
+    "Descriptors/Dvb_FE/Dvb_FE_S.desc": {
+      "relativePath": "Descriptors/Dvb_FE/Dvb_FE_S.desc",
+      "group": "Dvb_FE",
+      "sample": "S",
+      "family": "Dvb",
+      "tag": "0xFE",
+      "size": 6,
+      "crc32": "0x27B36F54",
+      "clrType": "Descriptor",
+      "expected": {
+        "clrType": "Descriptor",
+        "tag": "0xFE",
+        "descriptorLength": 4,
+        "descriptorTotalLength": 6,
+        "descriptorName": "Custom"
+      }
+    }
+  }
 }

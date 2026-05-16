@@ -141,7 +141,7 @@ function Get-SampleIndices {
             0,
             [int][Math]::Floor($Count / 3),
             [int][Math]::Floor((2 * $Count) / 3),
-            $Count - 1
+            ($Count - 1)
         ) | Select-Object -Unique
     }
     return 0..($Count - 1)
