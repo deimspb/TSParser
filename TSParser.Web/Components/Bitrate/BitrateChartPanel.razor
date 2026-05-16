@@ -1,0 +1,179 @@
+@using ScottPlot
+@using ScottPlot.Blazor
+@using TSParser.Web.Services
+
+<div class="bitrate-chart-panel">
+    <div class="bitrate-chart-header">
+        <span class="bitrate-chart-title">Transport bitrate</span>
+        <span class="bitrate-chart-stats">@_statsText</span>
+    </div>
+
+    <div class="bitrate-chart-plot-wrap">
+        @if (_hasData)
+        {
+            <BlazorPlot @ref="_plot"
+                        Style="width: 100%; height: 100%;"
+                        class="bitrate-chart-plot" />
+        }
+        else
+        {
+            <p class="bitrate-chart-placeholder">@_placeholderText</p>
+        }
+    </div>
+</div>
+
+@code {
+    private BlazorPlot? _plot;
+    private int _appliedRevision = -1;
+    private bool _hasData;
+    private string _statsText = "";
+    private string _placeholderText = "Bitrate samples appear while parsing a file or UDP stream.";
+
+    [Parameter]
+    public BitrateHistoryStore Store { get; set; } = null!;
+
+    [Parameter]
+    public int DataRevision { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        var snapshot = Store.GetSnapshot();
+        _hasData = snapshot.Mode switch
+        {
+            BitrateChartMode.File => snapshot.FilePoints.Count > 0,
+            BitrateChartMode.Udp => snapshot.UdpPoints.Count > 0,
+            _ => false
+        };
+
+        _placeholderText = snapshot.Mode switch
+        {
+            BitrateChartMode.File => "Waiting for bitrate windows during file parse…",
+            BitrateChartMode.Udp => "Waiting for live bitrate samples…",
+            _ => "Bitrate samples appear while parsing a file or UDP stream."
+        };
+
+        _statsText = BuildStatsText(snapshot);
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!_hasData || _plot is null || DataRevision == _appliedRevision)
+            return;
+
+        _appliedRevision = DataRevision;
+        ApplySnapshot(Store.GetSnapshot());
+        _plot.Refresh();
+    }
+
+    private static string BuildStatsText(BitrateChartSnapshot snapshot)
+    {
+        if (snapshot.Mode == BitrateChartMode.File && snapshot.FilePoints.Count > 0)
+        {
+            var avgTotal = snapshot.AverageTotalMegabitsPerSecond;
+            var avgUseful = snapshot.AverageUsefulMegabitsPerSecond;
+            if (avgTotal.HasValue && avgUseful.HasValue)
+                return $"Avg total {avgTotal.Value:F2} Mbps · useful {avgUseful.Value:F2} Mbps · {snapshot.FilePoints.Count} windows";
+        }
+
+        if (snapshot.Mode == BitrateChartMode.Udp && snapshot.UdpPoints.Count > 0)
+        {
+            var latest = snapshot.UdpPoints[^1];
+            return $"Live {latest.TotalBitsPerSecond / 1_000_000d:F2} / {latest.UsefulBitsPerSecond / 1_000_000d:F2} Mbps (total / useful)";
+        }
+
+        return "";
+    }
+
+    private void ApplySnapshot(BitrateChartSnapshot snapshot)
+    {
+        if (_plot is null)
+            return;
+
+        var plot = _plot.Plot;
+        plot.Clear();
+
+        switch (snapshot.Mode)
+        {
+            case BitrateChartMode.File when snapshot.FilePoints.Count > 0:
+                RenderFileSeries(plot, snapshot);
+                break;
+
+            case BitrateChartMode.Udp when snapshot.UdpPoints.Count > 0:
+                RenderUdpSeries(plot, snapshot);
+                break;
+
+            default:
+                return;
+        }
+
+        plot.ShowLegend(Alignment.UpperRight);
+        plot.Axes.AutoScale();
+    }
+
+    private static void RenderFileSeries(Plot plot, BitrateChartSnapshot snapshot)
+    {
+        var usePercent = snapshot.FileLengthBytes is > 0;
+        var xs = new double[snapshot.FilePoints.Count];
+        var totalYs = new double[snapshot.FilePoints.Count];
+        var usefulYs = new double[snapshot.FilePoints.Count];
+
+        for (var i = 0; i < snapshot.FilePoints.Count; i++)
+        {
+            var point = snapshot.FilePoints[i];
+            xs[i] = usePercent
+                ? 100d * point.ByteOffset / snapshot.FileLengthBytes!.Value
+                : point.ByteOffset / 1_000_000d;
+
+            totalYs[i] = point.TotalBitsPerSecond / 1_000_000d;
+            usefulYs[i] = point.UsefulBitsPerSecond / 1_000_000d;
+        }
+
+        var total = plot.Add.Scatter(xs, totalYs);
+        total.LegendText = "Total";
+        total.Color = Colors.SteelBlue;
+        total.LineWidth = 2;
+        total.MarkerSize = 0;
+
+        var useful = plot.Add.Scatter(xs, usefulYs);
+        useful.LegendText = "Useful";
+        useful.Color = Colors.ForestGreen;
+        useful.LineWidth = 2;
+        useful.MarkerSize = 0;
+
+        plot.Axes.Bottom.Label.Text = usePercent ? "File position (%)" : "File offset (MB)";
+        plot.Axes.Left.Label.Text = "Mbps";
+        plot.Title(usePercent ? "Bitrate vs file position" : "Bitrate vs byte offset");
+    }
+
+    private static void RenderUdpSeries(Plot plot, BitrateChartSnapshot snapshot)
+    {
+        var points = snapshot.UdpPoints;
+        var origin = points[0].TimestampUtc;
+        var xs = new double[points.Count];
+        var totalYs = new double[points.Count];
+        var usefulYs = new double[points.Count];
+
+        for (var i = 0; i < points.Count; i++)
+        {
+            xs[i] = (points[i].TimestampUtc - origin).TotalSeconds;
+            totalYs[i] = points[i].TotalBitsPerSecond / 1_000_000d;
+            usefulYs[i] = points[i].UsefulBitsPerSecond / 1_000_000d;
+        }
+
+        var total = plot.Add.Scatter(xs, totalYs);
+        total.LegendText = "Total";
+        total.Color = Colors.SteelBlue;
+        total.LineWidth = 2;
+        total.MarkerSize = 0;
+
+        var useful = plot.Add.Scatter(xs, usefulYs);
+        useful.LegendText = "Useful";
+        useful.Color = Colors.ForestGreen;
+        useful.LineWidth = 2;
+        useful.MarkerSize = 0;
+
+        plot.Axes.Bottom.Label.Text = "Time (s)";
+        plot.Axes.Left.Label.Text = "Mbps";
+        plot.Title("Live transport bitrate");
+    }
+}

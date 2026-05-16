@@ -1,0 +1,66 @@
+@using TSParser.Web.Models
+@using TSParser.Web.Services
+
+<div class="detail-panel">
+    <div class="detail-panel-toolbar">
+        <span class="detail-panel-title">@Title</span>
+        <div class="detail-view-toggle" role="group" aria-label="Detail view mode">
+            <button type="button"
+                    class="detail-view-btn @(_mode == DetailViewMode.Hex ? "detail-view-btn--active" : null)"
+                    @onclick="() => SetMode(DetailViewMode.Hex)">
+                Hex
+            </button>
+            <button type="button"
+                    class="detail-view-btn @(_mode == DetailViewMode.String ? "detail-view-btn--active" : null)"
+                    @onclick="() => SetMode(DetailViewMode.String)">
+                String
+            </button>
+        </div>
+    </div>
+
+    @if (SelectedNode is null)
+    {
+        <p class="detail-panel-placeholder">Select a table or descriptor in the tree.</p>
+    }
+    else if (string.IsNullOrEmpty(_content))
+    {
+        <p class="detail-panel-placeholder">No displayable content for this node.</p>
+    }
+    else
+    {
+        <pre class="detail-panel-content" spellcheck="false">@_content</pre>
+    }
+</div>
+
+@code {
+    private DetailViewMode _mode = DetailViewMode.String;
+    private string _content = "";
+    private TableTreeNode? _lastNode;
+
+    [Parameter]
+    public TableTreeNode? SelectedNode { get; set; }
+
+    private string Title => SelectedNode?.Label ?? "Details";
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(SelectedNode, _lastNode))
+        {
+            _lastNode = SelectedNode;
+            RefreshContent();
+        }
+    }
+
+    private void SetMode(DetailViewMode mode)
+    {
+        if (_mode == mode)
+            return;
+
+        _mode = mode;
+        RefreshContent();
+        StateHasChanged();
+    }
+
+    private void RefreshContent() =>
+        _content = ParseDisplayFormatter.Format(SelectedNode, _mode);
+}

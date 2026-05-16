@@ -1,137 +1,177 @@
-﻿@page "/"
-@rendermode InteractiveServer
-@implements IAsyncDisposable
-
-@using TSParser.Web.Components.TableTree
-@using TSParser.Web.Models
-
-@inject TsParserSessionService Session
-@inject TableVersionStore TreeStore
-
-<PageTitle>TSParser</PageTitle>
-
-<div class="parser-shell">
-    <header class="parser-toolbar">
-        <span class="parser-brand">TSParser</span>
-        <span class="parser-status">@_statusText</span>
-    </header>
-
-    <div class="parser-main">
-        <aside class="parser-tree-panel">
-            <TableTreeView Store="TreeStore"
-                           SelectedNodeId="_selectedNodeId"
-                           OnSelect="OnTreeNodeSelected"
-                           OnStructureChanged="OnTreeStructureChanged" />
-        </aside>
-
-        <section class="parser-detail-panel">
-            @if (_selectedNode is not null)
-            {
-                <p class="parser-detail-title">@_selectedNode.Label</p>
-            }
-            else
-            {
-                <p class="parser-detail-placeholder">Select a table or descriptor in the tree.</p>
-            }
-        </section>
-    </div>
-</div>
-
-@code {
-    private readonly CancellationTokenSource _cts = new();
-    private Task? _pumpTask;
-    private Guid? _selectedNodeId;
-    private TableTreeNode? _selectedNode;
-    private string _statusText = "Idle";
-
-    protected override void OnInitialized()
-    {
-        _pumpTask = PumpUpdatesAsync(_cts.Token);
-    }
-
-    private async Task PumpUpdatesAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            await foreach (var update in Session.Updates.ReadAllAsync(cancellationToken))
-            {
-                var needsRefresh = false;
-
-                switch (update)
-                {
-                    case TsParserUiUpdate.TableParsed(var kind, var table):
-                        TreeStore.ApplyTable(kind, table);
-                        _statusText = $"Parsed {kind}";
-                        needsRefresh = true;
-                        break;
-
-                    case TsParserUiUpdate.SessionReset:
-                        TreeStore.Clear();
-                        _selectedNodeId = null;
-                        _selectedNode = null;
-                        _statusText = "Session reset";
-                        needsRefresh = true;
-                        break;
-
-                    case TsParserUiUpdate.SessionStarted(var mode, var filePath, var endpoint, _):
-                        _statusText = mode switch
-                        {
-                            TsParserSessionInputMode.File => $"File: {filePath}",
-                            TsParserSessionInputMode.Udp => $"UDP: {endpoint}",
-                            _ => "Running"
-                        };
-                        needsRefresh = true;
-                        break;
-
-                    case TsParserUiUpdate.ParserStopped:
-                        _statusText = "Stopped";
-                        needsRefresh = true;
-                        break;
-
-                    case TsParserUiUpdate.ParserCompleted:
-                        _statusText = "Parse complete";
-                        needsRefresh = true;
-                        break;
-
-                    case TsParserUiUpdate.LogMessage(var text, var isError):
-                        if (isError)
-                            _statusText = text;
-                        needsRefresh = true;
-                        break;
-                }
-
-                if (needsRefresh)
-                    await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
-    }
-
-    private Task OnTreeNodeSelected(TableTreeNode node)
-    {
-        _selectedNodeId = node.Id;
-        _selectedNode = node;
-        return InvokeAsync(StateHasChanged);
-    }
-
-    private Task OnTreeStructureChanged() => InvokeAsync(StateHasChanged);
-
-    public async ValueTask DisposeAsync()
-    {
-        await _cts.CancelAsync();
-        if (_pumpTask is not null)
-        {
-            try
-            {
-                await _pumpTask.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-            }
-        }
-
-        _cts.Dispose();
-    }
-}
+﻿@page "/"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+
+@using TSParser.Web.Components.Bitrate
+@using TSParser.Web.Components.Detail
+@using TSParser.Web.Components.TableTree
+@using TSParser.Web.Models
+
+@inject TsParserSessionService Session
+@inject TableVersionStore TreeStore
+@inject BitrateHistoryStore BitrateStore
+
+<PageTitle>TSParser</PageTitle>
+
+<div class="parser-shell">
+    <header class="parser-toolbar">
+        <span class="parser-brand">TSParser</span>
+        <span class="parser-status">@_statusText</span>
+    </header>
+
+    <div class="parser-body">
+        <div class="parser-main">
+            <aside class="parser-tree-panel">
+                <TableTreeView Store="TreeStore"
+                               SelectedNodeId="_selectedNodeId"
+                               OnSelect="OnTreeNodeSelected"
+                               OnStructureChanged="OnTreeStructureChanged" />
+            </aside>
+
+            <section class="parser-detail-panel">
+                <DetailPanel SelectedNode="_selectedNode" />
+            </section>
+        </div>
+
+        <section class="parser-chart-section">
+            <BitrateChartPanel Store="BitrateStore" DataRevision="_bitrateRevision" />
+        </section>
+    </div>
+</div>
+
+@code {
+    private static readonly TimeSpan UdpChartThrottle = TimeSpan.FromMilliseconds(300);
+
+    private readonly CancellationTokenSource _cts = new();
+    private Task? _pumpTask;
+    private Guid? _selectedNodeId;
+    private TableTreeNode? _selectedNode;
+    private string _statusText = "Idle";
+    private int _bitrateRevision;
+    private DateTime _lastChartUiUtc = DateTime.MinValue;
+
+    protected override void OnInitialized()
+    {
+        _pumpTask = PumpUpdatesAsync(_cts.Token);
+    }
+
+    private async Task PumpUpdatesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await foreach (var update in Session.Updates.ReadAllAsync(cancellationToken))
+            {
+                var needsRefresh = false;
+
+                switch (update)
+                {
+                    case TsParserUiUpdate.TableParsed(var kind, var table):
+                        TreeStore.ApplyTable(kind, table);
+                        _statusText = $"Parsed {kind}";
+                        needsRefresh = true;
+                        break;
+
+                    case TsParserUiUpdate.BitrateMeasured(var sample):
+                        if (BitrateStore.TryAddStreamSample(sample) && ShouldRefreshChart())
+                        {
+                            _bitrateRevision = BitrateStore.Revision;
+                            needsRefresh = true;
+                        }
+                        break;
+
+                    case TsParserUiUpdate.SessionReset:
+                        TreeStore.Clear();
+                        BitrateStore.Clear();
+                        _selectedNodeId = null;
+                        _selectedNode = null;
+                        _bitrateRevision = BitrateStore.Revision;
+                        _statusText = "Session reset";
+                        needsRefresh = true;
+                        break;
+
+                    case TsParserUiUpdate.SessionStarted(var mode, var filePath, var endpoint, _):
+                        if (mode == TsParserSessionInputMode.File)
+                            BitrateStore.ConfigureForFile(filePath);
+                        else if (mode == TsParserSessionInputMode.Udp)
+                            BitrateStore.ConfigureForUdp();
+
+                        _bitrateRevision = BitrateStore.Revision;
+                        _statusText = mode switch
+                        {
+                            TsParserSessionInputMode.File => $"File: {filePath}",
+                            TsParserSessionInputMode.Udp => $"UDP: {endpoint}",
+                            _ => "Running"
+                        };
+                        needsRefresh = true;
+                        break;
+
+                    case TsParserUiUpdate.ParserStopped:
+                        _statusText = "Stopped";
+                        needsRefresh = true;
+                        break;
+
+                    case TsParserUiUpdate.ParserCompleted:
+                        _statusText = "Parse complete";
+                        if (BitrateStore.Revision != _bitrateRevision)
+                        {
+                            _bitrateRevision = BitrateStore.Revision;
+                            needsRefresh = true;
+                        }
+                        break;
+
+                    case TsParserUiUpdate.LogMessage(var text, var isError):
+                        if (isError)
+                            _statusText = text;
+                        needsRefresh = true;
+                        break;
+                }
+
+                if (needsRefresh)
+                    await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private bool ShouldRefreshChart()
+    {
+        if (Session.InputMode != TsParserSessionInputMode.Udp)
+            return true;
+
+        var now = DateTime.UtcNow;
+        if (now - _lastChartUiUtc < UdpChartThrottle)
+            return false;
+
+        _lastChartUiUtc = now;
+        return true;
+    }
+
+    private Task OnTreeNodeSelected(TableTreeNode node)
+    {
+        _selectedNodeId = node.Id;
+        _selectedNode = node;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task OnTreeStructureChanged() => InvokeAsync(StateHasChanged);
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cts.CancelAsync();
+        if (_pumpTask is not null)
+        {
+            try
+            {
+                await _pumpTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
+        _cts.Dispose();
+    }
+}
+

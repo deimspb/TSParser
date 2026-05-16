@@ -4,6 +4,10 @@
     <ProjectReference Include="..\TSParser\TSParser.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="ScottPlot.Blazor" Version="5.1.58" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>

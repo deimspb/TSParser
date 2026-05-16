@@ -1,0 +1,48 @@
+.bitrate-chart-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    padding: 0.4rem 0.65rem 0.5rem;
+    background: #fff;
+    border-top: 1px solid #dee2e6;
+}
+
+.bitrate-chart-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+    flex-shrink: 0;
+}
+
+.bitrate-chart-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.bitrate-chart-stats {
+    color: #495057;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bitrate-chart-plot-wrap {
+    flex: 1 1 auto;
+    min-height: 140px;
+    position: relative;
+}
+
+.bitrate-chart-plot {
+    display: block;
+}
+
+.bitrate-chart-placeholder {
+    margin: 0;
+    padding: 1rem 0;
+    color: #868e96;
+    font-size: 0.8rem;
+}
