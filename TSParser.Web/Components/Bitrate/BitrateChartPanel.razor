@@ -8,7 +8,7 @@
 
 <div class="bitrate-chart-panel">
     <div class="bitrate-chart-header">
-        <span class="bitrate-chart-title">Transport bitrate</span>
+        <span class="bitrate-chart-title">@_chartTitle</span>
         <span class="bitrate-chart-stats">@_statsText</span>
     </div>
 
@@ -40,15 +40,18 @@
     private Layout _layout = new() { AutoSize = true };
     private IList<ITrace> _data = new List<ITrace>();
     private int _appliedRevision = -1;
+    private int _appliedConfigRevision = -1;
     private int _appliedFitRevision = -1;
     private int _lastFitRevisionSeen = -1;
+    private bool _needsStructureRedraw;
     private bool _hasData;
     private double _xMin;
     private double _xMax;
     private double _yMin;
     private double _yMax;
+    private string _chartTitle = "Bitrate";
     private string _statsText = "";
-    private string _placeholderText = "Bitrate samples appear while parsing a file or UDP stream.";
+    private string _placeholderText = "Open Bitrate… to choose stream and/or PID traces, then parse a file or UDP stream.";
 
     [Parameter]
     public BitrateHistoryStore Store { get; set; } = null!;
@@ -57,27 +60,19 @@
     public int DataRevision { get; set; }
 
     [Parameter]
+    public int ChartConfigRevision { get; set; }
+
+    [Parameter]
     public int FitRevision { get; set; }
 
     protected override void OnParametersSet()
     {
         var snapshot = Store.GetSnapshot();
-        _hasData = snapshot.Mode switch
-        {
-            BitrateChartMode.File => snapshot.FilePoints.Count > 0,
-            BitrateChartMode.Udp => snapshot.UdpPoints.Count > 0,
-            _ => false
-        };
+        _hasData = snapshot.HasChartData;
 
-        _placeholderText = snapshot.Mode switch
-        {
-            BitrateChartMode.File when _hasData => "Rendering bitrate chart…",
-            BitrateChartMode.File => "Waiting for bitrate windows during file parse…",
-            BitrateChartMode.Udp when _hasData => "Rendering live bitrate chart…",
-            BitrateChartMode.Udp => "Waiting for live bitrate samples…",
-            _ => "Bitrate samples appear while parsing a file or UDP stream."
-        };
+        _placeholderText = BuildPlaceholderText(snapshot, _hasData);
 
+        _chartTitle = BuildChartTitle(snapshot);
         _statsText = BuildStatsText(snapshot);
 
         if (!_hasData)
@@ -90,10 +85,15 @@
         var fitChanged = FitRevision != _lastFitRevisionSeen;
         _lastFitRevisionSeen = FitRevision;
 
-        if (!fitChanged && DataRevision == _appliedRevision)
+        var configChanged = ChartConfigRevision != _appliedConfigRevision;
+        if (!fitChanged && !configChanged && DataRevision == _appliedRevision)
             return;
 
         _appliedRevision = DataRevision;
+        if (configChanged)
+            _needsStructureRedraw = true;
+
+        _appliedConfigRevision = ChartConfigRevision;
         ApplySnapshot(snapshot);
     }
 
@@ -105,9 +105,10 @@
         try
         {
             var needsFit = FitRevision != _appliedFitRevision;
-            if (needsFit)
+            if (needsFit || _needsStructureRedraw)
             {
                 _appliedFitRevision = FitRevision;
+                _needsStructureRedraw = false;
                 await _chart.NewPlot();
             }
             else
@@ -149,10 +150,10 @@
     {
         switch (snapshot.Mode)
         {
-            case BitrateChartMode.File when snapshot.FilePoints.Count > 0:
+            case BitrateChartMode.File when snapshot.HasChartData:
                 BuildFileChart(snapshot);
                 break;
-            case BitrateChartMode.Udp when snapshot.UdpPoints.Count > 0:
+            case BitrateChartMode.Udp when snapshot.HasChartData:
                 BuildUdpChart(snapshot);
                 break;
         }
@@ -161,59 +162,191 @@
     private void BuildFileChart(BitrateChartSnapshot snapshot)
     {
         var usePercent = snapshot.FileLengthBytes is > 0;
-        var xs = new List<double>(snapshot.FilePoints.Count);
-        var totalYs = new List<double>(snapshot.FilePoints.Count);
-        var usefulYs = new List<double>(snapshot.FilePoints.Count);
+        var traces = new List<ITrace>();
+        var allY = new List<double>();
 
-        foreach (var point in snapshot.FilePoints)
+        if (snapshot.ShowStreamOnChart && snapshot.FilePoints.Count > 0)
         {
-            xs.Add(usePercent
-                ? 100d * point.ByteOffset / snapshot.FileLengthBytes!.Value
-                : point.ByteOffset / 1_000_000d);
-            totalYs.Add(point.TotalBitsPerSecond / 1_000_000d);
-            usefulYs.Add(point.UsefulBitsPerSecond / 1_000_000d);
+            var xs = new List<double>(snapshot.FilePoints.Count);
+            var totalYs = new List<double>(snapshot.FilePoints.Count);
+            var usefulYs = new List<double>(snapshot.FilePoints.Count);
+
+            foreach (var point in snapshot.FilePoints)
+            {
+                xs.Add(ToFileX(point.ByteOffset, snapshot.FileLengthBytes, usePercent));
+                var totalMbps = point.TotalBitsPerSecond / 1_000_000d;
+                var usefulMbps = point.UsefulBitsPerSecond / 1_000_000d;
+                totalYs.Add(totalMbps);
+                usefulYs.Add(usefulMbps);
+                allY.Add(totalMbps);
+                allY.Add(usefulMbps);
+            }
+
+            traces.Add(CreateLineTrace("Stream total", ToObjectList(xs), ToObjectList(totalYs), "#4682b4"));
+            traces.Add(CreateLineTrace("Stream useful", ToObjectList(xs), ToObjectList(usefulYs), "#228b22"));
         }
 
-        _data = new List<ITrace>
-        {
-            CreateLineTrace("Total", ToObjectList(xs), ToObjectList(totalYs), "#4682b4"),
-            CreateLineTrace("Useful", ToObjectList(xs), ToObjectList(usefulYs), "#228b22")
-        };
+        if (snapshot.ShowIndividualPidsOnChart)
+            AddPidFileTraces(snapshot, usePercent, traces, allY);
 
-        var xLabel = usePercent ? "File position (%)" : "File offset (MB)";
-        var title = usePercent ? "Bitrate vs file position" : "Bitrate vs byte offset";
-        var xRange = ComputeXRange(xs);
-        var yRange = ComputeYRange(totalYs.Concat(usefulYs));
-        SetPlotRanges(xRange, yRange);
-        _layout = CreateLayout(title, xLabel, "Mbps", xRange, yRange, FitRevision);
+        if (snapshot.ShowPidSumOnChart && snapshot.SumFilePoints.Count > 0)
+        {
+            var xs = new List<double>(snapshot.SumFilePoints.Count);
+            var ys = new List<double>(snapshot.SumFilePoints.Count);
+            foreach (var point in snapshot.SumFilePoints)
+            {
+                xs.Add(ToFileX(point.ByteOffset, snapshot.FileLengthBytes, usePercent));
+                var mbps = point.BitsPerSecond / 1_000_000d;
+                ys.Add(mbps);
+                allY.Add(mbps);
+            }
+
+            traces.Add(CreateLineTrace("Selected sum", ToObjectList(xs), ToObjectList(ys), BitrateChartColors.SumLine, 3));
+        }
+
+        FinalizeChart(traces, allY, usePercent ? "File position (%)" : "File offset (MB)",
+            usePercent ? "Bitrate vs file position" : "Bitrate vs byte offset");
     }
 
     private void BuildUdpChart(BitrateChartSnapshot snapshot)
     {
-        var points = snapshot.UdpPoints;
-        var origin = points[0].TimestampUtc;
-        var xs = new List<double>(points.Count);
-        var totalYs = new List<double>(points.Count);
-        var usefulYs = new List<double>(points.Count);
+        var traces = new List<ITrace>();
+        var allY = new List<double>();
+        DateTime? origin = null;
 
-        foreach (var point in points)
+        if (snapshot.ShowStreamOnChart && snapshot.UdpPoints.Count > 0)
         {
-            xs.Add((point.TimestampUtc - origin).TotalSeconds);
-            totalYs.Add(point.TotalBitsPerSecond / 1_000_000d);
-            usefulYs.Add(point.UsefulBitsPerSecond / 1_000_000d);
+            origin ??= snapshot.UdpPoints[0].TimestampUtc;
+            var xs = new List<double>(snapshot.UdpPoints.Count);
+            var totalYs = new List<double>(snapshot.UdpPoints.Count);
+            var usefulYs = new List<double>(snapshot.UdpPoints.Count);
+
+            foreach (var point in snapshot.UdpPoints)
+            {
+                xs.Add((point.TimestampUtc - origin.Value).TotalSeconds);
+                var totalMbps = point.TotalBitsPerSecond / 1_000_000d;
+                var usefulMbps = point.UsefulBitsPerSecond / 1_000_000d;
+                totalYs.Add(totalMbps);
+                usefulYs.Add(usefulMbps);
+                allY.Add(totalMbps);
+                allY.Add(usefulMbps);
+            }
+
+            traces.Add(CreateLineTrace("Stream total", ToObjectList(xs), ToObjectList(totalYs), "#4682b4"));
+            traces.Add(CreateLineTrace("Stream useful", ToObjectList(xs), ToObjectList(usefulYs), "#228b22"));
         }
 
-        _data = new List<ITrace>
-        {
-            CreateLineTrace("Total", ToObjectList(xs), ToObjectList(totalYs), "#4682b4"),
-            CreateLineTrace("Useful", ToObjectList(xs), ToObjectList(usefulYs), "#228b22")
-        };
+        if (snapshot.ShowIndividualPidsOnChart)
+            AddPidUdpTraces(snapshot, ref origin, traces, allY);
 
-        var xRange = ComputeXRange(xs);
-        var yRange = ComputeYRange(totalYs.Concat(usefulYs));
-        SetPlotRanges(xRange, yRange);
-        _layout = CreateLayout("Live transport bitrate", "Time (s)", "Mbps", xRange, yRange, FitRevision);
+        if (snapshot.ShowPidSumOnChart && snapshot.SumUdpPoints.Count > 0)
+        {
+            origin ??= snapshot.SumUdpPoints[0].TimestampUtc;
+            var xs = new List<double>(snapshot.SumUdpPoints.Count);
+            var ys = new List<double>(snapshot.SumUdpPoints.Count);
+            foreach (var point in snapshot.SumUdpPoints)
+            {
+                xs.Add((point.TimestampUtc - origin.Value).TotalSeconds);
+                var mbps = point.BitsPerSecond / 1_000_000d;
+                ys.Add(mbps);
+                allY.Add(mbps);
+            }
+
+            traces.Add(CreateLineTrace("Selected sum", ToObjectList(xs), ToObjectList(ys), BitrateChartColors.SumLine, 3));
+        }
+
+        FinalizeChart(traces, allY, "Time (s)", "Live bitrate");
     }
+
+    private void FinalizeChart(List<ITrace> traces, List<double> allY, string xLabel, string title)
+    {
+        if (traces.Count == 0)
+        {
+            _hasData = false;
+            _data = [];
+            return;
+        }
+
+        _data = traces;
+        var xRange = ComputeXRangeFromTraces(traces);
+        var yRange = ComputeYRange(allY);
+        SetPlotRanges(xRange, yRange);
+        _layout = CreateLayout(title, xLabel, "Mbps", xRange, yRange, FitRevision);
+    }
+
+    private static void AddPidFileTraces(
+        BitrateChartSnapshot snapshot,
+        bool usePercent,
+        List<ITrace> traces,
+        List<double> allY)
+    {
+        var index = 0;
+        foreach (var pid in snapshot.ChartPids)
+        {
+            if (!snapshot.PidFilePoints.TryGetValue(pid, out var points) || points.Count == 0)
+            {
+                index++;
+                continue;
+            }
+
+            var xs = new List<double>(points.Count);
+            var ys = new List<double>(points.Count);
+            foreach (var point in points)
+            {
+                xs.Add(ToFileX(point.ByteOffset, snapshot.FileLengthBytes, usePercent));
+                var mbps = point.BitsPerSecond / 1_000_000d;
+                ys.Add(mbps);
+                allY.Add(mbps);
+            }
+
+            traces.Add(CreateLineTrace(
+                $"PID 0x{pid:X4}",
+                ToObjectList(xs),
+                ToObjectList(ys),
+                BitrateChartColors.ForIndex(index)));
+            index++;
+        }
+    }
+
+    private static void AddPidUdpTraces(
+        BitrateChartSnapshot snapshot,
+        ref DateTime? origin,
+        List<ITrace> traces,
+        List<double> allY)
+    {
+        var index = 0;
+        foreach (var pid in snapshot.ChartPids)
+        {
+            if (!snapshot.PidUdpPoints.TryGetValue(pid, out var points) || points.Count == 0)
+            {
+                index++;
+                continue;
+            }
+
+            origin ??= points[0].TimestampUtc;
+            var xs = new List<double>(points.Count);
+            var ys = new List<double>(points.Count);
+            foreach (var point in points)
+            {
+                xs.Add((point.TimestampUtc - origin.Value).TotalSeconds);
+                var mbps = point.BitsPerSecond / 1_000_000d;
+                ys.Add(mbps);
+                allY.Add(mbps);
+            }
+
+            traces.Add(CreateLineTrace(
+                $"PID 0x{pid:X4}",
+                ToObjectList(xs),
+                ToObjectList(ys),
+                BitrateChartColors.ForIndex(index)));
+            index++;
+        }
+    }
+
+    private static double ToFileX(long byteOffset, long? fileLengthBytes, bool usePercent) =>
+        usePercent && fileLengthBytes is > 0
+            ? 100d * byteOffset / fileLengthBytes.Value
+            : byteOffset / 1_000_000d;
 
     private void SetPlotRanges((double Min, double Max) xRange, (double Min, double Max) yRange)
     {
@@ -223,14 +356,19 @@
         _yMax = yRange.Max;
     }
 
-    private static Scatter CreateLineTrace(string name, IList<object> x, IList<object> y, string color) =>
+    private static Scatter CreateLineTrace(
+        string name,
+        IList<object> x,
+        IList<object> y,
+        string color,
+        int width = 2) =>
         new()
         {
             Name = name,
             Mode = ModeFlag.Lines,
             X = x,
             Y = y,
-            Line = new Line { Color = color, Width = 2 }
+            Line = new Line { Color = color, Width = width }
         };
 
     private static Layout CreateLayout(
@@ -271,15 +409,24 @@
             }
         };
 
-    private static (double Min, double Max) ComputeXRange(IEnumerable<double> values)
+    private static (double Min, double Max) ComputeXRangeFromTraces(IEnumerable<ITrace> traces)
     {
         var min = double.PositiveInfinity;
         var max = double.NegativeInfinity;
 
-        foreach (var value in values)
+        foreach (var trace in traces)
         {
-            if (value < min) min = value;
-            if (value > max) max = value;
+            if (trace is not Scatter scatter || scatter.X is null)
+                continue;
+
+            foreach (var xObj in scatter.X)
+            {
+                if (xObj is not double x)
+                    continue;
+
+                if (x < min) min = x;
+                if (x > max) max = x;
+            }
         }
 
         if (double.IsInfinity(min) || double.IsInfinity(max))
@@ -330,22 +477,83 @@
         return result;
     }
 
+    private static string BuildPlaceholderText(BitrateChartSnapshot snapshot, bool hasData)
+    {
+        if (hasData)
+            return snapshot.Mode switch
+            {
+                BitrateChartMode.File => "Rendering bitrate chart…",
+                BitrateChartMode.Udp => "Rendering live bitrate chart…",
+                _ => ""
+            };
+
+        if (snapshot.Mode == BitrateChartMode.File)
+        {
+            if (snapshot.ShowPidSumOnChart && snapshot.ChartPids.Count >= 2 && !snapshot.HasPidSamples)
+                return "No PID bitrate samples yet. Select PIDs in Bitrate… and restart the file (or wait for windows if parsing).";
+
+            if (snapshot.HasStoredSamples)
+                return "No data for the selected chart options. Enable Stream and/or Per-PID lines, or ensure at least two PIDs have samples for the sum.";
+
+            return "Waiting for bitrate windows during file parse…";
+        }
+
+        if (snapshot.Mode == BitrateChartMode.Udp)
+        {
+            if (snapshot.ShowPidSumOnChart && snapshot.ChartPids.Count >= 2 && !snapshot.HasPidSamples)
+                return "No PID bitrate samples yet. Select PIDs in Bitrate… and restart UDP play.";
+
+            if (snapshot.HasStoredSamples)
+                return "No data for the selected chart options.";
+
+            return "Waiting for live bitrate samples…";
+        }
+
+        if (snapshot.ChartPids.Count > 0 || snapshot.ShowStreamOnChart)
+            return "Open a file or start UDP to collect bitrate samples.";
+
+        return "Open Bitrate… to choose stream and/or PID traces, then parse a file or UDP stream.";
+    }
+
+    private static string BuildChartTitle(BitrateChartSnapshot snapshot)
+    {
+        if (snapshot.ChartPids.Count == 0)
+            return "Transport bitrate";
+
+        return snapshot.ShowStreamOnChart
+            ? "Transport and PID bitrate"
+            : "PID bitrate";
+    }
+
     private static string BuildStatsText(BitrateChartSnapshot snapshot)
     {
-        if (snapshot.Mode == BitrateChartMode.File && snapshot.FilePoints.Count > 0)
+        var parts = new List<string>();
+
+        if (snapshot.ShowStreamOnChart && snapshot.Mode == BitrateChartMode.File && snapshot.FilePoints.Count > 0)
         {
             var avgTotal = snapshot.AverageTotalMegabitsPerSecond;
             var avgUseful = snapshot.AverageUsefulMegabitsPerSecond;
             if (avgTotal.HasValue && avgUseful.HasValue)
-                return $"Avg total {avgTotal.Value:F2} Mbps · useful {avgUseful.Value:F2} Mbps · {snapshot.FilePoints.Count} windows";
+                parts.Add($"Stream avg {avgTotal.Value:F2} / {avgUseful.Value:F2} Mbps");
         }
 
-        if (snapshot.Mode == BitrateChartMode.Udp && snapshot.UdpPoints.Count > 0)
+        if (snapshot.ShowStreamOnChart && snapshot.Mode == BitrateChartMode.Udp && snapshot.UdpPoints.Count > 0)
         {
             var latest = snapshot.UdpPoints[^1];
-            return $"Live {latest.TotalBitsPerSecond / 1_000_000d:F2} / {latest.UsefulBitsPerSecond / 1_000_000d:F2} Mbps (total / useful)";
+            parts.Add($"Stream {latest.TotalBitsPerSecond / 1_000_000d:F2} / {latest.UsefulBitsPerSecond / 1_000_000d:F2} Mbps");
         }
 
-        return "";
+        if (snapshot.ChartPids.Count > 0)
+        {
+            var pidCount = snapshot.Mode switch
+            {
+                BitrateChartMode.File => snapshot.PidFilePoints.Count(kv => kv.Value.Count > 0),
+                BitrateChartMode.Udp => snapshot.PidUdpPoints.Count(kv => kv.Value.Count > 0),
+                _ => 0
+            };
+            parts.Add($"{pidCount}/{snapshot.ChartPids.Count} PID traces");
+        }
+
+        return parts.Count == 0 ? "" : string.Join(" · ", parts);
     }
 }

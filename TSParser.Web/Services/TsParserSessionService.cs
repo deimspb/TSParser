@@ -58,6 +58,55 @@ public sealed class TsParserSessionService : IAsyncDisposable
         }
     }
 
+    public bool HasActiveSource
+    {
+        get
+        {
+            lock (_parserLock)
+            {
+                return _inputMode switch
+                {
+                    TsParserSessionInputMode.File => !string.IsNullOrEmpty(_currentFilePath),
+                    TsParserSessionInputMode.Udp => !string.IsNullOrEmpty(_currentMulticastEndpoint),
+                    _ => false
+                };
+            }
+        }
+    }
+
+    /// <summary>Re-opens the current file or UDP session so bitrate measurement options take effect.</summary>
+    public async Task RestartCurrentSessionAsync(CancellationToken cancellationToken = default)
+    {
+        TsParserSessionInputMode mode;
+        string? filePath;
+        string? displayName;
+        string? endpoint;
+        string? bind;
+
+        lock (_parserLock)
+        {
+            mode = _inputMode;
+            filePath = _currentFilePath;
+            displayName = _currentFileDisplayName;
+            endpoint = _currentMulticastEndpoint;
+            bind = _currentBindAddress;
+        }
+
+        switch (mode)
+        {
+            case TsParserSessionInputMode.File when filePath is not null:
+                await StartFileSessionAsync(
+                    filePath,
+                    displayName ?? Path.GetFileName(filePath),
+                    cancellationToken).ConfigureAwait(false);
+                break;
+
+            case TsParserSessionInputMode.Udp when endpoint is not null:
+                await StartUdpAsync(endpoint, bind, cancellationToken).ConfigureAwait(false);
+                break;
+        }
+    }
+
     public bool TryGetObservedPids(out IReadOnlyList<ushort> pids)
     {
         lock (_parserLock)

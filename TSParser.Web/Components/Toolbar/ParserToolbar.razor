@@ -3,6 +3,7 @@
 @using TSParser.Analysis
 @using Microsoft.AspNetCore.Components.Forms
 @inject TsParserSessionService Session
+@inject BitrateHistoryStore BitrateStore
 @inject NetworkInterfaceService NetworkInterfaces
 
 <header class="parser-toolbar">
@@ -18,7 +19,7 @@
                            class="toolbar-file-input"
                            disabled="@_sessionBusy" />
             </label>
-            <button type="button" class="toolbar-btn" @onclick="ShowBitrateDialog" disabled="@_sessionBusy">Bitrate…</button>
+            <button type="button" class="toolbar-btn" @onclick="ShowBitrateDialog">Bitrate…</button>
         </div>
 
         <div class="toolbar-group toolbar-group--udp">
@@ -67,9 +68,11 @@
 @if (_showBitrateDialog)
 {
     <div class="toolbar-modal-backdrop" @onclick="CloseBitrateDialog">
-        <div class="toolbar-modal toolbar-modal--wide" role="dialog" aria-labelledby="bitrate-dialog-title" @onclick:stopPropagation="true">
-            <h2 id="bitrate-dialog-title" class="toolbar-modal-title">Bitrate measurement</h2>
-            <p class="toolbar-modal-hint">Applied on the next file open or UDP play.</p>
+        <div class="toolbar-modal toolbar-modal--bitrate" role="dialog" aria-labelledby="bitrate-dialog-title" @onclick:stopPropagation="true">
+            <h2 id="bitrate-dialog-title" class="toolbar-modal-title">Bitrate</h2>
+            <p class="toolbar-modal-hint">Changing measurement options or selected PIDs restarts the current file or UDP session when one is open. Chart display options (stream / sum lines) update immediately.</p>
+
+            <h3 class="toolbar-section-title">Measurement</h3>
 
             <div class="toolbar-form-grid">
                 <label for="clock-source">Clock source</label>
@@ -96,18 +99,58 @@
                 <div class="toolbar-checks">
                     <label class="toolbar-check">
                         <input type="checkbox" @bind="_measureStreamBitrate" />
-                        Stream bitrate
+                        Measure stream bitrate
                     </label>
                     <label class="toolbar-check">
                         <input type="checkbox" @bind="_measureUsefulAndTotal" />
                         Total + useful (exclude null PID)
                     </label>
-                    <label class="toolbar-check">
-                        <input type="checkbox" @bind="_measurePerPid" />
-                        Per-PID bitrate
-                    </label>
                 </div>
             </div>
+
+            <h3 class="toolbar-section-title">Chart</h3>
+            <div class="toolbar-checks toolbar-checks--inline">
+                <label class="toolbar-check">
+                    <input type="checkbox" @bind="_showStreamOnChart" />
+                    Stream (total / useful)
+                </label>
+                <label class="toolbar-check" title="Sum of selected PID bitrates at each window">
+                    <input type="checkbox" @bind="_showPidSumOnChart" disabled="@(_chartSelectedPids.Count < 2)" />
+                    Sum of selected PIDs
+                </label>
+                <label class="toolbar-check" title="Separate line per selected PID">
+                    <input type="checkbox" @bind="_showIndividualPidsOnChart" disabled="@(_chartSelectedPids.Count == 0)" />
+                    Per-PID lines
+                </label>
+            </div>
+
+            <div class="toolbar-pid-picker-header">
+                <span class="toolbar-pid-picker-label">PIDs in stream</span>
+                <div class="toolbar-pid-picker-actions">
+                    <button type="button" class="toolbar-btn toolbar-btn--small" @onclick="RefreshObservedPids" disabled="@(_availablePids.Count == 0)">Refresh</button>
+                    <button type="button" class="toolbar-btn toolbar-btn--small" @onclick="SelectAllChartPids" disabled="@(_availablePids.Count == 0)">All</button>
+                    <button type="button" class="toolbar-btn toolbar-btn--small" @onclick="ClearChartPids" disabled="@(_chartSelectedPids.Count == 0)">Clear</button>
+                </div>
+            </div>
+
+            @if (_availablePids.Count == 0)
+            {
+                <p class="toolbar-modal-hint toolbar-pid-picker-empty">No PIDs observed yet. Open a file or start UDP, then refresh this list.</p>
+            }
+            else
+            {
+                <div class="toolbar-pid-picker" role="group" aria-label="PIDs to chart">
+                    @foreach (var pid in _availablePids)
+                    {
+                        <label class="toolbar-pid-item">
+                            <input type="checkbox"
+                                   checked="@_chartSelectedPids.Contains(pid)"
+                                   @onchange="e => OnChartPidToggled(pid, e)" />
+                            <span>0x@(pid.ToString("X4"))</span>
+                        </label>
+                    }
+                </div>
+            }
 
             @if (!string.IsNullOrEmpty(_bitrateError))
             {
@@ -155,6 +198,9 @@
     [Parameter]
     public string StatusText { get; set; } = "Idle";
 
+    [Parameter]
+    public EventCallback OnChartSettingsChanged { get; set; }
+
     private IReadOnlyList<NetworkInterfaceService.BindOption> _bindOptions = [];
     private string _multicastEndpoint = "239.1.2.3:1234";
     private string _selectedBindAddress = "";
@@ -171,7 +217,12 @@
     private double _assumedMbps = 10;
     private bool _measureStreamBitrate = true;
     private bool _measureUsefulAndTotal = true;
-    private bool _measurePerPid;
+    private bool _showStreamOnChart = true;
+    private bool _showPidSumOnChart = true;
+    private bool _showIndividualPidsOnChart = true;
+    private readonly HashSet<ushort> _chartSelectedPids = [];
+    private List<ushort> _availablePids = [];
+    private BitrateMeasurementSnapshot _bitrateMeasurementBaseline;
 
     private string _ewsPidsText = "";
     private string _eewsPidsText = "";
@@ -194,11 +245,18 @@
         var s = Session.Settings;
         _bitrateClockSource = s.ClockSource;
         _measurementWindowSeconds = s.MeasurementWindow.TotalSeconds;
-        _referencePidText = s.ReferencePid is { } pid ? $"0x{pid:X4}" : "";
+        _referencePidText = s.ReferencePid is { } refPid ? $"0x{refPid:X4}" : "";
         _assumedMbps = s.AssumedBitsPerSecond / 1_000_000d;
         _measureStreamBitrate = s.MeasureStreamBitrate;
         _measureUsefulAndTotal = s.MeasureUsefulAndTotalBitrate;
-        _measurePerPid = s.MeasurePerPidBitrate;
+        _showStreamOnChart = s.ShowStreamOnChart;
+        _showPidSumOnChart = s.ShowPidSumOnChart;
+        _showIndividualPidsOnChart = s.ShowIndividualPidsOnChart;
+        _chartSelectedPids.Clear();
+        foreach (var pid in s.ChartPids)
+            _chartSelectedPids.Add(pid);
+
+        RefreshObservedPids();
         _ewsPidsText = FormatPidList(s.EwsPids);
         _eewsPidsText = FormatPidList(s.EewsPids);
 
@@ -242,8 +300,39 @@
     {
         _bitrateError = null;
         LoadSettingsFromSession();
+        _bitrateMeasurementBaseline = BitrateMeasurementSnapshot.From(Session.Settings);
         _showBitrateDialog = true;
     }
+
+    private void RefreshObservedPids()
+    {
+        if (Session.TryGetObservedPids(out var pids))
+            _availablePids = pids.OrderBy(p => p).ToList();
+        else
+            _availablePids = [];
+
+        var available = _availablePids.ToHashSet();
+        _chartSelectedPids.RemoveWhere(p => !available.Contains(p));
+    }
+
+    private void OnChartPidToggled(ushort pid, ChangeEventArgs e)
+    {
+        if (e.Value is bool selected)
+        {
+            if (selected)
+                _chartSelectedPids.Add(pid);
+            else
+                _chartSelectedPids.Remove(pid);
+        }
+    }
+
+    private void SelectAllChartPids()
+    {
+        foreach (var pid in _availablePids)
+            _chartSelectedPids.Add(pid);
+    }
+
+    private void ClearChartPids() => _chartSelectedPids.Clear();
 
     private void CloseBitrateDialog() => _showBitrateDialog = false;
 
@@ -284,6 +373,29 @@
             return;
         }
 
+        if (!_showStreamOnChart && _chartSelectedPids.Count == 0)
+        {
+            _bitrateError = "Select stream and/or at least one PID for the chart.";
+            return;
+        }
+
+        if (!_showStreamOnChart && !_showIndividualPidsOnChart && (!_showPidSumOnChart || _chartSelectedPids.Count < 2))
+        {
+            _bitrateError = "Enable Stream, Per-PID lines, or Sum of selected PIDs (needs 2+ PIDs).";
+            return;
+        }
+
+        if (_chartSelectedPids.Count > 0 && _availablePids.Count > 0)
+        {
+            var unknown = _chartSelectedPids.Where(p => !_availablePids.Contains(p)).ToList();
+            if (unknown.Count > 0)
+            {
+                _bitrateError = $"PID(s) not in stream: {string.Join(", ", unknown.Select(p => $"0x{p:X4}"))}.";
+                return;
+            }
+        }
+
+        var chartPids = _chartSelectedPids.OrderBy(p => p).ToList();
         var settings = Session.Settings;
         settings.ClockSource = _bitrateClockSource;
         settings.MeasurementWindow = TimeSpan.FromSeconds(_measurementWindowSeconds);
@@ -291,9 +403,43 @@
         settings.AssumedBitsPerSecond = _assumedMbps * 1_000_000d;
         settings.MeasureStreamBitrate = _measureStreamBitrate;
         settings.MeasureUsefulAndTotalBitrate = _measureUsefulAndTotal;
-        settings.MeasurePerPidBitrate = _measurePerPid;
+        settings.ShowStreamOnChart = _showStreamOnChart;
+        settings.ShowPidSumOnChart = _showPidSumOnChart && chartPids.Count >= 2;
+        settings.ShowIndividualPidsOnChart = _showIndividualPidsOnChart && chartPids.Count > 0;
+        settings.SetChartPids(chartPids);
+        settings.ApplyChartTo(BitrateStore);
+
+        var needsParserRestart = Session.HasActiveSource
+            && BitrateMeasurementSnapshot.From(settings).RequiresParserRestart(_bitrateMeasurementBaseline);
 
         _showBitrateDialog = false;
+
+        if (needsParserRestart)
+            _ = RestartParserForBitrateSettingsAsync();
+        else
+            _ = OnChartSettingsChanged.InvokeAsync();
+    }
+
+    private async Task RestartParserForBitrateSettingsAsync()
+    {
+        _sessionError = null;
+        _sessionBusy = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            await Session.RestartCurrentSessionAsync();
+        }
+        catch (Exception ex)
+        {
+            _sessionError = ex.Message;
+        }
+        finally
+        {
+            _sessionBusy = false;
+            await OnChartSettingsChanged.InvokeAsync();
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private void SaveEwsSettings()

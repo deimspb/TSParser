@@ -195,11 +195,25 @@ namespace TSParser.Analysis
             if (m_clockSource == BitrateClockSource.Pcr)
                 UpdateLegacyPcrState(packet, tick);
 
-            if (m_options!.MeasureStreamBitrate && m_streamMeasurer != null && IsStreamClockPacket(packet))
+            var isStreamClock = IsStreamClockPacket(packet);
+
+            if (m_options!.MeasureStreamBitrate && m_streamMeasurer != null && isStreamClock)
                 TryEmit(m_streamMeasurer.OnTimestamp(tick));
 
-            if (m_options.MeasurePerPidBitrate && packet.Pid != 0x1FFF)
-                TryEmit(GetOrCreatePidMeasurer(packet.Pid).OnTimestamp(tick));
+            if (m_options.MeasurePerPidBitrate)
+                AdvancePerPidMeasurersOnStreamClock(tick, isStreamClock);
+        }
+
+        /// <summary>
+        /// Per-PID byte counts use the stream reference clock (PCR/PTS/DTS), not timestamps on each PID.
+        /// </summary>
+        private void AdvancePerPidMeasurersOnStreamClock(ulong tick, bool isStreamClockPacket)
+        {
+            if (!isStreamClockPacket || m_clockSource == BitrateClockSource.AssumedTransportRate)
+                return;
+
+            foreach (var measurer in m_pidMeasurers.Values)
+                TryEmit(measurer.OnTimestamp(tick));
         }
 
         private void UpdateLegacyPcrState(TsPacket packet, ulong tick)
@@ -261,7 +275,14 @@ namespace TSParser.Analysis
         private void HandleDiscontinuity(ushort pid)
         {
             if (IsStreamReferencePid(pid))
+            {
                 m_streamMeasurer?.ResetWindow();
+
+                foreach (var pidMeasurer in m_pidMeasurers.Values)
+                    pidMeasurer.ResetWindow();
+
+                return;
+            }
 
             if (m_pidMeasurers.TryGetValue(pid, out var measurer))
                 measurer.ResetWindow();

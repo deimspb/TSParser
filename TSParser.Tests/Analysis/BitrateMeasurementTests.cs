@@ -90,6 +90,38 @@ public sealed class BitrateMeasurementTests
     }
 
     [Test]
+    public void Per_pid_without_local_pcr_uses_stream_reference_clock()
+    {
+        const ushort referencePcrPid = PcrPid;
+        const ushort patPid = 0x0000;
+        const int pcrPacketsPerSecond = 1000;
+        const int seconds = 2;
+        var samples = new List<BitrateSample>();
+
+        var parser = CreateParser(
+            options =>
+            {
+                options.MeasureStreamBitrate = false;
+                options.MeasurePerPidBitrate = true;
+                options.ReferencePid = referencePcrPid;
+            },
+            samples);
+
+        PushPatPayloadWithReferencePcrStream(
+            parser,
+            referencePcrPid,
+            patPid,
+            pcrPacketsPerSecond * seconds + 100,
+            pcrPacketsPerSecond * seconds);
+
+        var pat = samples.Where(s => s.Pid == patPid).ToList();
+
+        Assert.That(pat, Is.Not.Empty, "PAT PID should emit samples paced by the reference PCR PID");
+        Assert.That(pat[0].BytesInWindow, Is.GreaterThan(0));
+        Assert.That(pat.Average(s => s.BitsPerSecond), Is.GreaterThan(0));
+    }
+
+    [Test]
     public void Per_pid_bitrate_reflects_different_packet_density()
     {
         const int videoPackets = 1200;
@@ -488,6 +520,37 @@ public sealed class BitrateMeasurementTests
         {
             BuildPcrPacket(pid, (ulong)i * pcrStep)
                 .CopyTo(bytes.AsSpan(i * PacketLength, PacketLength));
+        }
+
+        parser.PushBytes(bytes, PacketLength);
+    }
+
+    private static void PushPatPayloadWithReferencePcrStream(
+        TsParser parser,
+        ushort referencePcrPid,
+        ushort patPid,
+        int pcrPacketCount,
+        int patPacketCount)
+    {
+        var total = pcrPacketCount * 2 + patPacketCount;
+        var bytes = new byte[total * PacketLength];
+        var offset = 0;
+        ulong pcrTick = 0;
+
+        for (var i = 0; i < pcrPacketCount; i++)
+        {
+            BuildPayloadOnlyPacket(patPid).CopyTo(bytes.AsSpan(offset, PacketLength));
+            offset += PacketLength;
+
+            BuildPcrPacket(referencePcrPid, pcrTick).CopyTo(bytes.AsSpan(offset, PacketLength));
+            offset += PacketLength;
+            pcrTick += PcrStepTicks;
+        }
+
+        for (var i = 0; i < patPacketCount; i++)
+        {
+            BuildPayloadOnlyPacket(patPid).CopyTo(bytes.AsSpan(offset, PacketLength));
+            offset += PacketLength;
         }
 
         parser.PushBytes(bytes, PacketLength);

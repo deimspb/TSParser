@@ -15,7 +15,7 @@
 <PageTitle>TSParser</PageTitle>
 
 <div class="parser-shell">
-    <ParserToolbar StatusText="@_statusText" />
+    <ParserToolbar StatusText="@_statusText" OnChartSettingsChanged="OnChartSettingsChanged" />
 
     <div class="parser-body">
         <div class="parser-main">
@@ -34,6 +34,7 @@
         <section class="parser-chart-section">
             <BitrateChartPanel Store="BitrateStore"
                                DataRevision="_bitrateRevision"
+                               ChartConfigRevision="_chartConfigRevision"
                                FitRevision="_chartFitRevision" />
         </section>
     </div>
@@ -49,12 +50,15 @@
     private TableTreeNode? _selectedNode;
     private string _statusText = "Idle";
     private int _bitrateRevision;
+    private int _chartConfigRevision;
     private int _chartFitRevision;
     private DateTime _lastChartUiUtc = DateTime.MinValue;
     private DateTime _lastPidTreeSyncUtc = DateTime.MinValue;
 
     protected override void OnInitialized()
     {
+        Session.Settings.ApplyChartTo(BitrateStore);
+        _bitrateRevision = BitrateStore.Revision;
         _pumpTask = PumpUpdatesAsync(_cts.Token);
     }
 
@@ -75,7 +79,7 @@
                         break;
 
                     case TsParserUiUpdate.BitrateMeasured(var sample):
-                        if (BitrateStore.TryAddStreamSample(sample) && ShouldRefreshChart())
+                        if (BitrateStore.TryAddSample(sample) && ShouldRefreshChart())
                         {
                             _bitrateRevision = BitrateStore.Revision;
                             needsRefresh = true;
@@ -100,6 +104,7 @@
                         else if (mode == TsParserSessionInputMode.Udp)
                             BitrateStore.ConfigureForUdp();
 
+                        Session.Settings.ApplyChartTo(BitrateStore);
                         _bitrateRevision = BitrateStore.Revision;
                         _chartFitRevision++;
                         _statusText = mode switch
@@ -187,6 +192,14 @@
     }
 
     private Task OnTreeStructureChanged() => InvokeAsync(StateHasChanged);
+
+    private Task OnChartSettingsChanged()
+    {
+        _bitrateRevision = BitrateStore.Revision;
+        _chartConfigRevision++;
+        _chartFitRevision++;
+        return InvokeAsync(StateHasChanged);
+    }
 
     public async ValueTask DisposeAsync()
     {

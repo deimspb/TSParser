@@ -17,11 +17,20 @@ public sealed class TsParserSessionSettings
 
     public bool MeasureUsefulAndTotalBitrate { get; set; } = true;
 
-    public bool MeasurePerPidBitrate { get; set; }
+    public bool ShowStreamOnChart { get; set; } = true;
+
+    public bool ShowPidSumOnChart { get; set; } = true;
+
+    public bool ShowIndividualPidsOnChart { get; set; } = true;
+
+    public IReadOnlyList<ushort> ChartPids { get; private set; } = [];
 
     public IReadOnlyList<ushort> EwsPids { get; private set; } = [];
 
     public IReadOnlyList<ushort> EewsPids { get; private set; } = [];
+
+    public void SetChartPids(IEnumerable<ushort> pids) =>
+        ChartPids = pids?.Distinct().OrderBy(p => p).ToList() ?? [];
 
     public void SetEwsPids(IEnumerable<ushort> pids) =>
         EwsPids = pids?.ToList() ?? [];
@@ -38,7 +47,10 @@ public sealed class TsParserSessionSettings
         AssumedBitsPerSecond = AssumedBitsPerSecond,
         MeasureStreamBitrate = MeasureStreamBitrate,
         MeasureUsefulAndTotalBitrate = MeasureUsefulAndTotalBitrate,
-        MeasurePerPidBitrate = MeasurePerPidBitrate,
+        MeasurePerPidBitrate = ChartPids.Count > 0,
         IncludeNullPackets = false
     };
+
+    internal void ApplyChartTo(BitrateHistoryStore store) =>
+        store.ApplyChartSettings(ChartPids, ShowStreamOnChart, ShowPidSumOnChart, ShowIndividualPidsOnChart);
 }
