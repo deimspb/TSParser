@@ -878,29 +878,22 @@ namespace TSParser
             using BinaryReader binaryReader = new(fileStream);
             try
             {
-
                 var firstFileBytes = binaryReader.ReadBytes(2040);
                 var packLen = GetPacketLength(firstFileBytes, out int syncByte);
 
                 if (syncByte == -1)
-                {
                     throw new Exception("Cannot sync with ts");
-                }
 
-                int MAX_BUFFER = 22 * packLen; // 348 packets 188 byte each it is 64kb size. imho optimal size
+                int MAX_BUFFER = 22 * packLen;
 
                 Span<byte> Buffer = new byte[MAX_BUFFER];
 
                 int BytesRead;
 
                 if (syncByte > 0)
-                {
-                    fileStream.Seek(syncByte, SeekOrigin.Begin); // if first bytes incorrect need to drop it
-                }
+                    fileStream.Seek(syncByte, SeekOrigin.Begin);
                 else
-                {
                     fileStream.Seek(0, SeekOrigin.Begin);
-                }
 
                 if (m_timer != null) m_timer.Enabled = true;
 
@@ -911,20 +904,16 @@ namespace TSParser
                 while ((BytesRead = fileStream.Read(Buffer)) > 0 && !m_ct.IsCancellationRequested)
                 {
                     var offset = 0;
-                    var pl = GetPacketLength(Buffer, out offset);
+                    _ = GetPacketLength(Buffer, out offset);
 
                     if (offset > 0)
-                    {
                         fileStream.Seek(offset + gOffset, SeekOrigin.Begin);
-                    }
 
                     m_fileStreamByteOffset = gOffset;
                     ParserModeDel(Buffer[0..BytesRead], packLen);
                     m_fileStreamByteOffset = null;
                     gOffset += BytesRead;
                 }
-
-
             }
             catch (Exception ex)
             {

@@ -53,7 +53,8 @@ public abstract record TsParserUiUpdate
         TsParserSessionInputMode InputMode,
         string? FilePath,
         string? MulticastEndpoint,
-        string? BindAddress) : TsParserUiUpdate;
+        string? BindAddress,
+        long? FileLengthBytes = null) : TsParserUiUpdate;
 
     public sealed record SessionReset(TsParserSessionResetReason Reason) : TsParserUiUpdate;
 

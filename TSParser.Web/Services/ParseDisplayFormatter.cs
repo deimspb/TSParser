@@ -41,6 +41,7 @@ public static class ParseDisplayFormatter
         Table table => table.Print(0),
         Descriptor descriptor => descriptor.Print(0),
         EsInfo es => es.Print(0),
+        ushort pid => $"Transport stream PID 0x{pid:X4} ({pid})",
         _ => payload.ToString() ?? ""
     };
 

@@ -41,6 +41,7 @@
 
 @code {
     private static readonly TimeSpan UdpChartThrottle = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan PidTreeThrottle = TimeSpan.FromMilliseconds(400);
 
     private readonly CancellationTokenSource _cts = new();
     private Task? _pumpTask;
@@ -50,6 +51,7 @@
     private int _bitrateRevision;
     private int _chartFitRevision;
     private DateTime _lastChartUiUtc = DateTime.MinValue;
+    private DateTime _lastPidTreeSyncUtc = DateTime.MinValue;
 
     protected override void OnInitialized()
     {
@@ -87,13 +89,14 @@
                         _selectedNode = null;
                         _bitrateRevision = BitrateStore.Revision;
                         _chartFitRevision++;
+                        _lastPidTreeSyncUtc = DateTime.MinValue;
                         _statusText = "Session reset";
                         needsRefresh = true;
                         break;
 
-                    case TsParserUiUpdate.SessionStarted(var mode, var filePath, var endpoint, _):
+                    case TsParserUiUpdate.SessionStarted(var mode, var filePath, var endpoint, _, var fileLengthBytes):
                         if (mode == TsParserSessionInputMode.File)
-                            BitrateStore.ConfigureForFile(filePath);
+                            BitrateStore.ConfigureForFile(filePath, fileLengthBytes);
                         else if (mode == TsParserSessionInputMode.Udp)
                             BitrateStore.ConfigureForUdp();
 
@@ -120,15 +123,21 @@
                             _bitrateRevision = BitrateStore.Revision;
 
                         _chartFitRevision++;
-                        needsRefresh = true;
+                        if (TrySyncPidTree(force: true))
+                            needsRefresh = true;
                         break;
 
                     case TsParserUiUpdate.LogMessage(var text, var isError):
                         if (isError)
+                        {
                             _statusText = text;
-                        needsRefresh = true;
+                            needsRefresh = true;
+                        }
                         break;
                 }
+
+                if (TrySyncPidTree())
+                    needsRefresh = true;
 
                 if (needsRefresh)
                     await InvokeAsync(StateHasChanged);
@@ -137,6 +146,24 @@
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
         }
+    }
+
+    private bool TrySyncPidTree(bool force = false)
+    {
+        if (!force)
+        {
+            var now = DateTime.UtcNow;
+            if (now - _lastPidTreeSyncUtc < PidTreeThrottle)
+                return false;
+
+            _lastPidTreeSyncUtc = now;
+        }
+
+        if (!Session.TryGetObservedPids(out var pids) || pids.Count == 0)
+            return false;
+
+        TreeStore.SyncObservedPids(pids);
+        return true;
     }
 
     private bool ShouldRefreshChart()

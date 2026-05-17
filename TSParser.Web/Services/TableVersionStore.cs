@@ -31,8 +31,15 @@ public sealed class TableVersionStore
     ];
 
     private readonly object _sync = new();
+    private readonly StreamPidCatalog _pidCatalog = new();
     private readonly Dictionary<string, TableTreeNode> _categories = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TableTreeNode> _streamByKey = new(StringComparer.Ordinal);
+    private readonly TableTreeNode _pidsCategory = new()
+    {
+        Kind = TableTreeNodeKind.Category,
+        Label = "PIDs",
+        IsExpanded = true
+    };
 
     public long Revision { get; private set; }
 
@@ -44,10 +51,15 @@ public sealed class TableVersionStore
         {
             lock (_sync)
             {
-                return CategoryTitleOrder
+                var list = new List<TableTreeNode>();
+                if (_pidsCategory.Children.Count > 0)
+                    list.Add(_pidsCategory);
+
+                list.AddRange(CategoryTitleOrder
                     .Where(_categories.ContainsKey)
-                    .Select(title => _categories[title])
-                    .ToList();
+                    .Select(title => _categories[title]));
+
+                return list;
             }
         }
     }
@@ -70,6 +82,8 @@ public sealed class TableVersionStore
         {
             _categories.Clear();
             _streamByKey.Clear();
+            _pidCatalog.Clear();
+            _pidsCategory.Children.Clear();
             SelectedNodeId = null;
             BumpRevision();
         }
@@ -79,10 +93,28 @@ public sealed class TableVersionStore
     {
         lock (_sync)
         {
+            _pidCatalog.ApplyTable(kind, table);
+            if (_pidsCategory.Children.Count > 0 &&
+                kind is TsTableKind.Pat or TsTableKind.Pmt or TsTableKind.Sdt)
+                RebuildPidChildren();
+
             var category = GetOrCreateCategory(kind, table);
             var streamKey = $"{kind}|{TableVersionKeyBuilder.GetStreamKey(kind, table)}";
             var versionContainer = GetVersionContainer(category, kind, table, streamKey);
             AddVersion(versionContainer, kind, table);
+            BumpRevision();
+        }
+    }
+
+    public void SyncObservedPids(IReadOnlyList<ushort> pids)
+    {
+        lock (_sync)
+        {
+            var added = _pidCatalog.SyncObserved(pids);
+            if (!added && _pidsCategory.Children.Count > 0)
+                return;
+
+            RebuildPidChildren();
             BumpRevision();
         }
     }
@@ -208,6 +240,34 @@ public sealed class TableVersionStore
 
         found = null;
         return false;
+    }
+
+    private void RebuildPidChildren()
+    {
+        var entries = _pidCatalog.GetSortedEntries();
+        var existing = _pidsCategory.Children
+            .Where(n => n.Payload is ushort)
+            .ToDictionary(n => (ushort)n.Payload!, n => n);
+
+        _pidsCategory.Children.Clear();
+
+        foreach (var (pid, label) in entries)
+        {
+            if (existing.TryGetValue(pid, out var node))
+            {
+                node.Label = label;
+                _pidsCategory.Children.Add(node);
+            }
+            else
+            {
+                _pidsCategory.Children.Add(new TableTreeNode
+                {
+                    Kind = TableTreeNodeKind.Pid,
+                    Label = label,
+                    Payload = pid
+                });
+            }
+        }
     }
 
     private void BumpRevision() => Revision++;

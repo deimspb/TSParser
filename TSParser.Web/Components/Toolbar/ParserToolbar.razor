@@ -1,6 +1,7 @@
 @rendermode InteractiveServer
 
 @using TSParser.Analysis
+@using Microsoft.AspNetCore.Components.Forms
 @inject TsParserSessionService Session
 @inject NetworkInterfaceService NetworkInterfaces
 
@@ -9,7 +10,14 @@
 
     <div class="toolbar-groups">
         <div class="toolbar-group">
-            <button type="button" class="toolbar-btn" @onclick="ShowFileDialog" disabled="@_sessionBusy">File…</button>
+            <label class="toolbar-btn toolbar-btn--file @(_sessionBusy ? "toolbar-btn--busy" : null)"
+                   title="Open transport stream file">
+                File…
+                <InputFile OnChange="OnTransportStreamFileSelected"
+                           accept=".ts,.m2ts,.mpg,.mpeg,video/mp2t"
+                           class="toolbar-file-input"
+                           disabled="@_sessionBusy" />
+            </label>
             <button type="button" class="toolbar-btn" @onclick="ShowBitrateDialog" disabled="@_sessionBusy">Bitrate…</button>
         </div>
 
@@ -55,28 +63,6 @@
 
     <span class="parser-status" title="@StatusDisplay">@StatusDisplay</span>
 </header>
-
-@if (_showFileDialog)
-{
-    <div class="toolbar-modal-backdrop" @onclick="CloseFileDialog">
-        <div class="toolbar-modal" role="dialog" aria-labelledby="file-dialog-title" @onclick:stopPropagation="true">
-            <h2 id="file-dialog-title" class="toolbar-modal-title">Open transport stream file</h2>
-            <p class="toolbar-modal-hint">Enter the full path on the server machine (minimum 2040 bytes).</p>
-            <input class="toolbar-input toolbar-input--wide"
-                   @bind="_filePath"
-                   placeholder="D:\captures\stream.ts"
-                   autocomplete="off" />
-            @if (!string.IsNullOrEmpty(_fileError))
-            {
-                <p class="toolbar-modal-error">@_fileError</p>
-            }
-            <div class="toolbar-modal-actions">
-                <button type="button" class="toolbar-btn toolbar-btn--primary" @onclick="ConfirmOpenFileAsync" disabled="@_sessionBusy">Open</button>
-                <button type="button" class="toolbar-btn" @onclick="CloseFileDialog">Cancel</button>
-            </div>
-        </div>
-    </div>
-}
 
 @if (_showBitrateDialog)
 {
@@ -172,12 +158,9 @@
     private IReadOnlyList<NetworkInterfaceService.BindOption> _bindOptions = [];
     private string _multicastEndpoint = "239.1.2.3:1234";
     private string _selectedBindAddress = "";
-    private string _filePath = "";
-    private bool _showFileDialog;
     private bool _showBitrateDialog;
     private bool _showEwsDialog;
     private bool _sessionBusy;
-    private string? _fileError;
     private string? _bitrateError;
     private string? _ewsError;
     private string? _sessionError;
@@ -219,9 +202,6 @@
         _ewsPidsText = FormatPidList(s.EwsPids);
         _eewsPidsText = FormatPidList(s.EewsPids);
 
-        if (!string.IsNullOrEmpty(Session.CurrentFilePath))
-            _filePath = Session.CurrentFilePath;
-
         if (!string.IsNullOrEmpty(Session.CurrentMulticastEndpoint))
             _multicastEndpoint = Session.CurrentMulticastEndpoint;
 
@@ -231,15 +211,32 @@
     private static string FormatPidList(IReadOnlyList<ushort> pids) =>
         pids.Count == 0 ? "" : string.Join(", ", pids.Select(p => $"0x{p:X4}"));
 
-    private void ShowFileDialog()
+    private async Task OnTransportStreamFileSelected(InputFileChangeEventArgs e)
     {
-        _fileError = null;
-        if (string.IsNullOrWhiteSpace(_filePath) && !string.IsNullOrEmpty(Session.CurrentFilePath))
-            _filePath = Session.CurrentFilePath;
-        _showFileDialog = true;
-    }
+        if (_sessionBusy)
+            return;
 
-    private void CloseFileDialog() => _showFileDialog = false;
+        var file = e.File;
+        if (file is null)
+            return;
+
+        _sessionError = null;
+        _sessionBusy = true;
+
+        try
+        {
+            await Session.OpenUploadedFileAsync(file);
+        }
+        catch (Exception ex)
+        {
+            _sessionError = ex.Message;
+        }
+        finally
+        {
+            _sessionBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
 
     private void ShowBitrateDialog()
     {
@@ -318,28 +315,6 @@
         Session.Settings.SetEwsPids(ews);
         Session.Settings.SetEewsPids(eews);
         _showEwsDialog = false;
-    }
-
-    private void ConfirmOpenFileAsync()
-    {
-        _fileError = null;
-        _sessionError = null;
-
-        if (string.IsNullOrWhiteSpace(_filePath))
-        {
-            _fileError = "Enter a file path.";
-            return;
-        }
-
-        var path = _filePath.Trim();
-        _showFileDialog = false;
-        _ = RunSessionInBackgroundAsync(
-            () => Session.OpenFileAsync(path),
-            ex =>
-            {
-                _fileError = ex.Message;
-                _showFileDialog = true;
-            });
     }
 
     private void PlayUdpAsync()

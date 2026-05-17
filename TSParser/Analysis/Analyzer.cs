@@ -44,8 +44,7 @@ namespace TSParser.Analysis
         private readonly bool m_measureUsefulAndTotalBitrate;
         private readonly Dictionary<ushort, BitrateWindowMeasurer> m_pidMeasurers = new();
 
-        private readonly List<ushort> m_pidList = new(50);
-        private readonly List<PidMetric> m_pidMetrics = new(50);
+        private readonly Dictionary<ushort, PidMetric> m_pidMetricsByPid = new(50);
 
         private int m_lastPacketSize = 188;
         private long? m_streamByteOffset;
@@ -72,8 +71,9 @@ namespace TSParser.Analysis
         {
             get
             {
-                m_pidList.Sort();
-                return m_pidList;
+                var pids = m_pidMetricsByPid.Keys.ToList();
+                pids.Sort();
+                return pids;
             }
         }
 
@@ -339,24 +339,19 @@ namespace TSParser.Analysis
 
         private void AddPacketToPidMetric(TsPacket packet)
         {
-            var pidIndex = m_pidList.IndexOf(packet.Pid);
-
-            if (pidIndex >= 0)
+            if (!m_pidMetricsByPid.TryGetValue(packet.Pid, out var pm))
             {
-                m_pidMetrics[pidIndex].AddPacket(packet);
-                return;
-            }
+                pm = new PidMetric(packet.Pid);
+                if (!m_bitrateEnabled)
+                {
+                    pm.OnRate += Pm_OnRate;
+                    OnTimeStampChange += pm.TimeStampChanged;
+                }
 
-            m_pidList.Add(packet.Pid);
-            var pm = new PidMetric(packet.Pid);
-            if (!m_bitrateEnabled)
-            {
-                pm.OnRate += Pm_OnRate;
-                OnTimeStampChange += pm.TimeStampChanged;
+                m_pidMetricsByPid[packet.Pid] = pm;
             }
 
             pm.AddPacket(packet);
-            m_pidMetrics.Add(pm);
         }
 
         private void Pm_OnRate(ushort pid, ulong deltaPackets, ulong deltaTime)

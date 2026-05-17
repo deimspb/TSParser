@@ -1,8 +1,12 @@
 // Run from repo root: dotnet run --project TSParser.Web
+using Microsoft.AspNetCore.Http.Features;
 using TSParser.Web.Components;
 using TSParser.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = null);
+builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = long.MaxValue);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

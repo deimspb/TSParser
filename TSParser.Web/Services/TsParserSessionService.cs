@@ -1,5 +1,6 @@
 using System.Net;
 using System.Threading.Channels;
+using Microsoft.AspNetCore.Components.Forms;
 using TSParser;
 using TSParser.Analysis;
 using TSParser.Enums;
@@ -17,6 +18,7 @@ namespace TSParser.Web.Services;
 public sealed class TsParserSessionService : IAsyncDisposable
 {
     private const int MinimumFileBytes = 2040;
+    private const long MaxUploadBytes = 8L * 1024 * 1024 * 1024;
 
     private readonly Channel<TsParserUiUpdate> _channel = Channel.CreateUnbounded<TsParserUiUpdate>(
         new UnboundedChannelOptions { SingleReader = false, SingleWriter = true });
@@ -27,6 +29,8 @@ public sealed class TsParserSessionService : IAsyncDisposable
     private bool _loggerSubscribed;
     private TsParserSessionInputMode _inputMode = TsParserSessionInputMode.None;
     private string? _currentFilePath;
+    private string? _currentFileDisplayName;
+    private string? _tempUploadPath;
     private string? _currentMulticastEndpoint;
     private string? _currentBindAddress;
 
@@ -38,6 +42,9 @@ public sealed class TsParserSessionService : IAsyncDisposable
 
     public string? CurrentFilePath => _currentFilePath;
 
+    /// <summary>User-visible file name from the opened path.</summary>
+    public string? CurrentFileDisplayName => _currentFileDisplayName;
+
     public string? CurrentMulticastEndpoint => _currentMulticastEndpoint;
 
     public string? CurrentBindAddress => _currentBindAddress;
@@ -48,6 +55,21 @@ public sealed class TsParserSessionService : IAsyncDisposable
         {
             lock (_parserLock)
                 return _runTask is { IsCompleted: false };
+        }
+    }
+
+    public bool TryGetObservedPids(out IReadOnlyList<ushort> pids)
+    {
+        lock (_parserLock)
+        {
+            if (_parser is null)
+            {
+                pids = [];
+                return false;
+            }
+
+            pids = _parser.PidList;
+            return pids.Count > 0;
         }
     }
 
@@ -65,6 +87,42 @@ public sealed class TsParserSessionService : IAsyncDisposable
         if (new FileInfo(path).Length < MinimumFileBytes)
             throw new InvalidOperationException($"File must be at least {MinimumFileBytes} bytes.");
 
+        await StartFileSessionAsync(path, Path.GetFileName(path), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Saves a browser-selected file to a temp path and opens it with <see cref="ParserConfig.TsFileName"/>.</summary>
+    public async Task OpenUploadedFileAsync(IBrowserFile file, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+
+        if (file.Size < MinimumFileBytes)
+            throw new InvalidOperationException($"File must be at least {MinimumFileBytes} bytes.");
+
+        DeleteTempUploadIfAny();
+
+        var uploadDir = Path.Combine(Path.GetTempPath(), "TSParser.Web", "uploads");
+        Directory.CreateDirectory(uploadDir);
+
+        var extension = Path.GetExtension(file.Name);
+        if (string.IsNullOrEmpty(extension))
+            extension = ".ts";
+
+        var tempPath = Path.Combine(uploadDir, $"{Guid.NewGuid():N}{extension}");
+
+        await using (var readStream = file.OpenReadStream(MaxUploadBytes, cancellationToken))
+        await using (var writeStream = File.Create(tempPath))
+            await readStream.CopyToAsync(writeStream, cancellationToken).ConfigureAwait(false);
+
+        _tempUploadPath = tempPath;
+        await StartFileSessionAsync(tempPath, file.Name, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task StartFileSessionAsync(string path, string displayName, CancellationToken cancellationToken)
+    {
+        if (_tempUploadPath is not null &&
+            !string.Equals(path, _tempUploadPath, StringComparison.OrdinalIgnoreCase))
+            DeleteTempUploadIfAny();
+
         await StopAndDisposeParserAsync().ConfigureAwait(false);
 
         Post(new TsParserUiUpdate.SessionReset(TsParserSessionResetReason.OpenFile));
@@ -77,15 +135,18 @@ public sealed class TsParserSessionService : IAsyncDisposable
             _parser = parser;
             _inputMode = TsParserSessionInputMode.File;
             _currentFilePath = path;
+            _currentFileDisplayName = displayName;
             _currentMulticastEndpoint = null;
             _currentBindAddress = null;
         }
 
+        var fileLength = new FileInfo(path).Length;
         Post(new TsParserUiUpdate.SessionStarted(
             TsParserSessionInputMode.File,
-            path,
+            displayName,
             null,
-            null));
+            null,
+            fileLength));
 
         StartParserRunInBackground(parser, cancellationToken);
     }
@@ -119,6 +180,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
             _parser = parser;
             _inputMode = TsParserSessionInputMode.Udp;
             _currentFilePath = null;
+            _currentFileDisplayName = null;
             _currentMulticastEndpoint = $"{group}:{port}";
             _currentBindAddress = string.IsNullOrWhiteSpace(bindAddress) ? null : bindAddress.Trim();
         }
@@ -172,7 +234,25 @@ public sealed class TsParserSessionService : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await StopAndDisposeParserAsync().ConfigureAwait(false);
+        DeleteTempUploadIfAny();
         _channel.Writer.TryComplete();
+    }
+
+    private void DeleteTempUploadIfAny()
+    {
+        if (_tempUploadPath is not { } path)
+            return;
+
+        _tempUploadPath = null;
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch
+        {
+            // Best-effort cleanup of temp uploads.
+        }
     }
 
     private ParserConfig BuildParserConfig(
@@ -318,10 +398,13 @@ public sealed class TsParserSessionService : IAsyncDisposable
         _loggerSubscribed = true;
     }
 
-    private void OnLogMessage(LogMessage message) =>
-        Post(new TsParserUiUpdate.LogMessage(
-            message.ToString(),
-            message.LogStatus is LogStatus.EXCEPTION or LogStatus.FATAL));
+    private void OnLogMessage(LogMessage message)
+    {
+        if (message.LogStatus is not (LogStatus.EXCEPTION or LogStatus.FATAL))
+            return;
+
+        Post(new TsParserUiUpdate.LogMessage(message.ToString(), true));
+    }
 
     private void OnPatReady(PAT pat) => PostTable(TsTableKind.Pat, pat);
     private void OnPmtReady(PMT pmt) => PostTable(TsTableKind.Pmt, pmt);

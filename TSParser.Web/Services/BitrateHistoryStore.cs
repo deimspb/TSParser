@@ -17,16 +17,16 @@ public sealed class BitrateHistoryStore
 
     public int Revision { get; private set; }
 
-    public void ConfigureForFile(string? filePath)
+    public void ConfigureForFile(string? filePath, long? fileLengthBytes = null)
     {
         lock (_lock)
         {
             _filePoints.Clear();
             _udpPoints.Clear();
             Mode = TsParserSessionInputMode.File;
-            FileLengthBytes = filePath is { Length: > 0 } && File.Exists(filePath)
+            FileLengthBytes = fileLengthBytes ?? (filePath is { Length: > 0 } && File.Exists(filePath)
                 ? new FileInfo(filePath).Length
-                : null;
+                : null);
             BumpRevision();
         }
     }

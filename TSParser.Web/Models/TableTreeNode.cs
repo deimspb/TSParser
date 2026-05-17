@@ -9,7 +9,8 @@ public enum TableTreeNodeKind
     Stream,
     Version,
     ElementaryStream,
-    Descriptor
+    Descriptor,
+    Pid
 }
 
 /// <summary>Single node in the SI table tree (category → stream → version → descriptors).</summary>
