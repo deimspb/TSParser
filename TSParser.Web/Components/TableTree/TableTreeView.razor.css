@@ -81,6 +81,11 @@
     background: #cfe2ff;
 }
 
+.table-tree-label--pid-missing {
+    color: #c92a2a;
+    font-weight: 600;
+}
+
 .table-tree-item--category > .table-tree-row .table-tree-label {
     font-weight: 700;
     text-transform: uppercase;

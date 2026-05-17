@@ -407,7 +407,46 @@ public sealed class TsParserSessionService : IAsyncDisposable
     }
 
     private void OnPatReady(PAT pat) => PostTable(TsTableKind.Pat, pat);
-    private void OnPmtReady(PMT pmt) => PostTable(TsTableKind.Pmt, pmt);
+    private void OnPmtReady(PMT pmt)
+    {
+        TryAutoConfigureOperatorEwsPids(pmt);
+        PostTable(TsTableKind.Pmt, pmt);
+    }
+
+    /// <summary>
+    /// Operator streams use stream_type 0x05 for EWS/EEWS without AIT descriptor 0x6F.
+    /// When toolbar lists are empty, register those PIDs so TsParser delivers EWS/EEWS tables.
+    /// </summary>
+    private void TryAutoConfigureOperatorEwsPids(PMT pmt)
+    {
+        if (Settings.EwsPids.Count > 0 || Settings.EewsPids.Count > 0)
+            return;
+
+        if (pmt.EsInfoList is null || pmt.EsInfoList.Count == 0)
+            return;
+
+        lock (_parserLock)
+        {
+            if (_parser is null)
+                return;
+
+            foreach (var es in pmt.EsInfoList)
+            {
+                if (es.StreamType != 0x05)
+                    continue;
+
+                if (es.EsDescriptorList?.Any(d => d.DescriptorTag == 0x6F) == true)
+                    continue;
+
+                var pid = es.ElementaryPid;
+                if (!_parser.EwsPidList.Contains(pid))
+                    _parser.EwsPidList.Add(pid);
+
+                if (!_parser.EewsPidList.Contains(pid))
+                    _parser.EewsPidList.Add(pid);
+            }
+        }
+    }
     private void OnCatReady(CAT cat) => PostTable(TsTableKind.Cat, cat);
     private void OnNitReady(NIT nit) => PostTable(TsTableKind.Nit, nit);
     private void OnSdtReady(SDT sdt) => PostTable(TsTableKind.Sdt, sdt);

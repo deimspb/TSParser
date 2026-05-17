@@ -27,6 +27,9 @@ public sealed class TableTreeNode
 
     public bool IsExpanded { get; set; }
 
+    /// <summary>SI-defined PID with no packets observed in the transport stream.</summary>
+    public bool IsMissingFromStream { get; set; }
+
     public object? Payload { get; init; }
 
     public List<TableTreeNode> Children { get; } = [];

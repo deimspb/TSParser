@@ -1,3 +1,4 @@
+using System.Text.Json;
 using TSParser.Tables;
 using TSParser.Web.Models;
 
@@ -68,6 +69,9 @@ public sealed class TableVersionStore
     {
         lock (_sync)
         {
+            if (TryFindNode(_pidsCategory, nodeId, out var pidsFound))
+                return pidsFound;
+
             foreach (var category in _categories.Values)
                 if (TryFindNode(category, nodeId, out var found))
                     return found;
@@ -94,8 +98,7 @@ public sealed class TableVersionStore
         lock (_sync)
         {
             _pidCatalog.ApplyTable(kind, table);
-            if (_pidsCategory.Children.Count > 0 &&
-                kind is TsTableKind.Pat or TsTableKind.Pmt or TsTableKind.Sdt)
+            if (ShouldRebuildPidTree(kind))
                 RebuildPidChildren();
 
             var category = GetOrCreateCategory(kind, table);
@@ -136,11 +139,28 @@ public sealed class TableVersionStore
         lock (_sync)
         {
             if (FindNode(nodeId) is not { } node)
+            {
+                // #region agent log
+                AgentDebugLog(
+                    "A",
+                    "TableVersionStore.SetExpanded",
+                    "node not found",
+                    new { nodeId, expanded, runId = "post-fix" });
+                // #endregion
                 return;
+            }
 
             node.IsExpanded = expanded;
             if (expanded && node.Kind == TableTreeNodeKind.Version)
                 TableDescriptorChildrenBuilder.LoadDescriptorChildren(node);
+
+            // #region agent log
+            AgentDebugLog(
+                "B",
+                "TableVersionStore.SetExpanded",
+                "after apply",
+                new { node.Id, node.IsExpanded, node.Label, node.Kind, runId = "post-fix" });
+            // #endregion
 
             BumpRevision();
         }
@@ -242,8 +262,17 @@ public sealed class TableVersionStore
         return false;
     }
 
+    private static bool ShouldRebuildPidTree(TsTableKind kind) => kind switch
+    {
+        TsTableKind.Pat or TsTableKind.Pmt or TsTableKind.Sdt or TsTableKind.Cat
+            or TsTableKind.Ews or TsTableKind.Eews or TsTableKind.Ait
+            or TsTableKind.Mip or TsTableKind.Scte35 => true,
+        _ => false
+    };
+
     private void RebuildPidChildren()
     {
+        var expandedBefore = _pidsCategory.IsExpanded;
         var entries = _pidCatalog.GetSortedEntries();
         var existing = _pidsCategory.Children
             .Where(n => n.Payload is ushort)
@@ -251,11 +280,12 @@ public sealed class TableVersionStore
 
         _pidsCategory.Children.Clear();
 
-        foreach (var (pid, label) in entries)
+        foreach (var entry in entries)
         {
-            if (existing.TryGetValue(pid, out var node))
+            if (existing.TryGetValue(entry.Pid, out var node))
             {
-                node.Label = label;
+                node.Label = entry.Label;
+                node.IsMissingFromStream = entry.IsMissingFromStream;
                 _pidsCategory.Children.Add(node);
             }
             else
@@ -263,12 +293,50 @@ public sealed class TableVersionStore
                 _pidsCategory.Children.Add(new TableTreeNode
                 {
                     Kind = TableTreeNodeKind.Pid,
-                    Label = label,
-                    Payload = pid
+                    Label = entry.Label,
+                    Payload = entry.Pid,
+                    IsMissingFromStream = entry.IsMissingFromStream
                 });
             }
         }
+
+        // #region agent log
+        AgentDebugLog(
+            "C",
+            "TableVersionStore.RebuildPidChildren",
+            "rebuilt pid list",
+            new
+            {
+                expandedBefore,
+                expandedAfter = _pidsCategory.IsExpanded,
+                childCount = _pidsCategory.Children.Count
+            });
+        // #endregion
     }
 
     private void BumpRevision() => Revision++;
+
+    // #region agent log
+    private static void AgentDebugLog(string hypothesisId, string location, string message, object data)
+    {
+        try
+        {
+            var line = JsonSerializer.Serialize(new
+            {
+                sessionId = "93273f",
+                hypothesisId,
+                location,
+                message,
+                data,
+                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            });
+            File.AppendAllText(
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "debug-93273f.log"),
+                line + Environment.NewLine);
+        }
+        catch
+        {
+        }
+    }
+    // #endregion
 }

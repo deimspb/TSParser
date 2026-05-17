@@ -37,6 +37,33 @@
 
     private async Task OnToggleExpand((TableTreeNode Node, bool Expanded) args)
     {
+        // #region agent log
+        try
+        {
+            var line = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                sessionId = "93273f",
+                hypothesisId = "D",
+                location = "TableTreeView.OnToggleExpand",
+                message = "UI toggle",
+                data = new
+                {
+                    args.Node.Id,
+                    args.Node.Label,
+                    kind = args.Node.Kind.ToString(),
+                    args.Expanded
+                },
+                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            });
+            System.IO.File.AppendAllText(
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "debug-93273f.log"),
+                line + Environment.NewLine);
+        }
+        catch
+        {
+        }
+        // #endregion
+
         Store.SetExpanded(args.Node.Id, args.Expanded);
         await OnStructureChanged.InvokeAsync();
     }

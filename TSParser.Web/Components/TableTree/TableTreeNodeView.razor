@@ -88,6 +88,8 @@
         var classes = new List<string>();
         if (Node.Kind == TableTreeNodeKind.Version)
             classes.Add(Node.IsActive ? "table-tree-label--active" : "table-tree-label--stale");
+        if (Node.Kind == TableTreeNodeKind.Pid && Node.IsMissingFromStream)
+            classes.Add("table-tree-label--pid-missing");
         if (IsSelected)
             classes.Add("table-tree-label--selected");
         return string.Join(' ', classes);
