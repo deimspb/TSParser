@@ -8,7 +8,8 @@ window.tsParserPlotly = {
             'xaxis.autorange': false,
             'yaxis.autorange': false,
             'xaxis.range': [xMin, xMax],
-            'yaxis.range': [yMin, yMax]
+            'yaxis.range': [yMin, yMax],
+            'yaxis.fixedrange': true
         });
 
         try {

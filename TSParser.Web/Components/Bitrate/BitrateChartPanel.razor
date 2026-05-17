@@ -30,8 +30,10 @@
 </div>
 
 @code {
-    private const double AxisPaddingRatio = 0.12;
-    private const double MinAxisPaddingMbps = 0.5;
+    private const double YAxisPaddingRatio = 0.12;
+    private const double MinYAxisPaddingMbps = 0.5;
+    private const double XAxisPaddingRatio = 0.02;
+    private const double MinXAxisPadding = 0.25;
 
     private PlotlyChart? _chart;
     private Config _config = new() { Responsive = true, ScrollZoom = ScrollZoomFlag.Cartesian };
@@ -125,25 +127,22 @@
     {
         try
         {
-            var applied = await Js.InvokeAsync<bool>(
+            await Js.InvokeAsync<bool>(
                 "tsParserPlotly.applyAxisRanges", _xMin, _xMax, _yMin, _yMax);
-
-            if (applied)
-                return;
         }
         catch
         {
             // fall through to C# relayout
         }
 
-        if (_chart is null)
-            return;
-
-        await _chart.Relayout(new
+        if (_chart is not null)
         {
-            xaxis = new { range = new[] { _xMin, _xMax }, autorange = false },
-            yaxis = new { range = new[] { _yMin, _yMax }, autorange = false }
-        });
+            await _chart.Relayout(new
+            {
+                xaxis = new { range = new[] { _xMin, _xMax }, autorange = false },
+                yaxis = new { range = new[] { _yMin, _yMax }, autorange = false }
+            });
+        }
     }
 
     private void ApplySnapshot(BitrateChartSnapshot snapshot)
@@ -183,11 +182,8 @@
 
         var xLabel = usePercent ? "File position (%)" : "File offset (MB)";
         var title = usePercent ? "Bitrate vs file position" : "Bitrate vs byte offset";
-        var xRange = usePercent
-            ? ComputeRange(0, 100)
-            : ComputeRange(xs);
-
-        var yRange = ComputeRange(totalYs.Concat(usefulYs));
+        var xRange = ComputeXRange(xs);
+        var yRange = ComputeYRange(totalYs.Concat(usefulYs));
         SetPlotRanges(xRange, yRange);
         _layout = CreateLayout(title, xLabel, "Mbps", xRange, yRange, FitRevision);
     }
@@ -213,8 +209,8 @@
             CreateLineTrace("Useful", ToObjectList(xs), ToObjectList(usefulYs), "#228b22")
         };
 
-        var xRange = ComputeRange(xs);
-        var yRange = ComputeRange(totalYs.Concat(usefulYs));
+        var xRange = ComputeXRange(xs);
+        var yRange = ComputeYRange(totalYs.Concat(usefulYs));
         SetPlotRanges(xRange, yRange);
         _layout = CreateLayout("Live transport bitrate", "Time (s)", "Mbps", xRange, yRange, FitRevision);
     }
@@ -266,7 +262,7 @@
                     Title = new Plotly.Blazor.LayoutLib.YAxisLib.Title { Text = yLabel },
                     ZeroLine = false,
                     Range = new List<object> { yRange.Min, yRange.Max },
-                    FixedRange = false
+                    FixedRange = true
                 }
             },
             Legend = new List<Legend>
@@ -275,7 +271,7 @@
             }
         };
 
-    private static (double Min, double Max) ComputeRange(IEnumerable<double> values)
+    private static (double Min, double Max) ComputeXRange(IEnumerable<double> values)
     {
         var min = double.PositiveInfinity;
         var max = double.NegativeInfinity;
@@ -289,22 +285,39 @@
         if (double.IsInfinity(min) || double.IsInfinity(max))
             return (0, 1);
 
-        return ExpandRange(min, max);
+        return ExpandAxisRange(min, max, XAxisPaddingRatio, MinXAxisPadding);
     }
 
-    private static (double Min, double Max) ComputeRange(double min, double max) =>
-        ExpandRange(min, max);
+    private static (double Min, double Max) ComputeYRange(IEnumerable<double> values)
+    {
+        var max = double.NegativeInfinity;
 
-    private static (double Min, double Max) ExpandRange(double min, double max)
+        foreach (var value in values)
+        {
+            if (value > max)
+                max = value;
+        }
+
+        if (double.IsNegativeInfinity(max))
+            return (0, 1);
+
+        if (max <= 0)
+            return (0, 1);
+
+        var topPad = Math.Max(max * YAxisPaddingRatio, MinYAxisPaddingMbps);
+        return (0, max + topPad);
+    }
+
+    private static (double Min, double Max) ExpandAxisRange(double min, double max, double paddingRatio, double minPadding)
     {
         if (Math.Abs(max - min) < 1e-9)
         {
-            var pad = Math.Max(Math.Abs(max) * AxisPaddingRatio, MinAxisPaddingMbps);
+            var pad = Math.Max(Math.Abs(max) * paddingRatio, minPadding);
             return (min - pad, max + pad);
         }
 
         var span = max - min;
-        var margin = Math.Max(span * AxisPaddingRatio, MinAxisPaddingMbps);
+        var margin = Math.Max(span * paddingRatio, minPadding);
         return (min - margin, max + margin);
     }
 

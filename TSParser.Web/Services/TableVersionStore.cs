@@ -1,4 +1,3 @@
-using System.Text.Json;
 using TSParser.Tables;
 using TSParser.Web.Models;
 
@@ -139,28 +138,11 @@ public sealed class TableVersionStore
         lock (_sync)
         {
             if (FindNode(nodeId) is not { } node)
-            {
-                // #region agent log
-                AgentDebugLog(
-                    "A",
-                    "TableVersionStore.SetExpanded",
-                    "node not found",
-                    new { nodeId, expanded, runId = "post-fix" });
-                // #endregion
                 return;
-            }
 
             node.IsExpanded = expanded;
             if (expanded && node.Kind == TableTreeNodeKind.Version)
                 TableDescriptorChildrenBuilder.LoadDescriptorChildren(node);
-
-            // #region agent log
-            AgentDebugLog(
-                "B",
-                "TableVersionStore.SetExpanded",
-                "after apply",
-                new { node.Id, node.IsExpanded, node.Label, node.Kind, runId = "post-fix" });
-            // #endregion
 
             BumpRevision();
         }
@@ -272,7 +254,6 @@ public sealed class TableVersionStore
 
     private void RebuildPidChildren()
     {
-        var expandedBefore = _pidsCategory.IsExpanded;
         var entries = _pidCatalog.GetSortedEntries();
         var existing = _pidsCategory.Children
             .Where(n => n.Payload is ushort)
@@ -299,44 +280,7 @@ public sealed class TableVersionStore
                 });
             }
         }
-
-        // #region agent log
-        AgentDebugLog(
-            "C",
-            "TableVersionStore.RebuildPidChildren",
-            "rebuilt pid list",
-            new
-            {
-                expandedBefore,
-                expandedAfter = _pidsCategory.IsExpanded,
-                childCount = _pidsCategory.Children.Count
-            });
-        // #endregion
     }
 
     private void BumpRevision() => Revision++;
-
-    // #region agent log
-    private static void AgentDebugLog(string hypothesisId, string location, string message, object data)
-    {
-        try
-        {
-            var line = JsonSerializer.Serialize(new
-            {
-                sessionId = "93273f",
-                hypothesisId,
-                location,
-                message,
-                data,
-                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-            });
-            File.AppendAllText(
-                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "debug-93273f.log"),
-                line + Environment.NewLine);
-        }
-        catch
-        {
-        }
-    }
-    // #endregion
 }
