@@ -22,28 +22,26 @@ namespace TSParser.Tables
         internal ushort CurrentPid { get; set; } = 0xFFFF; // max pid value 0x1FFF
 
         internal byte[] TableData = null!;
-        private int Pointer;
-        private bool isInProgresTable;
-        private byte[] tempBuffer = null!;
-        private int CurrentTableSectionLength;
-        private int CurrentTablePointerField;
-        private int TableBytes;
-        internal bool IsAllTable {
-            get {
-                return TableBytes >= CurrentTableSectionLength + 3 && CurrentTableSectionLength > 0;
-            }
-        }
+        private readonly Dictionary<ushort, PsiSectionAssembler> assemblers = new();
+        private readonly Dictionary<ushort, Queue<ReadOnlyMemory<byte>>> readySectionsByPid = new();
+        internal bool IsAllTable => TableData is { Length: > 0 };
 
         internal abstract void PushTable(TsPacket tsPacket);
 
-        internal void ResetFactory()
+        internal void ResetFactory(ushort? pid = null)
         {
-            isInProgresTable = false;            
-            Pointer = 0;
-            CurrentTableSectionLength = 0;
-            TableBytes = 0;
+            var targetPid = pid ?? CurrentPid;
+            if (assemblers.TryGetValue(targetPid, out var assembler))
+            {
+                assembler.Reset();
+            }
+
+            if (readySectionsByPid.TryGetValue(targetPid, out var queue))
+            {
+                queue.Clear();
+            }
+
             TableData = null!;
-            tempBuffer = null!;
         }
 
         internal bool TryParseAssembledTable(Action parseAction, string tableName)
@@ -64,166 +62,48 @@ namespace TSParser.Tables
             }
         }
 
-        private static bool IsValidSectionLength(int sectionLength) =>
-            sectionLength > 0 && sectionLength <= SectionParseValidation.MaxSectionLength;
+        internal IReadOnlyList<ReadOnlyMemory<byte>> PushPacketForSections(TsPacket tsPacket)
+        {
+            if (!tsPacket.HasPayload || tsPacket.Payload.Length == 0)
+            {
+                return Array.Empty<ReadOnlyMemory<byte>>();
+            }
+
+            if (tsPacket.TransportScramblingControl != 0x00)
+            {
+                Logger.Send(LogStatus.WARNING, $"Atempt to bulid table from scrambled packet with pid: {tsPacket.Pid}");
+                return Array.Empty<ReadOnlyMemory<byte>>();
+            }
+
+            CurrentPid = tsPacket.Pid;
+            if (!assemblers.TryGetValue(CurrentPid, out var assembler))
+            {
+                assembler = new PsiSectionAssembler(CurrentPid);
+                assemblers[CurrentPid] = assembler;
+            }
+
+            return assembler.PushPacket(tsPacket);
+        }
+
         internal void AddData(TsPacket tsPacket)
         {
-            try
+            TableData = null!;
+            var pid = tsPacket.Pid;
+            if (!readySectionsByPid.TryGetValue(pid, out var pendingSections))
             {
-                if (CurrentPid == 0xFFFF) CurrentPid = tsPacket.Pid;
-                if (CurrentPid != tsPacket.Pid) throw new Exception($"Pid changed from: {CurrentPid} to {tsPacket.Pid}");
-                if (tsPacket.TransportScramblingControl != 0x00)
-                {
-                    Logger.Send(LogStatus.WARNING, $"Atempt to bulid table from scrambled packet with pid: {tsPacket.Pid}");
-                    return;
-                }
-
-                if (tsPacket.PayloadUnitStartIndicator)
-                {
-                    Pointer = tsPacket.Payload[0];
-
-                    if (Pointer > tsPacket.Payload.Length)
-                    {
-                        Logger.Send(LogStatus.WARNING, $"Pointer field greater than packet length for pid: {tsPacket.Pid}");
-                        return;
-                        //throw new Exception($"Pointer field greater than packet length for pid: {tsPacket.Pid}");
-                    }
-
-                    if (isInProgresTable)
-                    {
-                        if (TableBytes < 3)
-                        {
-                            Buffer.BlockCopy(tsPacket.Payload, 1, tempBuffer, TableBytes, 3 - TableBytes);
-                            CurrentTableSectionLength = (((tempBuffer[1] & 0x0F) << 8) + tempBuffer[2]);
-                            if (!IsValidSectionLength(CurrentTableSectionLength))
-                            {
-                                Logger.Send(LogStatus.WARNING, $"Invalid section length {CurrentTableSectionLength} for pid: {tsPacket.Pid}");
-                                ResetFactory();
-                                return;
-                            }
-                            if (CurrentTableSectionLength > Pointer)
-                            {
-                                throw new Exception(" section length greater than pointer!");
-                            }
-                            TableData = new byte[CurrentTableSectionLength + 3];
-                            Buffer.BlockCopy(tempBuffer, 0, TableData, 0, 3);
-                            var offsetInPayload = 1 + 3 - TableBytes;
-                            var bytesToCopyCount = Pointer - (3 - TableBytes);
-                            Buffer.BlockCopy(tsPacket.Payload, offsetInPayload, TableData, 3, bytesToCopyCount);
-
-                            // table ready
-                            isInProgresTable = false;
-                            return;
-                        }
-                        else
-                        {
-                            Buffer.BlockCopy(tsPacket.Payload, 1, TableData, TableBytes, Pointer);
-
-                            TableBytes += Pointer;
-
-                            //table ready
-                            isInProgresTable = false;
-                            return;
-                        }
-                    }
-
-                    isInProgresTable = true;
-                    CurrentTablePointerField = Pointer;
-
-                    if (Pointer >= tsPacket.Payload.Length - 3)
-                    {
-                        TableBytes = tsPacket.Payload.Length - Pointer - 1;
-                        tempBuffer = new byte[3];
-                        Buffer.BlockCopy(tsPacket.Payload, Pointer + 1, tempBuffer, 0, TableBytes);
-                        return;
-                    }
-                    else
-                    {
-                        CurrentTableSectionLength = (((tsPacket.Payload[Pointer + 2] & 0x0F) << 8) + tsPacket.Payload[Pointer + 3]);
-                        if (!IsValidSectionLength(CurrentTableSectionLength))
-                        {
-                            Logger.Send(LogStatus.WARNING, $"Invalid section length {CurrentTableSectionLength} for pid: {tsPacket.Pid}");
-                            ResetFactory();
-                            return;
-                        }
-                        TableData = new byte[CurrentTableSectionLength + 3];
-
-                        if (CurrentTableSectionLength + 3 < tsPacket.Payload.Length - Pointer)
-                        {
-                            Buffer.BlockCopy(tsPacket.Payload, Pointer + 1, TableData, 0, TableData.Length);
-                            TableBytes = CurrentTableSectionLength + 3;
-
-                            // table ready
-                            isInProgresTable = false;
-                            return;
-                        }
-                        else
-                        {
-                            Buffer.BlockCopy(tsPacket.Payload, Pointer + 1, TableData, 0, tsPacket.Payload.Length - Pointer - 1);
-                            TableBytes = tsPacket.Payload.Length - Pointer - 1;
-                            return;
-                        }
-                    }
-                }
-
-                if (isInProgresTable)
-                {
-                    if (TableBytes < 3)
-                    {
-                        Buffer.BlockCopy(tsPacket.Payload, 0, tempBuffer, TableBytes, 3 - TableBytes);
-                        CurrentTableSectionLength = (((tempBuffer[1] & 0x0F) << 8) + tempBuffer[2]);
-                        if (!IsValidSectionLength(CurrentTableSectionLength))
-                        {
-                            Logger.Send(LogStatus.WARNING, $"Invalid section length {CurrentTableSectionLength} for pid: {tsPacket.Pid}");
-                            ResetFactory();
-                            return;
-                        }
-                        TableData = new byte[CurrentTableSectionLength + 3];
-
-                        if (CurrentTableSectionLength + 3 <= tsPacket.Payload.Length)
-                        {
-                            Buffer.BlockCopy(tempBuffer, 0, TableData, 0, 3);
-                            CurrentTableSectionLength = 3;
-                            Buffer.BlockCopy(tsPacket.Payload, 0, TableData, 3, CurrentTableSectionLength);
-                            TableBytes = CurrentTableSectionLength + 3;
-
-                            // table ready
-                            isInProgresTable = false;
-                            return;
-                        }
-                        else
-                        {
-                            Buffer.BlockCopy(tempBuffer, 0, TableData, 0, 3);
-                            Buffer.BlockCopy(tsPacket.Payload, 3 - TableBytes, TableData, 3, tsPacket.Payload.Length - (3 - TableBytes));
-                            TableBytes += tsPacket.Payload.Length;
-                            return;
-                        }
-                    }
-                    else if (CurrentTableSectionLength + 3 - TableBytes < tsPacket.Payload.Length)
-                    {
-                        Buffer.BlockCopy(tsPacket.Payload, 0, TableData, TableBytes, CurrentTableSectionLength + 3 - TableBytes);
-                        TableBytes = CurrentTableSectionLength + 3;
-
-                        //table ready
-                        isInProgresTable = false;
-                        return;
-                    }
-                    else
-                    {
-                        Buffer.BlockCopy(tsPacket.Payload, 0, TableData, TableBytes, tsPacket.Payload.Length);
-                        TableBytes += tsPacket.Payload.Length;
-                        return;
-                    }
-                }
-                else
-                {
-                    return;
-                }
+                pendingSections = new Queue<ReadOnlyMemory<byte>>();
+                readySectionsByPid[pid] = pendingSections;
             }
-            catch (Exception ex)
+
+            foreach (var section in PushPacketForSections(tsPacket))
             {
-                Logger.Send(LogStatus.EXCEPTION, $"Exception in Add data for packet No: {tsPacket.PacketNumber}, pid: {tsPacket.Pid}", ex);
-                ResetFactory();
+                pendingSections.Enqueue(section);
+            }
+
+            if (pendingSections.Count > 0)
+            {
+                CurrentPid = pid;
+                TableData = pendingSections.Dequeue().ToArray();
             }
         }
     }
