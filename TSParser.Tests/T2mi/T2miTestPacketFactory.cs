@@ -169,6 +169,58 @@ internal static class T2miTestPacketFactory
         return ts;
     }
 
+    /// <summary>Builds a PSI section split across one PUSI packet and optional continuation packets.</summary>
+    public static byte[] BuildPsiTsStream(ushort pid, ReadOnlySpan<byte> section)
+    {
+        if (section.Length <= 183)
+        {
+            return BuildPsiTsPacket(pid, section);
+        }
+
+        var packets = new List<byte[]>
+        {
+            BuildPsiTsPacket(pid, section.Slice(0, 183)),
+        };
+
+        var offset = 183;
+        byte continuityCounter = 1;
+        while (offset < section.Length)
+        {
+            var chunkLength = Math.Min(184, section.Length - offset);
+            packets.Add(BuildPsiContinuationTsPacket(pid, section.Slice(offset, chunkLength), continuityCounter++));
+            offset += chunkLength;
+        }
+
+        var stream = new byte[packets.Count * T2miAccessors.TsPacketSize];
+        for (var i = 0; i < packets.Count; i++)
+        {
+            packets[i].CopyTo(stream.AsSpan(i * T2miAccessors.TsPacketSize));
+        }
+
+        return stream;
+    }
+
+    private static byte[] BuildPsiContinuationTsPacket(ushort pid, ReadOnlySpan<byte> payload, byte continuityCounter)
+    {
+        if (payload.Length > 184)
+        {
+            throw new ArgumentException("Continuation payload must fit in one TS packet.", nameof(payload));
+        }
+
+        var ts = new byte[T2miAccessors.TsPacketSize];
+        ts[0] = TsPacket.SYNC_BYTE;
+        ts[1] = (byte)((pid >> 8) & 0x1F);
+        ts[2] = (byte)(pid & 0xFF);
+        ts[3] = (byte)(0x10 | (continuityCounter & 0x0F));
+        payload.CopyTo(ts.AsSpan(4));
+        for (var i = 4 + payload.Length; i < ts.Length; i++)
+        {
+            ts[i] = 0xFF;
+        }
+
+        return ts;
+    }
+
     /// <summary>Outer MPEG-TS (T2-MI PID) carrying one decapsulatable baseband frame with the given inner TS packet.</summary>
     public static byte[] BuildT2miCarrierStream(
         ReadOnlySpan<byte> innerTsPacket,
@@ -178,6 +230,29 @@ internal static class T2miTestPacketFactory
         var bbFrame = BuildNormalModeBbFrame(innerTsPacket);
         var t2mi = BuildBasebandT2miPacket(plpId, bbFrame);
         return WrapT2miPacketInTsStream(t2mi, t2miPid);
+    }
+
+    /// <summary>
+    /// Concatenates one outer TS packet per inner packet, each carrying a separate baseband frame on the same PLP.
+    /// </summary>
+    public static byte[] BuildT2miCarrierStream(
+        IReadOnlyList<ReadOnlyMemory<byte>> innerTsPackets,
+        byte plpId = SampleBasebandPlpId,
+        ushort t2miPid = 0x1000)
+    {
+        if (innerTsPackets.Count == 0)
+        {
+            throw new ArgumentException("At least one inner TS packet is required.", nameof(innerTsPackets));
+        }
+
+        using var stream = new MemoryStream();
+        foreach (var inner in innerTsPackets)
+        {
+            var carrier = BuildT2miCarrierStream(inner.Span, plpId, t2miPid);
+            stream.Write(carrier);
+        }
+
+        return stream.ToArray();
     }
 
     /// <summary>Serializes a T2-MI packet into one or more MPEG-TS packets on <paramref name="pid"/>.</summary>

@@ -98,7 +98,7 @@ namespace TSParser
     public delegate void EewsReady(EEWS eews);
     public delegate void T2miPacketReady(T2miPacket packet);
     public delegate void T2miPlpDiscovered(byte plpId);
-    public delegate void PlpTsReady(byte plpId, ReadOnlyMemory<byte> tsData);
+    public delegate void PlpTsReady(ushort t2miSourcePid, byte plpId, ReadOnlyMemory<byte> tsData);
 
     public class TsParser : IDisposable
     {
@@ -875,7 +875,7 @@ namespace TSParser
             var demuxer = new T2miDemuxer(pid, m_t2miDeencapsulate);
             demuxer.PacketReady += T2miDemuxer_OnPacketReady;
             demuxer.PlpDiscovered += T2miDemuxer_OnPlpDiscovered;
-            demuxer.PlpTsReady += T2miDemuxer_OnPlpTsReady;
+            demuxer.PlpTsReady += (plpId, tsData) => OnPlpTsReady?.Invoke(pid, plpId, tsData);
             m_t2miDemuxers.Add(demuxer);
             Logger.Send(LogStatus.INFO, $"T2-MI demuxer registered on PID 0x{pid:X4}");
         }
@@ -905,11 +905,6 @@ namespace TSParser
         private void T2miDemuxer_OnPlpDiscovered(byte plpId)
         {
             OnT2miPlpDiscovered?.Invoke(plpId);
-        }
-
-        private void T2miDemuxer_OnPlpTsReady(byte plpId, ReadOnlyMemory<byte> tsData)
-        {
-            OnPlpTsReady?.Invoke(plpId, tsData);
         }
 
         private void AtscTableFactory(TsPacket tsPacket)

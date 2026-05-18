@@ -23,7 +23,7 @@ TSParser/                 # Core library (ship target), net10.0
     DescriptorFactory.cs  # tag dispatch; unknown-once logging
     Dvb/, ExtendedDvb/, AitDescriptors/, Scte35Descriptors/
     Custom/               # operator descriptors (present in repo; see §6)
-  Analysis/               # Analyzer, BitrateWindowMeasurer, BitrateMeasurementOptions
+  Analysis/               # Analyzer, BitrateWindowMeasurer; PLP inner TS: PlpInnerParserHost, PlpServiceAggregator, PlpServiceReportFormatter
   Service/                # Logger, SectionParseValidation, SpliceInfoSectionType (XML schema types)
   Convertors/             # Scte35ToXml
   Buffers/, Comparer/, DictionariesData/, Enums/
@@ -31,6 +31,7 @@ TSParser.Tests/           # NUnit + manifest JSON + TestResources/**/*.tbl|.desc
 TSParser.Benchmarks/      # BenchmarkDotNet
 tools/CorpusHarvester/    # harvest real TS → descriptor fixtures
 tools/BlessManifest/      # bless/refresh manifest.descriptors.json
+StreamParser/             # Local sample CLI (.gitignore); T2-MI PLP service listing via --plp_services
 ```
 
 ---
@@ -39,7 +40,7 @@ tools/BlessManifest/      # bless/refresh manifest.descriptors.json
 
 ### Data flow
 
-bytes → `TsPacketFactory.GetTsPackets` → (`DecodeMode`) → per-PID `TableFactory.AddData` until section complete → parse → event (table mode), or `OnTsPacketReady` (packet mode). When `ParserConfig.T2miEnabled`, matching PIDs also go to `T2miDemuxer` → `OnT2miPacketReady` / optional `OnPlpTsReady` (not fed back into `TsParser` automatically).
+bytes → `TsPacketFactory.GetTsPackets` → (`DecodeMode`) → per-PID `TableFactory.AddData` until section complete → parse → event (table mode), or `OnTsPacketReady` (packet mode). When `ParserConfig.T2miEnabled`, matching PIDs also go to `T2miDemuxer` → `OnT2miPacketReady` / optional `OnPlpTsReady(t2miSourcePid, plpId, …)` (not fed back into `TsParser` automatically). Nested inner-TS parsing is the consumer’s responsibility (see §3.8).
 
 ### Adding features
 
@@ -139,7 +140,7 @@ Constructor `TsParser(ParserConfig)` starts file or UDP parsing internally when 
 | `OnBitrateMeasured` | `BitrateMeasuredDelegate` | `BitrateSample` | Needs `ParserConfig.BitrateMeasurement` |
 | `OnT2miPacketReady` | `T2miPacketReady` | `T2miPacket` | Needs `T2miEnabled`; each reassembled T2-MI packet |
 | `OnT2miPlpDiscovered` | `T2miPlpDiscovered` | `byte plpId` | First `PlpId` seen per demuxer (type `0x00` baseband) |
-| `OnPlpTsReady` | `PlpTsReady` | `byte plpId`, `ReadOnlyMemory<byte> tsData` | Needs `T2miDeencapsulate`; 188-byte TS multiples; **buffer valid only for callback** |
+| `OnPlpTsReady` | `PlpTsReady` | `ushort t2miSourcePid`, `byte plpId`, `ReadOnlyMemory<byte> tsData` | Needs `T2miDeencapsulate`; 188-byte TS multiples; **`t2miSourcePid`** disambiguates PLP IDs across multiple T2-MI PIDs; **buffer valid only for callback** — copy before async work or `PushBytes` |
 
 **Logging:** `Logger.OnLogMessage` (`TSParser.Service.Logger`).
 
@@ -176,7 +177,7 @@ Constructor `TsParser(ParserConfig)` starts file or UDP parsing internally when 
 | Typical PID | Fixed `0x15` (`ReservedPids.NetworkSync`) | Operator-defined (e.g. `0x1000`); set via `T2miPids` |
 | Integration | `MipFactory` + `TableFactory` → `OnMipReady` → `MIP` table type | `T2miDemuxer` per PID; **not** a PSI section |
 | Payload | SI-style sections | Reassembled T2-MI packets; type `0x00` carries **PLP_ID** + baseband |
-| Inner MPEG-TS | N/A | Optional: `T2miDeencapsulate` → `OnPlpTsReady`; consumer may run a second `TsParser` on that data |
+| Inner MPEG-TS | N/A | Optional: `T2miDeencapsulate` → `OnPlpTsReady(t2miSourcePid, plpId, …)`; consumer runs a second `TsParser` (or `PlpInnerParserHost`) on copied data |
 
 T2-MI runs in both `DecodeMode.Table` and `DecodeMode.Packet` (wired after table dispatch or `OnTsPacketReady`). It does **not** use `Decoder` / `DecoderMode`. Multi-program streams often need explicit `T2miPids` because `T2miAutoDetect` requires exactly one PAT program and one elementary stream with `stream_type` `0x06`.
 
@@ -186,6 +187,34 @@ T2-MI runs in both `DecodeMode.Table` and `DecodeMode.Packet` (wired after table
 
 - `Decoder` — stub; `RunDecoder` / `Scte35Decoder` empty; **not** used for T2-MI.
 - `Scte35ToXml.Convert(SCTE35)` — XML serialization helper.
+
+### 3.8 PLP inner MPEG-TS services (`TSParser.Analysis` + StreamParser)
+
+**`OnPlpTsReady` contract:** `PlpTsReady(ushort t2miSourcePid, byte plpId, ReadOnlyMemory<byte> tsData)`. `t2miSourcePid` is the outer MPEG-TS PID where the `T2miDemuxer` was registered (`ParserConfig.T2miPids` or auto-detect). `T2miDemuxer` still raises `Action<byte, ReadOnlyMemory<byte>>` internally; `TsParser` adds the source PID when forwarding to `OnPlpTsReady`.
+
+**Nested parsing pattern** (verified in [`T2miDeencapsulationTests`](TSParser.Tests/T2mi/T2miDeencapsulationTests.cs), [`PlpServiceAggregatorTests`](TSParser.Tests/T2mi/PlpServiceAggregatorTests.cs)):
+
+1. Outer `TsParser`: `T2miEnabled` + `T2miDeencapsulate` + explicit `T2miPids`; outer `CurrentDecodeMode` usually `Packet` (outer SI not required).
+2. `OnPlpTsReady`: copy `tsData` (`ToArray()` or equivalent), then `PushBytes` on an inner `TsParser` per `(t2miSourcePid, plpId)` in `DecodeMode.Table`.
+3. Aggregate PAT / SDT / PMT on inner events; report after `OnParserComplete`.
+
+| Type | Role |
+|------|------|
+| `PlpInnerParserHost` | Lazy `Dictionary<(ushort t2miPid, byte plpId), TsParser>`; `OnPlpTsReady` handler copies buffer and `PushBytes` |
+| `PlpServiceAggregator` | Merges PAT (`program_number`, PMT PID), SDT (`ServiceDescriptor_0x48`), PMT (PCR PID, ES list); keyed by T2-MI PID + PLP + program |
+| `PlpServiceReportFormatter` | Human-readable stdout grouped T2-MI PID → PLP → services |
+| `PlpServiceInfo` / `PlpElementaryStreamInfo` | Aggregated service / ES records |
+
+Service names: SDT `0x48` first; fallback `ServiceDescriptor_0x48` in PMT program info. Partial output if PAT arrives without SDT.
+
+**StreamParser** (local, not in CI): `--plp_services` with required `--t2mi_pids` (comma-separated hex `0x1000` or decimal `4096`). Ignores `-d` / decode verb selection. Processes **all** PLPs on each listed T2-MI PID (no PLP filter). Same outer config as above; wires `PlpInnerParserHost` and prints via `PlpServiceReportFormatter` on `OnParserComplete`. Exit code **1** if no inner TS was received (stderr warning).
+
+```text
+StreamParser.exe file -f <path.ts> --t2mi_pids 0x1000,4096 --plp_services [--run_time <ms>]
+StreamParser.exe stream -m <group> -p <port> --t2mi_pids 0x1000 --plp_services [--run_time <ms>]
+```
+
+Does **not** use `T2miAutoDetect` alone — user supplies T2-MI PID(s) explicitly.
 
 ---
 
@@ -255,7 +284,8 @@ End-user docs: [Readme.md](Readme.md) (Russian). When editing README, prefer thi
 | `TsParser()` | Static/table helpers only; **`PushBytes` and stream parsing need `TsParser(ParserConfig)`** |
 | `TsMode.ATSC` / `ISDB` | Enum values select factories that throw `NotImplementedException` on first SI packet |
 | MIP vs T2-MI | `OnMipReady` / PID `0x15` is DVB-T MIP; T2-MI uses `T2mi*` config/events on arbitrary PIDs |
-| `OnPlpTsReady` | `ReadOnlyMemory<byte>` is only valid during the callback; copy if parsing asynchronously |
+| `OnPlpTsReady` | Signature `ushort t2miSourcePid, byte plpId, ReadOnlyMemory<byte> tsData`; buffer valid only during callback — copy before `PushBytes` or async use |
+| StreamParser `--plp_services` | Requires `--t2mi_pids`; uses `TSParser.Analysis` host/aggregator; not in minimal clone (`.gitignore`) |
 
 ---
 
@@ -265,6 +295,13 @@ End-user docs: [Readme.md](Readme.md) (Russian). When editing README, prefer thi
 dotnet build TSParser.sln
 dotnet test TSParser.Tests/TSParser.Tests.csproj
 dotnet run --project TSParser.Benchmarks -c Release
+```
+
+**StreamParser** (local checkout only; project may be gitignored):
+
+```bash
+dotnet run --project StreamParser -- file -f path.ts --t2mi_pids 0x1000 --plp_services --run_time 5000
+dotnet run --project StreamParser -- stream -m 239.0.0.1 -p 1234 --t2mi_pids 4096 --plp_services
 ```
 
 **Tools** (from repo root):
@@ -309,7 +346,7 @@ BlessManifest flags: `--tables-only`, `--descriptors-only`, `--fixtures-root <pa
 - `TransportStream/NAL/` — placeholder folder in csproj.
 - `Decoder` — not implemented (T2-MI uses dedicated `T2miDemuxer` pipeline instead).
 - **T2-MI:** `T2miDescriptor_0x11` (extension tag `0x7F` / `0x11`) not wired in `DescriptorFactory`; auto-detect relies on PAT/PMT heuristic or `T2miPids` only.
-- Solution references **AppTest** and **StreamParser** sample apps (`.gitignore` excludes `AppTest/` and `StreamParser/` — absent in a minimal clone; `StreamParser` may warn on missing DekTec `DTAPINET` refs).
+- Solution references **AppTest** and **StreamParser** sample apps (`.gitignore` excludes them — absent in a minimal clone; `StreamParser` may warn on missing DekTec `DTAPINET` refs). When present, `StreamParser --plp_services` depends on `TSParser.Analysis` PLP types above.
 - Custom tags `0xB3`, legacy `SettingsDescriptorV1/V2` — source files exist, factory wiring incomplete.
 
 ---

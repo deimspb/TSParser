@@ -109,7 +109,11 @@ public sealed class T2miDeencapsulationTests
             CurrentDecodeMode = DecodeMode.Packet,
         });
 
-        parser.OnPlpTsReady += (_, data) => plpData.AddRange(data.ToArray());
+        parser.OnPlpTsReady += (t2miPid, _, data) =>
+        {
+            Assert.That(t2miPid, Is.EqualTo(FixtureLoader.T2miSamplePid));
+            plpData.AddRange(data.ToArray());
+        };
         parser.PushBytes(outerStream, T2miAccessors.TsPacketSize);
         return plpData.ToArray();
     }
@@ -126,7 +130,11 @@ public sealed class T2miDeencapsulationTests
             CurrentDecodeMode = DecodeMode.Packet,
         });
 
-        parser.OnPlpTsReady += (_, data) => plpData.AddRange(data.ToArray());
+        parser.OnPlpTsReady += (t2miPid, _, data) =>
+        {
+            Assert.That(t2miPid, Is.EqualTo(FixtureLoader.T2miSamplePid));
+            plpData.AddRange(data.ToArray());
+        };
         parser.RunParser();
         return plpData.ToArray();
     }

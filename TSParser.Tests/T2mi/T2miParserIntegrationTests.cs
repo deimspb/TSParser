@@ -122,7 +122,7 @@ public sealed class T2miParserIntegrationTests
         });
 
         var subscribed = false;
-        parser.OnPlpTsReady += (_, _) => subscribed = true;
+        parser.OnPlpTsReady += (_, _, _) => subscribed = true;
         Assert.That(subscribed, Is.False);
         Assert.That(parser, Is.Not.Null);
     }
