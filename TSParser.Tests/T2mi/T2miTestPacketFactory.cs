@@ -1,0 +1,99 @@
+// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com
+//
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System.Buffers.Binary;
+using TSParser.Service;
+using TSParser.TransportStream.T2mi;
+
+namespace TSParser.Tests.T2mi;
+
+internal static class T2miTestPacketFactory
+{
+    /// <summary>Known DVB-T2 timestamp T2-MI packet (22 bytes, from sl-demux sample).</summary>
+    public static ReadOnlySpan<byte> DvbT2TimestampPacket => DvbT2TimestampPacketBytes;
+
+    private static readonly byte[] DvbT2TimestampPacketBytes =
+        Convert.FromHexString("20AE300000580400000000001A5F59A00061FB5495");
+
+    public const byte SampleBasebandPlpId = 7;
+
+    public static byte[] BuildMinimalBasebandPacket(byte plpId = SampleBasebandPlpId)
+    {
+        const int bbBytes = 10;
+        const int payloadBytes = 3 + bbBytes;
+        const ushort payloadBits = (ushort)(payloadBytes * 8);
+
+        var packet = new byte[6 + payloadBytes + 4];
+        packet[0] = (byte)T2miPacketType.BasebandFrame;
+        packet[1] = 0x01;
+        packet[2] = 0x20;
+        packet[3] = 0x00;
+        packet[4] = (byte)(payloadBits >> 8);
+        packet[5] = (byte)payloadBits;
+        packet[6] = 0x00;
+        packet[7] = plpId;
+        packet[8] = 0x00;
+        for (var i = 9; i < 6 + payloadBytes; i++)
+        {
+            packet[i] = 0;
+        }
+
+        var crc = Utils.GetCRC32(packet.AsSpan(0, 6 + payloadBytes));
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(6 + payloadBytes), crc);
+        return packet;
+    }
+
+    public static byte[] WrapInSingleTsPacket(ReadOnlySpan<byte> t2miPacket, ushort pid, byte continuityCounter = 0)
+    {
+        if (t2miPacket.Length > 183)
+        {
+            throw new ArgumentException("T2-MI packet must fit in one PUSI TS payload.", nameof(t2miPacket));
+        }
+
+        var ts = new byte[T2miAccessors.TsPacketSize];
+        ts[0] = 0x47;
+        ts[1] = (byte)(0x40 | ((pid >> 8) & 0x1F));
+        ts[2] = (byte)(pid & 0xFF);
+        ts[3] = (byte)(0x10 | (continuityCounter & 0x0F));
+        ts[4] = 0x00;
+        t2miPacket.CopyTo(ts.AsSpan(5));
+        for (var i = 5 + t2miPacket.Length; i < ts.Length; i++)
+        {
+            ts[i] = 0xFF;
+        }
+
+        return ts;
+    }
+
+    public static byte[] WrapInContinuationTsPacket(ReadOnlySpan<byte> t2miChunk, ushort pid, byte continuityCounter)
+    {
+        if (t2miChunk.Length > 184)
+        {
+            throw new ArgumentException("Chunk must fit in TS payload.", nameof(t2miChunk));
+        }
+
+        var ts = new byte[T2miAccessors.TsPacketSize];
+        ts[0] = 0x47;
+        ts[1] = (byte)((pid >> 8) & 0x1F);
+        ts[2] = (byte)(pid & 0xFF);
+        ts[3] = (byte)(0x10 | (continuityCounter & 0x0F));
+        t2miChunk.CopyTo(ts.AsSpan(4));
+        for (var i = 4 + t2miChunk.Length; i < ts.Length; i++)
+        {
+            ts[i] = 0xFF;
+        }
+
+        return ts;
+    }
+}

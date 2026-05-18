@@ -25,6 +25,12 @@ public static class FixtureLoader
     /// <summary>Relative path to the bundled T2-MI cut (PID 0x1000 packets only).</summary>
     public const string T2miBundledRelativePath = "T2mi/t2mi_cut_pid1000.ts";
 
+    /// <summary>Single assembled DVB-T2 timestamp T2-MI packet (hex regression fixture).</summary>
+    public const string T2miTimestampPacketRelativePath = "T2mi/t2mi_dvb_t2_timestamp.packet";
+
+    /// <summary>Minimal valid baseband T2-MI packet with PLP_ID 7 (hex regression fixture).</summary>
+    public const string T2miBasebandPacketRelativePath = "T2mi/t2mi_baseband_plp07.packet";
+
     /// <summary>T2-MI PID in <see cref="T2miBundledRelativePath"/> and <c>t2mi_cut.ts</c> samples.</summary>
     public const ushort T2miSamplePid = 0x1000;
 

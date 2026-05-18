@@ -40,28 +40,4 @@ public sealed class T2miAccessorsTests
         Assert.That(Utils.GetCRC8(header.AsSpan(0, 9)), Is.EqualTo(crc));
     }
 
-    [Test]
-    public void Assembler_on_bundled_fixture_emits_t2mi_packets()
-    {
-        var bytes = FixtureLoader.LoadT2miSampleBytes();
-        var assembler = new T2miPacketAssembler();
-        var packets = new List<T2miPacket>();
-        assembler.PacketReady += packets.Add;
-
-        for (var i = 0; i + T2miAccessors.TsPacketSize <= bytes.Length; i += T2miAccessors.TsPacketSize)
-        {
-            assembler.PushPacket(bytes.AsSpan(i, T2miAccessors.TsPacketSize), FixtureLoader.T2miSamplePid, (ulong)(i / T2miAccessors.TsPacketSize));
-        }
-
-        Assert.That(packets, Is.Not.Empty);
-        Assert.That(packets.All(p => p.SourcePid == FixtureLoader.T2miSamplePid), Is.True);
-        Assert.That(packets.Any(p => p.PacketType is T2miPacketType.L1Current or T2miPacketType.DvbT2Timestamp or T2miPacketType.FefPartNull),
-            Is.True, "bundled cut should contain at least one known T2-MI control packet");
-
-        var baseband = packets.Where(p => p.PacketType == T2miPacketType.BasebandFrame).ToList();
-        if (baseband.Count > 0)
-        {
-            Assert.That(baseband.Any(p => p.Crc32Valid && p.PlpId.HasValue), Is.True);
-        }
-    }
 }

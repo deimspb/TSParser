@@ -36,11 +36,14 @@ namespace TSParser.TransportStream
         public readonly byte[] Payload { get; }       
         public readonly ulong PacketNumber { get; } = default;
         public readonly byte[] PacketHeader { get; }
+        /// <summary>Full 188-byte transport packet as received (used by T2-MI demux and lab tools).</summary>
+        public readonly byte[]? RawPacket { get; }
         internal TsPacket(ReadOnlySpan<byte> bytes, ulong packetCounter)
         {
             var pointer = 0;
             var pid = 0xFFFF;
             PacketNumber = packetCounter;
+            RawPacket = bytes.Length >= 188 ? bytes[..188].ToArray() : bytes.ToArray();
             PacketHeader = new byte[4];
             bytes[0..4].CopyTo(PacketHeader);
             try

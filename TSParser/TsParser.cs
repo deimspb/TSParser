@@ -26,6 +26,7 @@ using TSParser.Tables.DvbTableFactory;
 using TSParser.Tables.DvbTables;
 using TSParser.Tables.Mip;
 using TSParser.TransportStream;
+using TSParser.TransportStream.T2mi;
 
 namespace TSParser
 {
@@ -68,6 +69,12 @@ namespace TSParser
         /// Interface which listen to network with multicast
         /// </summary>
         public string? MulticastIncomingIp;
+        /// <summary>When true, reassemble and parse T2-MI on configured or auto-detected PIDs.</summary>
+        public bool T2miEnabled;
+        /// <summary>Explicit T2-MI PID list (e.g. 0x1000). Used when <see cref="T2miEnabled"/> is true.</summary>
+        public ushort[]? T2miPids;
+        /// <summary>After PAT/PMT, register a PID when there is one program, one ES, and stream type 0x06.</summary>
+        public bool T2miAutoDetect;
 
     }
 
@@ -87,6 +94,8 @@ namespace TSParser
     public delegate void ParserComplete();
     public delegate void EwsReady(EWS ews);
     public delegate void EewsReady(EEWS eews);
+    public delegate void T2miPacketReady(T2miPacket packet);
+    public delegate void T2miPlpDiscovered(byte plpId);
 
     public class TsParser : IDisposable
     {
@@ -118,6 +127,8 @@ namespace TSParser
         public event BitrateMeasuredDelegate OnBitrateMeasured = null!;
         public event EwsReady OnEwsReady = null!;
         public event EewsReady OnEewsReady = null!;
+        public event T2miPacketReady OnT2miPacketReady = null!;
+        public event T2miPlpDiscovered OnT2miPlpDiscovered = null!;
 
         private readonly Lazy<TsPacketFactory> packetFactory = new();
         private readonly Lazy<TdtTotFactory> tdtTotFactory = new();
@@ -176,6 +187,10 @@ namespace TSParser
         private List<ushort> m_eewsPids = new();
         private bool m_ewsPidListEmptyWarningSent;
         private bool m_eewsPidListEmptyWarningSent;
+        private readonly bool m_t2miEnabled;
+        private readonly bool m_t2miAutoDetect;
+        private readonly List<T2miDemuxer> m_t2miDemuxers = new();
+        private int m_patProgramCount;
 
         private int m_connectionAttempts = 5;
         private int m_socketTimeOut = 5000;
@@ -263,6 +278,13 @@ namespace TSParser
             ParserRunTimer();
 
             InitEvents();
+
+            m_t2miEnabled = config.T2miEnabled;
+            m_t2miAutoDetect = config.T2miAutoDetect;
+            if (m_t2miEnabled && config.T2miPids is { Length: > 0 } pids)
+            {
+                RegisterT2miPids(pids);
+            }
 
             if (config.TsFileName != null)
             {
@@ -454,6 +476,8 @@ namespace TSParser
         {
             return m_compare.AreEqual(t1, t2);
         }
+        /// <summary>Creates a standalone T2-MI demuxer for one transport PID (lab / unit tests).</summary>
+        public static T2miDemuxer CreateT2miDemuxer(ushort pid) => new(pid);
         #endregion
         #region Private methods
         private void FileParser(string filePath)
@@ -559,6 +583,11 @@ namespace TSParser
         {
             OnPatReady?.Invoke(pat);
 
+            if (m_t2miEnabled && m_t2miAutoDetect)
+            {
+                m_patProgramCount = pat.PatRecords.Count(pr => pr.Pid != 0x16);
+            }
+
             m_pmtPids = (from pr in pat.PatRecords where pr.Pid != 0x16 select pr.Pid).ToArray();
 
             Array.Sort(m_pmtPids);
@@ -609,6 +638,15 @@ namespace TSParser
                     };
                     scte35Factory.OnScte35Ready += Scte35Factory_OnScte35Ready;
                     m_scte35Factories.Add(scte35Factory);
+                }
+            }
+
+            if (m_t2miEnabled && m_t2miAutoDetect && m_patProgramCount == 1 && pmt.EsInfoList.Count == 1)
+            {
+                var es = pmt.EsInfoList[0];
+                if (es.StreamType == 0x06)
+                {
+                    RegisterT2miPid(es.ElementaryPid);
                 }
             }
         }
@@ -698,6 +736,8 @@ namespace TSParser
                         break;
                     }
             }
+
+            GetT2mi(tsPacket);
         }
         private void GetOtherTables(TsPacket tsPacket)
         {
@@ -811,6 +851,55 @@ namespace TSParser
         {
             OnEewsReady?.Invoke(eews);
         }
+        private void RegisterT2miPids(IEnumerable<ushort> pids)
+        {
+            foreach (var pid in pids)
+            {
+                RegisterT2miPid(pid);
+            }
+        }
+
+        private void RegisterT2miPid(ushort pid)
+        {
+            if (m_t2miDemuxers.Exists(d => d.Pid == pid))
+            {
+                return;
+            }
+
+            var demuxer = new T2miDemuxer(pid);
+            demuxer.PacketReady += T2miDemuxer_OnPacketReady;
+            demuxer.PlpDiscovered += T2miDemuxer_OnPlpDiscovered;
+            m_t2miDemuxers.Add(demuxer);
+            Logger.Send(LogStatus.INFO, $"T2-MI demuxer registered on PID 0x{pid:X4}");
+        }
+
+        private void GetT2mi(TsPacket tsPacket)
+        {
+            if (!m_t2miEnabled || tsPacket.TransportErrorIndicator || tsPacket.Pid == 0xFFFF)
+            {
+                return;
+            }
+
+            for (var i = 0; i < m_t2miDemuxers.Count; i++)
+            {
+                if (m_t2miDemuxers[i].Pid == tsPacket.Pid)
+                {
+                    m_t2miDemuxers[i].PushPacket(tsPacket);
+                    return;
+                }
+            }
+        }
+
+        private void T2miDemuxer_OnPacketReady(T2miPacket packet)
+        {
+            OnT2miPacketReady?.Invoke(packet);
+        }
+
+        private void T2miDemuxer_OnPlpDiscovered(byte plpId)
+        {
+            OnT2miPlpDiscovered?.Invoke(plpId);
+        }
+
         private void AtscTableFactory(TsPacket tsPacket)
         {
             throw new NotImplementedException("ATSC table factory");
@@ -860,6 +949,7 @@ namespace TSParser
                 if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
                 if (m_allowAnalyzer) PushPacketWithFileOffset(tsPackets[i], packetLength, i);
                 OnTsPacketReady?.Invoke(tsPackets[i]);
+                GetT2mi(tsPackets[i]);
             }
         }
 
