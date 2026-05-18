@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using TSParser.Diagnostics;
 using TSParser.Service;
 
 namespace TSParser.TransportStream.T2mi;
@@ -71,9 +70,6 @@ public sealed class T2miPacketAssembler
             {
                 if (actualCc != _tsPacketCc || T2miAccessors.TsHasPayload(tsPacket))
                 {
-                    // #region agent log
-                    T2miDebugCounters.AssemblerCcResets++;
-                    // #endregion
                     SignalDiscontinuityIfPossible();
                     _writtenSoFar = 0;
                 }
@@ -94,10 +90,6 @@ public sealed class T2miPacketAssembler
 
     private void StartNewT2miFromTs(ReadOnlySpan<byte> tsPacket, byte actualCc)
     {
-        // #region agent log
-        T2miDebugCounters.AssemblerPusiStarts++;
-        // #endregion
-
         var payload = T2miAccessors.TsPayload(tsPacket);
         if (payload.IsEmpty)
         {
@@ -122,9 +114,6 @@ public sealed class T2miPacketAssembler
         }
         else if (_writtenSoFar > 0)
         {
-            // #region agent log
-            T2miDebugCounters.AssemblerPusiAbortedIncomplete++;
-            // #endregion
             SignalDiscontinuityIfPossible();
             _writtenSoFar = 0;
         }
@@ -246,24 +235,6 @@ public sealed class T2miPacketAssembler
                 var crcValid = computedCrc == packetCrc;
                 if (!crcValid)
                 {
-                    // #region agent log
-                    T2miDebugCounters.AssemblerBasebandCrcFail++;
-                    if (T2miDebugCounters.AssemblerBasebandCrcFail == 1)
-                    {
-                        DebugAgentLog.Write(
-                            "T2miPacketAssembler.cs:DeliverIfPacketIsCompleted",
-                            "first baseband CRC mismatch",
-                            new
-                            {
-                                t2miPacketSize,
-                                computedCrc,
-                                packetCrc,
-                                headerHex = Convert.ToHexString(building.Slice(0, Math.Min(16, t2miPacketSize))),
-                                tailHex = Convert.ToHexString(building.Slice(Math.Max(0, t2miPacketSize - 8), Math.Min(8, t2miPacketSize))),
-                            },
-                            "C");
-                    }
-                    // #endregion
                     Logger.Send(LogStatus.ETSI,
                         $"T2-MI baseband frame CRC mismatch: expected {computedCrc:X8}, got {packetCrc:X8}");
                 }
