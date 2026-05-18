@@ -14,6 +14,7 @@
 
 using System.Buffers.Binary;
 using TSParser.Service;
+using TSParser.Tests.Helpers;
 using TSParser.TransportStream;
 using TSParser.TransportStream.T2mi;
 
@@ -149,76 +150,13 @@ internal static class T2miTestPacketFactory
     /// <summary>Builds one PUSI TS packet carrying a PSI section (pointer field 0).</summary>
     public static byte[] BuildPsiTsPacket(ushort pid, ReadOnlySpan<byte> section)
     {
-        if (section.Length > 183)
-        {
-            throw new ArgumentException("Section must fit in one TS payload with a pointer byte.", nameof(section));
-        }
-
-        var ts = new byte[T2miAccessors.TsPacketSize];
-        ts[0] = TsPacket.SYNC_BYTE;
-        ts[1] = (byte)(0x40 | ((pid >> 8) & 0x1F));
-        ts[2] = (byte)(pid & 0xFF);
-        ts[3] = 0x10;
-        ts[4] = 0x00;
-        section.CopyTo(ts.AsSpan(5));
-        for (var i = 5 + section.Length; i < ts.Length; i++)
-        {
-            ts[i] = 0xFF;
-        }
-
-        return ts;
+        return PsiTsPacketFactory.BuildPsiTsPacket(pid, section);
     }
 
     /// <summary>Builds a PSI section split across one PUSI packet and optional continuation packets.</summary>
     public static byte[] BuildPsiTsStream(ushort pid, ReadOnlySpan<byte> section)
     {
-        if (section.Length <= 183)
-        {
-            return BuildPsiTsPacket(pid, section);
-        }
-
-        var packets = new List<byte[]>
-        {
-            BuildPsiTsPacket(pid, section.Slice(0, 183)),
-        };
-
-        var offset = 183;
-        byte continuityCounter = 1;
-        while (offset < section.Length)
-        {
-            var chunkLength = Math.Min(184, section.Length - offset);
-            packets.Add(BuildPsiContinuationTsPacket(pid, section.Slice(offset, chunkLength), continuityCounter++));
-            offset += chunkLength;
-        }
-
-        var stream = new byte[packets.Count * T2miAccessors.TsPacketSize];
-        for (var i = 0; i < packets.Count; i++)
-        {
-            packets[i].CopyTo(stream.AsSpan(i * T2miAccessors.TsPacketSize));
-        }
-
-        return stream;
-    }
-
-    private static byte[] BuildPsiContinuationTsPacket(ushort pid, ReadOnlySpan<byte> payload, byte continuityCounter)
-    {
-        if (payload.Length > 184)
-        {
-            throw new ArgumentException("Continuation payload must fit in one TS packet.", nameof(payload));
-        }
-
-        var ts = new byte[T2miAccessors.TsPacketSize];
-        ts[0] = TsPacket.SYNC_BYTE;
-        ts[1] = (byte)((pid >> 8) & 0x1F);
-        ts[2] = (byte)(pid & 0xFF);
-        ts[3] = (byte)(0x10 | (continuityCounter & 0x0F));
-        payload.CopyTo(ts.AsSpan(4));
-        for (var i = 4 + payload.Length; i < ts.Length; i++)
-        {
-            ts[i] = 0xFF;
-        }
-
-        return ts;
+        return PsiTsPacketFactory.BuildPsiTsStream(pid, section);
     }
 
     /// <summary>Outer MPEG-TS (T2-MI PID) carrying one decapsulatable baseband frame with the given inner TS packet.</summary>
