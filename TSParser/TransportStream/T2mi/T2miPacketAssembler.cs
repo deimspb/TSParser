@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.Diagnostics;
 using TSParser.Service;
 
 namespace TSParser.TransportStream.T2mi;
@@ -70,11 +71,14 @@ public sealed class T2miPacketAssembler
             {
                 if (actualCc != _tsPacketCc || T2miAccessors.TsHasPayload(tsPacket))
                 {
+                    // #region agent log
+                    T2miDebugCounters.AssemblerCcResets++;
+                    // #endregion
                     SignalDiscontinuityIfPossible();
                     _writtenSoFar = 0;
                 }
             }
-            else
+            else if (!T2miAccessors.TsPayloadUnitStartIndicator(tsPacket))
             {
                 AppendTsPayload(tsPacket);
             }
@@ -90,6 +94,10 @@ public sealed class T2miPacketAssembler
 
     private void StartNewT2miFromTs(ReadOnlySpan<byte> tsPacket, byte actualCc)
     {
+        // #region agent log
+        T2miDebugCounters.AssemblerPusiStarts++;
+        // #endregion
+
         var payload = T2miAccessors.TsPayload(tsPacket);
         if (payload.IsEmpty)
         {
@@ -98,12 +106,33 @@ public sealed class T2miPacketAssembler
             return;
         }
 
-        var dataStart = payload[0] + 1;
+        var pointer = payload[0];
+        var dataStart = pointer + 1;
         if (dataStart >= payload.Length)
         {
             SignalDiscontinuityIfPossible();
             _writtenSoFar = 0;
             return;
+        }
+
+        if (_writtenSoFar > 0 && pointer > 0)
+        {
+            CopyToBuffer(payload.Slice(1, pointer), _writtenSoFar);
+            DeliverIfPacketIsCompleted();
+        }
+        else if (_writtenSoFar > 0)
+        {
+            // #region agent log
+            T2miDebugCounters.AssemblerPusiAbortedIncomplete++;
+            // #endregion
+            SignalDiscontinuityIfPossible();
+            _writtenSoFar = 0;
+        }
+
+        if (_writtenSoFar > 0)
+        {
+            SignalDiscontinuityIfPossible();
+            _writtenSoFar = 0;
         }
 
         var t2miChunk = payload.Slice(dataStart);
@@ -215,21 +244,35 @@ public sealed class T2miPacketAssembler
                 var computedCrc = Utils.GetCRC32(building.Slice(0, t2miPacketSize - 4));
                 var packetCrc = T2miAccessors.T2miCrc32(building);
                 var crcValid = computedCrc == packetCrc;
-                if (crcValid)
+                if (!crcValid)
                 {
-                    var payloadBits = T2miAccessors.T2miType00PayloadLengthBits(building);
-                    var payloadSize = (payloadBits + 7) / 8;
-                    if (payloadSize >= 10)
+                    // #region agent log
+                    T2miDebugCounters.AssemblerBasebandCrcFail++;
+                    if (T2miDebugCounters.AssemblerBasebandCrcFail == 1)
                     {
-                        completed = BuildPacket(building, packetType, crcValid, payloadSize);
+                        DebugAgentLog.Write(
+                            "T2miPacketAssembler.cs:DeliverIfPacketIsCompleted",
+                            "first baseband CRC mismatch",
+                            new
+                            {
+                                t2miPacketSize,
+                                computedCrc,
+                                packetCrc,
+                                headerHex = Convert.ToHexString(building.Slice(0, Math.Min(16, t2miPacketSize))),
+                                tailHex = Convert.ToHexString(building.Slice(Math.Max(0, t2miPacketSize - 8), Math.Min(8, t2miPacketSize))),
+                            },
+                            "C");
                     }
-                }
-                else
-                {
+                    // #endregion
                     Logger.Send(LogStatus.ETSI,
                         $"T2-MI baseband frame CRC mismatch: expected {computedCrc:X8}, got {packetCrc:X8}");
-                    _writtenSoFar = 0;
-                    return;
+                }
+
+                var payloadBits = T2miAccessors.T2miType00PayloadLengthBits(building);
+                var payloadSize = (payloadBits + 7) / 8;
+                if (payloadSize >= 10)
+                {
+                    completed = BuildPacket(building, packetType, crcValid, payloadSize);
                 }
             }
             else

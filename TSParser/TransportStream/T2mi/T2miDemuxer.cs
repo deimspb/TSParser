@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.Diagnostics;
 using TSParser.TransportStream;
 
 namespace TSParser.TransportStream.T2mi;
@@ -62,9 +63,15 @@ public sealed class T2miDemuxer
         var raw = tsPacket.RawPacket;
         if (raw == null || raw.Length != T2miAccessors.TsPacketSize)
         {
+            // #region agent log
+            T2miDebugCounters.TsPacketsSkippedRaw++;
+            // #endregion
             return;
         }
 
+        // #region agent log
+        T2miDebugCounters.TsPacketsPushed++;
+        // #endregion
         PushPacket(raw, tsPacket.Pid, tsPacket.PacketNumber);
     }
 
@@ -80,6 +87,24 @@ public sealed class T2miDemuxer
 
     private void OnAssemblerPacketReady(T2miPacket packet)
     {
+        // #region agent log
+        T2miDebugCounters.T2miPacketsCompleted++;
+        switch (packet.PacketType)
+        {
+            case T2miPacketType.DvbT2Timestamp: T2miDebugCounters.TypeDvbT2Timestamp++; break;
+            case T2miPacketType.L1Current: T2miDebugCounters.TypeL1Current++; break;
+            case T2miPacketType.BasebandFrame: T2miDebugCounters.TypeBaseband++; break;
+            default: T2miDebugCounters.TypeOther++; break;
+        }
+        if (packet.PacketType == T2miPacketType.BasebandFrame)
+        {
+            if (packet.Crc32Valid)
+                T2miDebugCounters.BasebandCrcValid++;
+            else
+                T2miDebugCounters.BasebandCrcInvalid++;
+        }
+        // #endregion
+
         if (packet.PlpId is byte plpId && _discoveredPlps.Add(plpId))
         {
             PlpDiscovered?.Invoke(plpId);
@@ -87,9 +112,11 @@ public sealed class T2miDemuxer
 
         if (Deencapsulate
             && packet.PacketType == T2miPacketType.BasebandFrame
-            && packet.Crc32Valid
             && packet.Payload.Length >= BbHeader.Size)
         {
+            // #region agent log
+            T2miDebugCounters.DeencapBasebandAttempts++;
+            // #endregion
             var stripper = GetOrCreateStripper(packet.PlpId ?? 0);
             stripper.Receive(packet.Payload);
         }
@@ -105,7 +132,14 @@ public sealed class T2miDemuxer
         }
 
         stripper = new BbFrameStripper(plpId);
-        stripper.TsPacketsReady += data => PlpTsReady?.Invoke(plpId, data);
+        stripper.TsPacketsReady += data =>
+        {
+            // #region agent log
+            T2miDebugCounters.PlpTsEmissions++;
+            T2miDebugCounters.PlpTsBytesEmitted += data.Length;
+            // #endregion
+            PlpTsReady?.Invoke(plpId, data);
+        };
         _bbStrippers.Add(plpId, stripper);
         return stripper;
     }

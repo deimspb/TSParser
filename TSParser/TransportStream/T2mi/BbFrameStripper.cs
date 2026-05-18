@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using TSParser.Diagnostics;
 using TSParser.Service;
 
 namespace TSParser.TransportStream.T2mi;
@@ -44,6 +45,10 @@ public sealed class BbFrameStripper
 
     public void Receive(ReadOnlySpan<byte> data)
     {
+        // #region agent log
+        T2miDebugCounters.BbReceiveCalls++;
+        // #endregion
+
         if (data.Length <= BbHeader.Size)
         {
             return;
@@ -62,6 +67,9 @@ public sealed class BbFrameStripper
             }
             else
             {
+                // #region agent log
+                T2miDebugCounters.BbRejectedHeader++;
+                // #endregion
                 Logger.Send(LogStatus.ETSI,
                     $"BBHEADER CRC8 mismatch: expected {computedCrc:X2} or {computedCrc ^ 1:X2}, got {modeByte:X2} (PLP {PlpId})");
                 return;
@@ -70,6 +78,9 @@ public sealed class BbFrameStripper
 
         if (header.TsGs != 3)
         {
+            // #region agent log
+            T2miDebugCounters.BbRejectedHeader++;
+            // #endregion
             Logger.Send(LogStatus.ETSI,
                 $"BBHEADER TS/GS must be 3 for MPEG-TS in GSE, got {header.TsGs} (PLP {PlpId})");
             return;
@@ -77,11 +88,17 @@ public sealed class BbFrameStripper
 
         if (header.Dfl == 0)
         {
+            // #region agent log
+            T2miDebugCounters.BbRejectedDflZero++;
+            // #endregion
             return;
         }
 
         if ((header.Dfl & 7) != 0)
         {
+            // #region agent log
+            T2miDebugCounters.BbRejectedHeader++;
+            // #endregion
             Logger.Send(LogStatus.ETSI,
                 $"BBHEADER DFL ({header.Dfl}) is not byte-aligned (PLP {PlpId})");
             return;
