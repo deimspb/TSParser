@@ -5,7 +5,7 @@ namespace TSParser.Web.Services;
 /// <summary>Accumulates stream and per-PID bitrate samples for file (offset X) and UDP (rolling time) charts.</summary>
 public sealed class BitrateHistoryStore
 {
-    public const int MaxUdpPoints = 720;
+    public static readonly TimeSpan UdpChartRetention = TimeSpan.FromMinutes(3);
 
     private static readonly TimeSpan UdpSumMergeWindow = TimeSpan.FromMilliseconds(150);
 
@@ -110,9 +110,12 @@ public sealed class BitrateHistoryStore
                     break;
 
                 case TsParserSessionInputMode.Udp:
-                    _udpPoints.Enqueue(new BitrateUdpPoint(DateTime.UtcNow, totalBps, usefulBps));
-                    TrimUdpQueue(_udpPoints);
+                {
+                    var now = DateTime.UtcNow;
+                    _udpPoints.Enqueue(new BitrateUdpPoint(now, totalBps, usefulBps));
+                    TrimUdpStreamQueue(_udpPoints, now);
                     break;
+                }
 
                 default:
                     return false;
@@ -161,6 +164,9 @@ public sealed class BitrateHistoryStore
     {
         lock (_lock)
         {
+            if (Mode == TsParserSessionInputMode.Udp)
+                PruneExpiredUdpSamplesLocked(DateTime.UtcNow);
+
             var chartPids = _chartPids.OrderBy(p => p).ToArray();
             var pidFile = new Dictionary<ushort, IReadOnlyList<BitratePidFilePoint>>();
             var pidUdp = new Dictionary<ushort, IReadOnlyList<BitratePidUdpPoint>>();
@@ -252,7 +258,7 @@ public sealed class BitrateHistoryStore
         }
 
         queue.Enqueue(new BitratePidUdpPoint(timestampUtc, bitsPerSecond));
-        TrimUdpQueue(queue);
+        TrimUdpPidQueue(queue, timestampUtc);
         MergeSumUdpPoint(timestampUtc, bitsPerSecond);
     }
 
@@ -282,18 +288,39 @@ public sealed class BitrateHistoryStore
         }
 
         _sumUdpPoints.Add(new BitratePidUdpPoint(timestampUtc, bitsPerSecond));
-        TrimUdpList(_sumUdpPoints);
+        TrimUdpPidList(_sumUdpPoints, timestampUtc);
     }
 
-    private static void TrimUdpQueue<T>(Queue<T> queue)
+    private void PruneExpiredUdpSamplesLocked(DateTime nowUtc)
     {
-        while (queue.Count > MaxUdpPoints)
+        var cutoff = nowUtc - UdpChartRetention;
+        TrimUdpStreamQueue(_udpPoints, cutoff);
+        foreach (var queue in _pidUdpPoints.Values)
+            TrimUdpPidQueue(queue, cutoff);
+        TrimUdpPidList(_sumUdpPoints, cutoff);
+    }
+
+    private static void TrimUdpStreamQueue(Queue<BitrateUdpPoint> queue, DateTime nowUtc)
+    {
+        var cutoff = nowUtc - UdpChartRetention;
+        while (queue.Count > 0 && queue.Peek().TimestampUtc < cutoff)
             queue.Dequeue();
     }
 
-    private static void TrimUdpList<T>(List<T> list)
+    private static void TrimUdpPidQueue(Queue<BitratePidUdpPoint> queue, DateTime nowUtc)
     {
-        var remove = list.Count - MaxUdpPoints;
+        var cutoff = nowUtc - UdpChartRetention;
+        while (queue.Count > 0 && queue.Peek().TimestampUtc < cutoff)
+            queue.Dequeue();
+    }
+
+    private static void TrimUdpPidList(List<BitratePidUdpPoint> list, DateTime nowUtc)
+    {
+        var cutoff = nowUtc - UdpChartRetention;
+        var remove = 0;
+        while (remove < list.Count && list[remove].TimestampUtc < cutoff)
+            remove++;
+
         if (remove > 0)
             list.RemoveRange(0, remove);
     }
