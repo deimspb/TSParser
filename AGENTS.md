@@ -2,7 +2,7 @@
 
 Operational context for AI-assisted development. End-user quick start: [Readme.md](Readme.md).
 
-**API audit** (2026-05-17): sections below match `TsParser.cs`, `ParserConfig`, `DescriptorFactory.cs`, and `dotnet build TSParser.sln` on this tree.
+**API audit** (2026-05-18): sections below match `TsParser.cs`, `ParserConfig`, `DescriptorFactory.cs`, T2-MI types under `TransportStream/T2mi/`, and `dotnet build TSParser.sln` on this tree.
 
 ---
 
@@ -11,6 +11,7 @@ Operational context for AI-assisted development. End-user quick start: [Readme.m
 ```
 TSParser/                 # Core library (ship target), net10.0
   TransportStream/        # TsPacket, AdaptationField, PesHeader, TsPacketFactory
+    T2mi/                 # T2-MI reassembly + BBFRAME → MPEG-TS (not PSI; separate from MIP)
   Tables/
     Table.cs              # abstract record — section header + CRC
     TableFactory.cs       # PSI/SI section reassembly across TS packets
@@ -38,7 +39,7 @@ tools/BlessManifest/      # bless/refresh manifest.descriptors.json
 
 ### Data flow
 
-bytes → `TsPacketFactory.GetTsPackets` → (`DecodeMode`) → per-PID `TableFactory.AddData` until section complete → parse → event (table mode), or `OnTsPacketReady` (packet mode).
+bytes → `TsPacketFactory.GetTsPackets` → (`DecodeMode`) → per-PID `TableFactory.AddData` until section complete → parse → event (table mode), or `OnTsPacketReady` (packet mode). When `ParserConfig.T2miEnabled`, matching PIDs also go to `T2miDemuxer` → `OnT2miPacketReady` / optional `OnPlpTsReady` (not fed back into `TsParser` automatically).
 
 ### Adding features
 
@@ -81,6 +82,10 @@ bytes → `TsPacketFactory.GetTsPackets` → (`DecodeMode`) → per-PID `TableFa
 | `MulticastGroup` | `string?` | `null` | UDP mode |
 | `MulticastPort` | `int?` | `null` | UDP mode (default **1234** if null in UDP path) |
 | `MulticastIncomingIp` | `string?` | `null` | Bind address; `IPAddress.Any` if null |
+| `T2miEnabled` | `bool` | `false` | Reassemble T2-MI on `T2miPids` and/or auto-detected PID |
+| `T2miPids` | `ushort[]?` | `null` | Explicit T2-MI PIDs (e.g. `0x1000`); registered at ctor when non-empty |
+| `T2miAutoDetect` | `bool` | `false` | After PMT: one PAT program, one ES, `stream_type == 0x06` → register ES PID |
+| `T2miDeencapsulate` | `bool` | `false` | With `T2miEnabled`, run `BbFrameStripper` per PLP → `OnPlpTsReady` |
 
 Constructor `TsParser(ParserConfig)` starts file or UDP parsing internally when `TsFileName` or `MulticastGroup`+`MulticastPort` is set. Otherwise it only configures delegates (no `RunParser` until called).
 
@@ -104,8 +109,11 @@ Constructor `TsParser(ParserConfig)` starts file or UDP parsing internally when 
 | `GetOneDescriptorFromBytes(bytes, callerTableId?)` | `0x74` → AIT; `0xFC` → SCTE-35 splice descriptors; else DVB |
 | `GetOneTsPacketFromBytes` / `GetTsPacketsFromBytes` | Packet-level parsing |
 | `CompareTables(t1, t2)` | Structural diff as `IEnumerable<string>` |
+| `CreateT2miDemuxer(pid, deencapsulate?)` | Standalone `T2miDemuxer` for lab/tests; `PushPacket(TsPacket)` or `PushPacket(ReadOnlySpan<byte>, …)` |
 
 `DescriptorFactory` is **internal** — consumers use `GetOneDescriptorFromBytes` or table object graphs.
+
+**Public T2-MI types** (namespace `TSParser.TransportStream.T2mi`): `T2miDemuxer`, `T2miPacket`, `T2miPacketType`, `T2miPacketAssembler` (low-level reassembly). `BbFrameStripper` / `BbHeader` are public for tests; typical apps use `TsParser` events or `T2miDemuxer` only.
 
 ### 3.3 Events (exact names from `TsParser.cs`)
 
@@ -129,6 +137,9 @@ Constructor `TsParser(ParserConfig)` starts file or UDP parsing internally when 
 | `OnTsPacketReady` | `TsPacketReady` | `TsPacket` | `DecodeMode.Packet` only |
 | `OnRate` | `RateDelegate` | `ushort pid, ulong deltaPackets, ulong deltaTime` | Legacy analyzer |
 | `OnBitrateMeasured` | `BitrateMeasuredDelegate` | `BitrateSample` | Needs `ParserConfig.BitrateMeasurement` |
+| `OnT2miPacketReady` | `T2miPacketReady` | `T2miPacket` | Needs `T2miEnabled`; each reassembled T2-MI packet |
+| `OnT2miPlpDiscovered` | `T2miPlpDiscovered` | `byte plpId` | First `PlpId` seen per demuxer (type `0x00` baseband) |
+| `OnPlpTsReady` | `PlpTsReady` | `byte plpId`, `ReadOnlyMemory<byte> tsData` | Needs `T2miDeencapsulate`; 188-byte TS multiples; **buffer valid only for callback** |
 
 **Logging:** `Logger.OnLogMessage` (`TSParser.Service.Logger`).
 
@@ -157,9 +168,23 @@ Constructor `TsParser(ParserConfig)` starts file or UDP parsing internally when 
 
 `Enabled`, `MeasurementWindow` (default 1s), `ClockSource` (`Pcr` / `Pts` / `Dts`), `ReferencePid`, `MeasureStreamBitrate`, `MeasurePerPidBitrate`, `IncludeNullPackets`.
 
-### 3.6 Other public types (do not treat as ready product API)
+### 3.6 T2-MI vs MIP
 
-- `Decoder` — stub; `RunDecoder` / `Scte35Decoder` empty.
+| | **MIP** | **T2-MI** |
+|---|---------|-----------|
+| Standard / role | DVB-T modulator interface (network sync) | DVB-T2 modulator interface (ETSI TS 102 773) |
+| Typical PID | Fixed `0x15` (`ReservedPids.NetworkSync`) | Operator-defined (e.g. `0x1000`); set via `T2miPids` |
+| Integration | `MipFactory` + `TableFactory` → `OnMipReady` → `MIP` table type | `T2miDemuxer` per PID; **not** a PSI section |
+| Payload | SI-style sections | Reassembled T2-MI packets; type `0x00` carries **PLP_ID** + baseband |
+| Inner MPEG-TS | N/A | Optional: `T2miDeencapsulate` → `OnPlpTsReady`; consumer may run a second `TsParser` on that data |
+
+T2-MI runs in both `DecodeMode.Table` and `DecodeMode.Packet` (wired after table dispatch or `OnTsPacketReady`). It does **not** use `Decoder` / `DecoderMode`. Multi-program streams often need explicit `T2miPids` because `T2miAutoDetect` requires exactly one PAT program and one elementary stream with `stream_type` `0x06`.
+
+`PlpId` in SI is only metadata today (`T2DeliverySystemDescriptor_0x04` extension `0x04`); runtime PLP discovery is via T2-MI events above.
+
+### 3.7 Other public types (do not treat as ready product API)
+
+- `Decoder` — stub; `RunDecoder` / `Scte35Decoder` empty; **not** used for T2-MI.
 - `Scte35ToXml.Convert(SCTE35)` — XML serialization helper.
 
 ---
@@ -229,6 +254,8 @@ End-user docs: [Readme.md](Readme.md) (Russian). When editing README, prefer thi
 | `OnTotready` | Public API typo — event name is `OnTotready`, not `OnTotReady` |
 | `TsParser()` | Static/table helpers only; **`PushBytes` and stream parsing need `TsParser(ParserConfig)`** |
 | `TsMode.ATSC` / `ISDB` | Enum values select factories that throw `NotImplementedException` on first SI packet |
+| MIP vs T2-MI | `OnMipReady` / PID `0x15` is DVB-T MIP; T2-MI uses `T2mi*` config/events on arbitrary PIDs |
+| `OnPlpTsReady` | `ReadOnlyMemory<byte>` is only valid during the callback; copy if parsing asynchronously |
 
 ---
 
@@ -259,6 +286,7 @@ On Windows, equivalent wrappers: `tools\harvest-tables.ps1`, `tools\select-sampl
 | `TSPARSER_TS_ROOT` | CorpusHarvester, harvest scripts | Directory of input `.ts` files |
 | `TSPARSER_DESCRIPTOR_STAGING` | CorpusHarvester `harvest` / `select` | Staging for harvested `.desc` |
 | `TSPARSER_TABLE_STAGING` | Table harvest/select scripts | Staging for harvested `.tbl` |
+| `TSPARSER_T2MI_SAMPLE` | `FixtureLoader`, T2-MI integration tests | Override path to full `t2mi_cut.ts` (bundled sample: `TestResources/T2mi/t2mi_cut_pid1000.ts`) |
 
 ---
 
@@ -279,7 +307,8 @@ BlessManifest flags: `--tables-only`, `--descriptors-only`, `--fixtures-root <pa
 
 - `TsMode.ATSC` / `TsMode.ISDB` — enum only; `AtscTableFactory` / `IsdbTableFactory` throw.
 - `TransportStream/NAL/` — placeholder folder in csproj.
-- `Decoder` — not implemented.
+- `Decoder` — not implemented (T2-MI uses dedicated `T2miDemuxer` pipeline instead).
+- **T2-MI:** `T2miDescriptor_0x11` (extension tag `0x7F` / `0x11`) not wired in `DescriptorFactory`; auto-detect relies on PAT/PMT heuristic or `T2miPids` only.
 - Solution references **AppTest** and **StreamParser** sample apps (`.gitignore` excludes `AppTest/` and `StreamParser/` — absent in a minimal clone; `StreamParser` may warn on missing DekTec `DTAPINET` refs).
 - Custom tags `0xB3`, legacy `SettingsDescriptorV1/V2` — source files exist, factory wiring incomplete.
 
@@ -289,6 +318,8 @@ BlessManifest flags: `--tables-only`, `--descriptors-only`, `--fixtures-root <pa
 
 - [ETSI EN 300 468](https://www.etsi.org/) (DVB SI)
 - [ISO/IEC 13818-1](https://www.iso.org/) (MPEG-2 TS)
+- [ETSI TS 102 773](https://www.etsi.org/) (T2-MI)
+- [ETSI EN 302 755](https://www.etsi.org/) (DVB-T2 baseband / BBHEADER)
 - [SCTE-35](https://www.scte.org/) — XML schema: http://www.scte.org/schemas/35
 
 ---

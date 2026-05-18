@@ -128,33 +128,6 @@ public sealed class T2miParserIntegrationTests
     }
 
     [Test]
-    public void RunParser_with_deencapsulate_emits_plp_ts_when_baseband_present()
-    {
-        var path = FixtureLoader.ResolvePath(FixtureLoader.T2miBundledRelativePath);
-        var plpChunks = new List<(byte Plp, byte[] Data)>();
-
-        var parser = new TsParser(new ParserConfig
-        {
-            TsFileName = path,
-            T2miEnabled = true,
-            T2miDeencapsulate = true,
-            T2miPids = [FixtureLoader.T2miSamplePid],
-            CurrentDecodeMode = DecodeMode.Packet,
-        });
-
-        parser.OnPlpTsReady += (plp, data) => plpChunks.Add((plp, data.ToArray()));
-        parser.RunParser();
-
-        if (plpChunks.Count == 0)
-        {
-            Assert.Ignore("Bundled fixture has no decapsulatable baseband BB frames with DFL > 0.");
-        }
-
-        Assert.That(plpChunks[0].Data.Length % T2miAccessors.TsPacketSize, Is.EqualTo(0));
-        Assert.That(plpChunks[0].Data[0], Is.EqualTo(TsPacket.SYNC_BYTE));
-    }
-
-    [Test]
     public void RunParser_on_full_sample_emits_baseband_when_configured()
     {
         if (!FixtureLoader.TryGetT2miFullSamplePath(out var path))

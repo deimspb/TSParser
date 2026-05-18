@@ -145,4 +145,73 @@ internal static class T2miTestPacketFactory
 
         return ts;
     }
+
+    /// <summary>Builds one PUSI TS packet carrying a PSI section (pointer field 0).</summary>
+    public static byte[] BuildPsiTsPacket(ushort pid, ReadOnlySpan<byte> section)
+    {
+        if (section.Length > 183)
+        {
+            throw new ArgumentException("Section must fit in one TS payload with a pointer byte.", nameof(section));
+        }
+
+        var ts = new byte[T2miAccessors.TsPacketSize];
+        ts[0] = TsPacket.SYNC_BYTE;
+        ts[1] = (byte)(0x40 | ((pid >> 8) & 0x1F));
+        ts[2] = (byte)(pid & 0xFF);
+        ts[3] = 0x10;
+        ts[4] = 0x00;
+        section.CopyTo(ts.AsSpan(5));
+        for (var i = 5 + section.Length; i < ts.Length; i++)
+        {
+            ts[i] = 0xFF;
+        }
+
+        return ts;
+    }
+
+    /// <summary>Outer MPEG-TS (T2-MI PID) carrying one decapsulatable baseband frame with the given inner TS packet.</summary>
+    public static byte[] BuildT2miCarrierStream(
+        ReadOnlySpan<byte> innerTsPacket,
+        byte plpId = SampleBasebandPlpId,
+        ushort t2miPid = 0x1000)
+    {
+        var bbFrame = BuildNormalModeBbFrame(innerTsPacket);
+        var t2mi = BuildBasebandT2miPacket(plpId, bbFrame);
+        return WrapT2miPacketInTsStream(t2mi, t2miPid);
+    }
+
+    /// <summary>Serializes a T2-MI packet into one or more MPEG-TS packets on <paramref name="pid"/>.</summary>
+    public static byte[] WrapT2miPacketInTsStream(ReadOnlySpan<byte> t2miPacket, ushort pid)
+    {
+        const int firstPayloadCapacity = 183;
+        if (t2miPacket.Length <= firstPayloadCapacity)
+        {
+            return WrapInSingleTsPacket(t2miPacket, pid);
+        }
+
+        var chunks = new List<byte[]>
+        {
+            WrapInSingleTsPacket(t2miPacket.Slice(0, firstPayloadCapacity), pid, continuityCounter: 0),
+        };
+
+        var offset = firstPayloadCapacity;
+        byte continuityCounter = 1;
+        while (offset < t2miPacket.Length)
+        {
+            var chunkLength = Math.Min(184, t2miPacket.Length - offset);
+            chunks.Add(WrapInContinuationTsPacket(
+                t2miPacket.Slice(offset, chunkLength),
+                pid,
+                continuityCounter++));
+            offset += chunkLength;
+        }
+
+        var stream = new byte[chunks.Count * T2miAccessors.TsPacketSize];
+        for (var i = 0; i < chunks.Count; i++)
+        {
+            chunks[i].CopyTo(stream.AsSpan(i * T2miAccessors.TsPacketSize));
+        }
+
+        return stream;
+    }
 }
