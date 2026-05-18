@@ -22,6 +22,15 @@ namespace TSParser.Tests.Helpers;
 
 public static class FixtureLoader
 {
+    /// <summary>Relative path to the bundled T2-MI cut (PID 0x1000 packets only).</summary>
+    public const string T2miBundledRelativePath = "T2mi/t2mi_cut_pid1000.ts";
+
+    /// <summary>T2-MI PID in <see cref="T2miBundledRelativePath"/> and <c>t2mi_cut.ts</c> samples.</summary>
+    public const ushort T2miSamplePid = 0x1000;
+
+    /// <summary>Environment variable for the full <c>t2mi_cut.ts</c> capture (optional, local/extended tests).</summary>
+    public const string T2miSampleEnvironmentVariable = "TSPARSER_T2MI_SAMPLE";
+
     public static string TestResourcesRoot
     {
         get
@@ -47,6 +56,40 @@ public static class FixtureLoader
         var path = ResolvePath(relativePath);
         Assert.That(File.Exists(path), Is.True, $"Fixture not found: {path}");
         return File.ReadAllBytes(path);
+    }
+
+    /// <summary>
+    /// Path to the T2-MI TS sample: <c>TSPARSER_T2MI_SAMPLE</c> when set, otherwise the bundled cut.
+    /// </summary>
+    public static string ResolveT2miSamplePath()
+    {
+        var sample = Environment.GetEnvironmentVariable(T2miSampleEnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(sample))
+        {
+            return Path.GetFullPath(sample);
+        }
+
+        return ResolvePath(T2miBundledRelativePath);
+    }
+
+    public static byte[] LoadT2miSampleBytes()
+    {
+        var path = ResolveT2miSamplePath();
+        Assert.That(File.Exists(path), Is.True, $"T2-MI sample not found: {path}");
+        return File.ReadAllBytes(path);
+    }
+
+    public static bool TryGetT2miFullSamplePath(out string path)
+    {
+        var sample = Environment.GetEnvironmentVariable(T2miSampleEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(sample))
+        {
+            path = string.Empty;
+            return false;
+        }
+
+        path = Path.GetFullPath(sample);
+        return File.Exists(path);
     }
 
     public static Table LoadTable(TableManifestEntry entry)
