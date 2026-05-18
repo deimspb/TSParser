@@ -108,6 +108,28 @@ namespace TSParser.Service
 
             return crc;
         }
+
+        /// <summary>MPEG CRC-8 (ETSI EN 302 307), as used for DVB-T2 BBHEADER.</summary>
+        internal static byte GetCRC8(ReadOnlySpan<byte> data, byte crc = 0)
+        {
+            for (var i = 0; i < data.Length; i++)
+            {
+                crc ^= data[i];
+                for (var bit = 0; bit < 8; bit++)
+                {
+                    if ((crc & 0x80) != 0)
+                    {
+                        crc = (byte)((crc << 1) ^ 0xD5);
+                    }
+                    else
+                    {
+                        crc = (byte)(crc << 1);
+                    }
+                }
+            }
+
+            return crc;
+        }
         internal static DateTime GetDateTimeFromMJD_UTC(ReadOnlySpan<byte> bytes)
         {
             ushort mjd = (ushort)((bytes[0] << 8) + bytes[1]);
