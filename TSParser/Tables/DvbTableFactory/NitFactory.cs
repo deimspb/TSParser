@@ -36,10 +36,10 @@ namespace TSParser.Tables.DvbTableFactory
         private NIT CurrentNit = null!;
         internal override void PushTable(TsPacket tsPacket)
         {
-            ProcessAssembledSections(tsPacket, ParseTable);
+            ProcessAssembledSections(tsPacket);
         }
 
-        private void ParseTable()
+        protected override void ProcessCurrentSection()
         {
             switch (TableData[0])
             {

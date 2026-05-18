@@ -54,16 +54,18 @@ namespace TSParser.Tables.DvbTableFactory
                 return;
             }
 
-            if (!TryParseAssembledTable(() =>
-            {
-                CurrentMip = new MIP(TableData);
-                Mip = CurrentMip;
-                OnMipReady?.Invoke(Mip);
-            }, "MIP"))
+            TableData = bytes.ToArray();
+            if (!TryParseAssembledTable(ProcessCurrentSection, "MIP"))
             {
                 return;
             }
         }
 
+        protected override void ProcessCurrentSection()
+        {
+            CurrentMip = new MIP(TableData);
+            Mip = CurrentMip;
+            OnMipReady?.Invoke(Mip);
+        }
     }
 }

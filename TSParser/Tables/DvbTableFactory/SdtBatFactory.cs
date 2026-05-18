@@ -46,9 +46,10 @@ namespace TSParser.Tables.DvbTableFactory
         private List<BAT> m_batList => bATs.Value;
         internal override void PushTable(TsPacket tsPacket)
         {
-            ProcessAssembledSections(tsPacket, ParseTable);
+            ProcessAssembledSections(tsPacket);
         }
-        private void ParseTable()
+
+        protected override void ProcessCurrentSection()
         {
             switch (TableData[0])
             {

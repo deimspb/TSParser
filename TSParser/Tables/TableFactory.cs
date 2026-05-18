@@ -14,6 +14,7 @@
 
 using TSParser.Service;
 using TSParser.TransportStream;
+using System.Runtime.InteropServices;
 
 namespace TSParser.Tables
 {
@@ -25,13 +26,23 @@ namespace TSParser.Tables
         private readonly Dictionary<ushort, PsiSectionAssembler> assemblers = new();
 
         internal abstract void PushTable(TsPacket tsPacket);
+        protected abstract void ProcessCurrentSection();
 
         internal void ResetFactory(ushort? pid = null)
         {
-            var targetPid = pid ?? CurrentPid;
-            if (assemblers.TryGetValue(targetPid, out var assembler))
+            if (pid.HasValue)
             {
-                assembler.Reset();
+                if (assemblers.TryGetValue(pid.Value, out var assembler))
+                {
+                    assembler.Reset();
+                }
+            }
+            else
+            {
+                foreach (var assembler in assemblers.Values)
+                {
+                    assembler.Reset();
+                }
             }
 
             TableData = null!;
@@ -52,6 +63,15 @@ namespace TSParser.Tables
                     ex);
                 ResetFactory();
                 return false;
+            }
+        }
+
+        internal void ProcessAssembledSections(TsPacket tsPacket)
+        {
+            foreach (var section in PushPacketForSections(tsPacket))
+            {
+                TableData = GetSectionArray(section);
+                ProcessCurrentSection();
             }
         }
 
@@ -78,13 +98,17 @@ namespace TSParser.Tables
             return assembler.PushPacket(tsPacket);
         }
 
-        internal void ProcessAssembledSections(TsPacket tsPacket, Action processSection)
+        private static byte[] GetSectionArray(ReadOnlyMemory<byte> section)
         {
-            foreach (var section in PushPacketForSections(tsPacket))
+            if (MemoryMarshal.TryGetArray(section, out var segment)
+                && segment.Offset == 0
+                && segment.Array != null
+                && segment.Count == segment.Array.Length)
             {
-                TableData = section.ToArray();
-                processSection();
+                return segment.Array;
             }
+
+            return section.ToArray();
         }
     }
 }

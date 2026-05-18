@@ -32,9 +32,10 @@ namespace TSParser.Tables.DvbTableFactory
         private List<EIT> eitList = new List<EIT>(100);
         internal override void PushTable(TsPacket tsPacket)
         {           
-            ProcessAssembledSections(tsPacket, ParseEit);
+            ProcessAssembledSections(tsPacket);
         }
-        private void ParseEit()
+
+        protected override void ProcessCurrentSection()
         {
             ReadOnlySpan<byte> bytes = TableData.AsSpan();
 

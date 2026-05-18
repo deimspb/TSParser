@@ -42,9 +42,10 @@ namespace TSParser.Tables.DvbTableFactory
 
         internal override void PushTable(TsPacket tsPacket)
         {
-            ProcessAssembledSections(tsPacket, ParseTable);
+            ProcessAssembledSections(tsPacket);
         }
-        private void ParseTable()
+
+        protected override void ProcessCurrentSection()
         {
             switch (TableData[0])
             {

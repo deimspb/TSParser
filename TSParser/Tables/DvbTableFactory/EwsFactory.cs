@@ -40,10 +40,10 @@ internal class EwsFactory : TableFactory
 
     internal override void PushTable(TsPacket tsPacket)
     {
-        ProcessAssembledSections(tsPacket, ParseEws);
+        ProcessAssembledSections(tsPacket);
     }
 
-    internal void ParseEws()
+    protected override void ProcessCurrentSection()
     {
         ReadOnlySpan<byte> bytes = TableData.AsSpan();
 

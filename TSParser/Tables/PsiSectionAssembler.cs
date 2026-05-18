@@ -31,7 +31,7 @@ internal sealed class PsiSectionAssembler
             return Array.Empty<ReadOnlyMemory<byte>>();
         }
 
-        var readySections = new List<ReadOnlyMemory<byte>>(2);
+        List<ReadOnlyMemory<byte>>? readySections = null;
         HandleContinuity(packet);
 
         var payload = packet.Payload.AsSpan();
@@ -52,7 +52,7 @@ internal sealed class PsiSectionAssembler
             if (prefixLength > 0)
             {
                 // Per PSI pointer semantics, prefix bytes can only finish an already pending section.
-                AppendPayload(payload.Slice(offset, prefixLength), readySections, packet.Pid, allowNewSectionStarts: false);
+                AppendPayload(payload.Slice(offset, prefixLength), ref readySections, packet.Pid, allowNewSectionStarts: false);
                 if (HasPendingSectionState())
                 {
                     Logger.Send(
@@ -74,16 +74,16 @@ internal sealed class PsiSectionAssembler
 
         if (offset >= payload.Length)
         {
-            return readySections;
+            return ToResult(readySections);
         }
 
         if (!HasPendingSectionState() && !packet.PayloadUnitStartIndicator)
         {
-            return readySections;
+            return ToResult(readySections);
         }
 
-        AppendPayload(payload[offset..], readySections, packet.Pid, allowNewSectionStarts: true);
-        return readySections;
+        AppendPayload(payload[offset..], ref readySections, packet.Pid, allowNewSectionStarts: true);
+        return ToResult(readySections);
     }
 
     internal void Reset()
@@ -142,7 +142,7 @@ internal sealed class PsiSectionAssembler
 
     private void AppendPayload(
         ReadOnlySpan<byte> source,
-        List<ReadOnlyMemory<byte>> readySections,
+        ref List<ReadOnlyMemory<byte>>? readySections,
         ushort packetPid,
         bool allowNewSectionStarts)
     {
@@ -197,11 +197,21 @@ internal sealed class PsiSectionAssembler
 
             if (sectionBytes == expectedSectionBytes)
             {
-                readySections.Add(currentSection);
+                var completedSection = currentSection;
                 ResetCurrentSection();
+                AddReadySection(ref readySections, completedSection);
             }
         }
     }
+
+    private static void AddReadySection(ref List<ReadOnlyMemory<byte>>? readySections, byte[] section)
+    {
+        readySections ??= new List<ReadOnlyMemory<byte>>(1);
+        readySections.Add(section);
+    }
+
+    private static IReadOnlyList<ReadOnlyMemory<byte>> ToResult(List<ReadOnlyMemory<byte>>? readySections) =>
+        readySections is null ? Array.Empty<ReadOnlyMemory<byte>>() : readySections;
 
     private bool HasPendingSectionState() =>
         headerBytes > 0 || sectionBytes > 0 || expectedSectionBytes > 0;

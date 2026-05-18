@@ -33,10 +33,10 @@ namespace TSParser.Tables.DvbTableFactory
         private uint CurrentCRC32;
         internal override void PushTable(TsPacket tsPacket)
         {
-            ProcessAssembledSections(tsPacket, ParseScte35);
+            ProcessAssembledSections(tsPacket);
         }
 
-        private void ParseScte35()
+        protected override void ProcessCurrentSection()
         {
             ReadOnlySpan<byte> bytes = TableData.AsSpan();
 
