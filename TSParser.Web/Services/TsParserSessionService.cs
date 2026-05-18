@@ -107,6 +107,29 @@ public sealed class TsParserSessionService : IAsyncDisposable
         }
     }
 
+    // #region agent log
+    internal void AgentLogParserEwsState(string caller)
+    {
+        lock (_parserLock)
+        {
+            if (_parser is null)
+            {
+                AgentDebugLog.Write("A", caller, "no active parser after ews save");
+                return;
+            }
+
+            AgentDebugLog.Write("A", caller, "parser ews lists after settings save (no ApplyPidLists)",
+                new
+                {
+                    parserEws = _parser.EwsPidList.ToList(),
+                    parserEews = _parser.EewsPidList.ToList(),
+                    settingsEws = Settings.EwsPids,
+                    settingsEews = Settings.EewsPids
+                });
+        }
+    }
+    // #endregion
+
     public bool TryGetObservedPids(out IReadOnlyList<ushort> pids)
     {
         lock (_parserLock)
@@ -337,6 +360,17 @@ public sealed class TsParserSessionService : IAsyncDisposable
         parser.EewsPidList = Settings.EewsPids.Count > 0
             ? Settings.EewsPids.ToList()
             : new List<ushort>();
+
+        // #region agent log
+        AgentDebugLog.Write("A", "TsParserSessionService.ApplyPidLists", "applied pid lists to parser",
+            new
+            {
+                settingsEws = Settings.EwsPids,
+                settingsEews = Settings.EewsPids,
+                parserEws = parser.EwsPidList,
+                parserEews = parser.EewsPidList
+            });
+        // #endregion
     }
 
     private void StartParserRunInBackground(TsParser parser, CancellationToken cancellationToken) =>
@@ -506,8 +540,23 @@ public sealed class TsParserSessionService : IAsyncDisposable
     private void OnAitReady(AIT ait) => PostTable(TsTableKind.Ait, ait);
     private void OnMipReady(MIP mip) => PostTable(TsTableKind.Mip, mip);
     private void OnScte35Ready(SCTE35 scte35) => PostTable(TsTableKind.Scte35, scte35);
-    private void OnEwsReady(EWS ews) => PostTable(TsTableKind.Ews, ews);
-    private void OnEewsReady(EEWS eews) => PostTable(TsTableKind.Eews, eews);
+    private void OnEwsReady(EWS ews)
+    {
+        // #region agent log
+        AgentDebugLog.Write("C", "TsParserSessionService.OnEwsReady", "ews table ready",
+            new { ews.TablePid, ews.VersionNumber });
+        // #endregion
+        PostTable(TsTableKind.Ews, ews);
+    }
+
+    private void OnEewsReady(EEWS eews)
+    {
+        // #region agent log
+        AgentDebugLog.Write("C", "TsParserSessionService.OnEewsReady", "eews table ready",
+            new { eews.TablePid, eews.VersionNumber });
+        // #endregion
+        PostTable(TsTableKind.Eews, eews);
+    }
 
     private void OnBitrateMeasured(BitrateSample sample) =>
         Post(new TsParserUiUpdate.BitrateMeasured(sample));

@@ -73,6 +73,13 @@
                 switch (update)
                 {
                     case TsParserUiUpdate.TableParsed(var kind, var table):
+                        // #region agent log
+                        if (kind is TsTableKind.Ews or TsTableKind.Eews)
+                        {
+                            AgentDebugLog.Write("D", "Home.PumpUpdates", "tree apply ews/eews",
+                                new { kind, tablePid = table.TablePid });
+                        }
+                        // #endregion
                         TreeStore.ApplyTable(kind, table);
                         _statusText = $"Parsed {kind}";
                         needsRefresh = true;
