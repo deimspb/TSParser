@@ -51,8 +51,24 @@ internal sealed class PsiSectionAssembler
             var prefixLength = Math.Min(pointerField, payload.Length - offset);
             if (prefixLength > 0)
             {
-                AppendPayload(payload.Slice(offset, prefixLength), readySections, packet.Pid);
+                // Per PSI pointer semantics, prefix bytes can only finish an already pending section.
+                AppendPayload(payload.Slice(offset, prefixLength), readySections, packet.Pid, allowNewSectionStarts: false);
+                if (HasPendingSectionState())
+                {
+                    Logger.Send(
+                        LogStatus.WARNING,
+                        $"Dropped incomplete PSI section at pointer boundary for pid 0x{packet.Pid:X4} (pointer_field={pointerField}).");
+                    ResetCurrentSection();
+                }
+
                 offset += prefixLength;
+            }
+            else if (HasPendingSectionState())
+            {
+                Logger.Send(
+                    LogStatus.WARNING,
+                    $"Dropped incomplete PSI section at pointer boundary for pid 0x{packet.Pid:X4} (pointer_field=0).");
+                ResetCurrentSection();
             }
         }
 
@@ -66,7 +82,7 @@ internal sealed class PsiSectionAssembler
             return readySections;
         }
 
-        AppendPayload(payload[offset..], readySections, packet.Pid);
+        AppendPayload(payload[offset..], readySections, packet.Pid, allowNewSectionStarts: true);
         return readySections;
     }
 
@@ -84,7 +100,23 @@ internal sealed class PsiSectionAssembler
         }
 
         var hasDiscontinuityFlag = packet.HasAdaptationField && packet.Adaptation_field.DiscontinuityIndicator;
-        if (!hasDiscontinuityFlag && lastContinuityCounter.HasValue)
+        if (hasDiscontinuityFlag)
+        {
+            if (HasPendingSectionState())
+            {
+                Logger.Send(
+                    LogStatus.WARNING,
+                    $"Discontinuity indicator set for pid 0x{packet.Pid:X4}; dropped pending PSI section and resynchronized continuity.");
+                ResetCurrentSection();
+            }
+            else
+            {
+                Logger.Send(
+                    LogStatus.INFO,
+                    $"Discontinuity indicator set for pid 0x{packet.Pid:X4}; resynchronized continuity.");
+            }
+        }
+        else if (lastContinuityCounter.HasValue)
         {
             var expectedCc = (lastContinuityCounter.Value + 1) & 0x0F;
             if (packet.ContinuityCounter != expectedCc)
@@ -96,20 +128,38 @@ internal sealed class PsiSectionAssembler
                         $"Continuity mismatch for pid 0x{packet.Pid:X4}: expected {expectedCc}, got {packet.ContinuityCounter}. Pending PSI section dropped.");
                     ResetCurrentSection();
                 }
+                else
+                {
+                    Logger.Send(
+                        LogStatus.INFO,
+                        $"Continuity mismatch for pid 0x{packet.Pid:X4}: expected {expectedCc}, got {packet.ContinuityCounter}. Resynchronized without pending PSI section.");
+                }
             }
         }
 
         lastContinuityCounter = packet.ContinuityCounter;
     }
 
-    private void AppendPayload(ReadOnlySpan<byte> source, List<ReadOnlyMemory<byte>> readySections, ushort packetPid)
+    private void AppendPayload(
+        ReadOnlySpan<byte> source,
+        List<ReadOnlyMemory<byte>> readySections,
+        ushort packetPid,
+        bool allowNewSectionStarts)
     {
         var offset = 0;
         while (offset < source.Length)
         {
-            if (!HasPendingSectionState() && source[offset] == 0xFF)
+            if (!HasPendingSectionState())
             {
-                return;
+                if (!allowNewSectionStarts)
+                {
+                    return;
+                }
+
+                if (source[offset] == 0xFF)
+                {
+                    return;
+                }
             }
 
             if (headerBytes < 3)
