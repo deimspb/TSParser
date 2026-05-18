@@ -23,8 +23,6 @@ namespace TSParser.Tables
 
         internal byte[] TableData = null!;
         private readonly Dictionary<ushort, PsiSectionAssembler> assemblers = new();
-        private readonly Dictionary<ushort, Queue<ReadOnlyMemory<byte>>> readySectionsByPid = new();
-        internal bool IsAllTable => TableData is { Length: > 0 };
 
         internal abstract void PushTable(TsPacket tsPacket);
 
@@ -34,11 +32,6 @@ namespace TSParser.Tables
             if (assemblers.TryGetValue(targetPid, out var assembler))
             {
                 assembler.Reset();
-            }
-
-            if (readySectionsByPid.TryGetValue(targetPid, out var queue))
-            {
-                queue.Clear();
             }
 
             TableData = null!;
@@ -85,25 +78,12 @@ namespace TSParser.Tables
             return assembler.PushPacket(tsPacket);
         }
 
-        internal void AddData(TsPacket tsPacket)
+        internal void ProcessAssembledSections(TsPacket tsPacket, Action processSection)
         {
-            TableData = null!;
-            var pid = tsPacket.Pid;
-            if (!readySectionsByPid.TryGetValue(pid, out var pendingSections))
-            {
-                pendingSections = new Queue<ReadOnlyMemory<byte>>();
-                readySectionsByPid[pid] = pendingSections;
-            }
-
             foreach (var section in PushPacketForSections(tsPacket))
             {
-                pendingSections.Enqueue(section);
-            }
-
-            if (pendingSections.Count > 0)
-            {
-                CurrentPid = pid;
-                TableData = pendingSections.Dequeue().ToArray();
+                TableData = section.ToArray();
+                processSection();
             }
         }
     }

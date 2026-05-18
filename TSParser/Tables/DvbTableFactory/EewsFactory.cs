@@ -36,9 +36,7 @@ internal class EewsFactory : TableFactory
 
     internal override void PushTable(TsPacket tsPacket)
     {
-        AddData(tsPacket);
-        if (!IsAllTable) return;
-        ParseEews();
+        ProcessAssembledSections(tsPacket, ParseEews);
     }
 
     internal void ParseEews()

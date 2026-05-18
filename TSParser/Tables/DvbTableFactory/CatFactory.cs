@@ -33,9 +33,7 @@ namespace TSParser.Tables.DvbTableFactory
         private uint CurrentCRC32;
         internal override void PushTable(TsPacket tsPacket)
         {
-            AddData(tsPacket);
-            if (!IsAllTable) return;
-            ParseTable();
+            ProcessAssembledSections(tsPacket, ParseTable);
         }
 
         private void ParseTable()

@@ -35,9 +35,7 @@ namespace TSParser.Tables.DvbTableFactory
 
         internal override void PushTable(TsPacket tsPacket)
         {            
-            AddData(tsPacket);
-            if (!IsAllTable) return;
-            ParseAit();
+            ProcessAssembledSections(tsPacket, ParseAit);
         }
         private void ParseAit()
         {
