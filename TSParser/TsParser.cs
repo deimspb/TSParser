@@ -75,6 +75,8 @@ namespace TSParser
         public ushort[]? T2miPids;
         /// <summary>After PAT/PMT, register a PID when there is one program, one ES, and stream type 0x06.</summary>
         public bool T2miAutoDetect;
+        /// <summary>When true with <see cref="T2miEnabled"/>, de-encapsulate baseband frames to MPEG-TS per PLP.</summary>
+        public bool T2miDeencapsulate;
 
     }
 
@@ -96,6 +98,7 @@ namespace TSParser
     public delegate void EewsReady(EEWS eews);
     public delegate void T2miPacketReady(T2miPacket packet);
     public delegate void T2miPlpDiscovered(byte plpId);
+    public delegate void PlpTsReady(byte plpId, ReadOnlyMemory<byte> tsData);
 
     public class TsParser : IDisposable
     {
@@ -129,6 +132,7 @@ namespace TSParser
         public event EewsReady OnEewsReady = null!;
         public event T2miPacketReady OnT2miPacketReady = null!;
         public event T2miPlpDiscovered OnT2miPlpDiscovered = null!;
+        public event PlpTsReady OnPlpTsReady = null!;
 
         private readonly Lazy<TsPacketFactory> packetFactory = new();
         private readonly Lazy<TdtTotFactory> tdtTotFactory = new();
@@ -189,6 +193,7 @@ namespace TSParser
         private bool m_eewsPidListEmptyWarningSent;
         private readonly bool m_t2miEnabled;
         private readonly bool m_t2miAutoDetect;
+        private readonly bool m_t2miDeencapsulate;
         private readonly List<T2miDemuxer> m_t2miDemuxers = new();
         private int m_patProgramCount;
 
@@ -281,6 +286,7 @@ namespace TSParser
 
             m_t2miEnabled = config.T2miEnabled;
             m_t2miAutoDetect = config.T2miAutoDetect;
+            m_t2miDeencapsulate = config.T2miDeencapsulate;
             if (m_t2miEnabled && config.T2miPids is { Length: > 0 } pids)
             {
                 RegisterT2miPids(pids);
@@ -477,7 +483,7 @@ namespace TSParser
             return m_compare.AreEqual(t1, t2);
         }
         /// <summary>Creates a standalone T2-MI demuxer for one transport PID (lab / unit tests).</summary>
-        public static T2miDemuxer CreateT2miDemuxer(ushort pid) => new(pid);
+        public static T2miDemuxer CreateT2miDemuxer(ushort pid, bool deencapsulate = false) => new(pid, deencapsulate);
         #endregion
         #region Private methods
         private void FileParser(string filePath)
@@ -866,9 +872,10 @@ namespace TSParser
                 return;
             }
 
-            var demuxer = new T2miDemuxer(pid);
+            var demuxer = new T2miDemuxer(pid, m_t2miDeencapsulate);
             demuxer.PacketReady += T2miDemuxer_OnPacketReady;
             demuxer.PlpDiscovered += T2miDemuxer_OnPlpDiscovered;
+            demuxer.PlpTsReady += T2miDemuxer_OnPlpTsReady;
             m_t2miDemuxers.Add(demuxer);
             Logger.Send(LogStatus.INFO, $"T2-MI demuxer registered on PID 0x{pid:X4}");
         }
@@ -898,6 +905,11 @@ namespace TSParser
         private void T2miDemuxer_OnPlpDiscovered(byte plpId)
         {
             OnT2miPlpDiscovered?.Invoke(plpId);
+        }
+
+        private void T2miDemuxer_OnPlpTsReady(byte plpId, ReadOnlyMemory<byte> tsData)
+        {
+            OnPlpTsReady?.Invoke(plpId, tsData);
         }
 
         private void AtscTableFactory(TsPacket tsPacket)

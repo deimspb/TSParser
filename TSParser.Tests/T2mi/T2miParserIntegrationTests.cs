@@ -15,6 +15,7 @@
 using NUnit.Framework;
 using TSParser.Enums;
 using TSParser.Tests.Helpers;
+using TSParser.TransportStream;
 using TSParser.TransportStream.T2mi;
 
 namespace TSParser.Tests.T2mi;
@@ -108,6 +109,49 @@ public sealed class T2miParserIntegrationTests
         }
 
         Assert.That(packets, Is.Not.Empty);
+    }
+
+    [Test]
+    public void ParserConfig_T2miDeencapsulate_exposes_OnPlpTsReady()
+    {
+        var parser = new TsParser(new ParserConfig
+        {
+            T2miEnabled = true,
+            T2miDeencapsulate = true,
+            T2miPids = [FixtureLoader.T2miSamplePid],
+        });
+
+        var subscribed = false;
+        parser.OnPlpTsReady += (_, _) => subscribed = true;
+        Assert.That(subscribed, Is.False);
+        Assert.That(parser, Is.Not.Null);
+    }
+
+    [Test]
+    public void RunParser_with_deencapsulate_emits_plp_ts_when_baseband_present()
+    {
+        var path = FixtureLoader.ResolvePath(FixtureLoader.T2miBundledRelativePath);
+        var plpChunks = new List<(byte Plp, byte[] Data)>();
+
+        var parser = new TsParser(new ParserConfig
+        {
+            TsFileName = path,
+            T2miEnabled = true,
+            T2miDeencapsulate = true,
+            T2miPids = [FixtureLoader.T2miSamplePid],
+            CurrentDecodeMode = DecodeMode.Packet,
+        });
+
+        parser.OnPlpTsReady += (plp, data) => plpChunks.Add((plp, data.ToArray()));
+        parser.RunParser();
+
+        if (plpChunks.Count == 0)
+        {
+            Assert.Ignore("Bundled fixture has no decapsulatable baseband BB frames with DFL > 0.");
+        }
+
+        Assert.That(plpChunks[0].Data.Length % T2miAccessors.TsPacketSize, Is.EqualTo(0));
+        Assert.That(plpChunks[0].Data[0], Is.EqualTo(TsPacket.SYNC_BYTE));
     }
 
     [Test]

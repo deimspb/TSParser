@@ -151,10 +151,39 @@ public sealed class T2miPacketAssembler
 
     private void CopyToBuffer(ReadOnlySpan<byte> data, int atOffset)
     {
-        var freeSpace = BufferSize - atOffset;
-        var toWrite = Math.Min(data.Length, freeSpace);
-        data.Slice(0, toWrite).CopyTo(_building.AsSpan(atOffset));
-        _writtenSoFar = atOffset + toWrite;
+        var offset = atOffset;
+        var srcOffset = 0;
+        while (srcOffset < data.Length && offset < BufferSize)
+        {
+            var remainingInPacket = GetRemainingT2miBytes(offset);
+            var toWrite = Math.Min(Math.Min(data.Length - srcOffset, BufferSize - offset), remainingInPacket);
+            if (toWrite <= 0)
+            {
+                break;
+            }
+
+            data.Slice(srcOffset, toWrite).CopyTo(_building.AsSpan(offset));
+            offset += toWrite;
+            srcOffset += toWrite;
+        }
+
+        _writtenSoFar = offset;
+    }
+
+    private int GetRemainingT2miBytes(int atOffset)
+    {
+        if (atOffset < T2miAccessors.T2miPacketHeaderSize)
+        {
+            return T2miAccessors.T2miPacketHeaderSize - atOffset;
+        }
+
+        var expected = T2miAccessors.T2miPacketSizeBytes(_building.AsSpan(0, atOffset));
+        if (expected > MaxPacketSize)
+        {
+            return int.MaxValue;
+        }
+
+        return Math.Max(0, expected - atOffset);
     }
 
     private void DeliverIfPacketIsCompleted()

@@ -14,6 +14,7 @@
 
 using System.Buffers.Binary;
 using TSParser.Service;
+using TSParser.TransportStream;
 using TSParser.TransportStream.T2mi;
 
 namespace TSParser.Tests.T2mi;
@@ -74,6 +75,54 @@ internal static class T2miTestPacketFactory
         }
 
         return ts;
+    }
+
+    /// <summary>Normal-mode BB frame carrying one 188-byte MPEG-TS packet (SYNCD=0, SYNC=0x47).</summary>
+    public static byte[] BuildNormalModeBbFrame(ReadOnlySpan<byte> tsPacket)
+    {
+        if (tsPacket.Length != T2miAccessors.TsPacketSize || tsPacket[0] != TsPacket.SYNC_BYTE)
+        {
+            throw new ArgumentException("Expected a 188-byte packet starting with 0x47.", nameof(tsPacket));
+        }
+
+        const ushort uplBits = T2miAccessors.TsPacketSize * 8;
+        const ushort dflBits = T2miAccessors.TsPacketSize * 8;
+        var header = new byte[BbHeader.Size];
+        header[0] = 0xC0;
+        header[1] = 0;
+        BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(2), uplBits);
+        BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(4), dflBits);
+        header[6] = TsPacket.SYNC_BYTE;
+        header[7] = 0;
+        header[8] = 0;
+        header[9] = Utils.GetCRC8(header.AsSpan(0, 9));
+
+        var frame = new byte[BbHeader.Size + T2miAccessors.TsPacketSize];
+        header.CopyTo(frame, 0);
+        frame[BbHeader.Size] = 0;
+        tsPacket.Slice(1).CopyTo(frame.AsSpan(BbHeader.Size + 1));
+        return frame;
+    }
+
+    public static byte[] BuildBasebandT2miPacket(byte plpId, ReadOnlySpan<byte> bbFramePayload)
+    {
+        var payloadBytes = 3 + bbFramePayload.Length;
+        var payloadBits = (ushort)(payloadBytes * 8);
+        var packet = new byte[6 + payloadBytes + 4];
+        packet[0] = (byte)T2miPacketType.BasebandFrame;
+        packet[1] = 0x01;
+        packet[2] = 0x20;
+        packet[3] = 0x00;
+        packet[4] = (byte)(payloadBits >> 8);
+        packet[5] = (byte)payloadBits;
+        packet[6] = 0x00;
+        packet[7] = plpId;
+        packet[8] = 0x00;
+        bbFramePayload.CopyTo(packet.AsSpan(9));
+
+        var crc = Utils.GetCRC32(packet.AsSpan(0, 6 + payloadBytes));
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(6 + payloadBytes), crc);
+        return packet;
     }
 
     public static byte[] WrapInContinuationTsPacket(ReadOnlySpan<byte> t2miChunk, ushort pid, byte continuityCounter)

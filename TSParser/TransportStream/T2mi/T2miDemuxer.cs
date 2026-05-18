@@ -21,23 +21,35 @@ public sealed class T2miDemuxer
 {
     private readonly T2miPacketAssembler _assembler = new();
     private readonly HashSet<byte> _discoveredPlps = new();
+    private readonly Dictionary<byte, BbFrameStripper> _bbStrippers = new();
 
-    public T2miDemuxer(ushort pid)
+    public T2miDemuxer(ushort pid, bool deencapsulate = false)
     {
         Pid = pid;
+        Deencapsulate = deencapsulate;
         _assembler.PacketReady += OnAssemblerPacketReady;
     }
 
     public ushort Pid { get; }
 
+    /// <summary>When true, type 0x00 baseband payloads are passed through <see cref="BbFrameStripper"/>.</summary>
+    public bool Deencapsulate { get; set; }
+
     public event Action<T2miPacket>? PacketReady;
 
     public event Action<byte>? PlpDiscovered;
+
+    /// <summary>Complete 188-byte TS packet(s). Buffer is valid only for the duration of the callback.</summary>
+    public event Action<byte, ReadOnlyMemory<byte>>? PlpTsReady;
 
     public void Reset()
     {
         _assembler.Reset();
         _discoveredPlps.Clear();
+        foreach (var stripper in _bbStrippers.Values)
+        {
+            stripper.Reset();
+        }
     }
 
     public void PushPacket(TsPacket tsPacket)
@@ -73,6 +85,28 @@ public sealed class T2miDemuxer
             PlpDiscovered?.Invoke(plpId);
         }
 
+        if (Deencapsulate
+            && packet.PacketType == T2miPacketType.BasebandFrame
+            && packet.Crc32Valid
+            && packet.Payload.Length >= BbHeader.Size)
+        {
+            var stripper = GetOrCreateStripper(packet.PlpId ?? 0);
+            stripper.Receive(packet.Payload);
+        }
+
         PacketReady?.Invoke(packet);
+    }
+
+    private BbFrameStripper GetOrCreateStripper(byte plpId)
+    {
+        if (_bbStrippers.TryGetValue(plpId, out var stripper))
+        {
+            return stripper;
+        }
+
+        stripper = new BbFrameStripper(plpId);
+        stripper.TsPacketsReady += data => PlpTsReady?.Invoke(plpId, data);
+        _bbStrippers.Add(plpId, stripper);
+        return stripper;
     }
 }
