@@ -136,6 +136,58 @@ public sealed class TsParserLifecycleTests
         }
     }
 
+    [Test]
+    public void RunParser_propagates_packet_event_exception()
+    {
+        var path = WriteTempTs(packetCount: 12_000);
+        try
+        {
+            var parser = new TsParser(new ParserConfig
+            {
+                TsFileName = path,
+                CurrentDecodeMode = DecodeMode.Packet,
+            });
+
+            parser.OnTsPacketReady += _ => throw new InvalidOperationException("packet handler failed");
+
+            var ex = Assert.Throws<InvalidOperationException>(() => parser.RunParser());
+
+            Assert.That(ex!.Message, Is.EqualTo("packet handler failed"));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Test]
+    public async Task StopParser_completes_once()
+    {
+        var path = WriteTempTs(packetCount: 80_000);
+        try
+        {
+            var parser = new TsParser(new ParserConfig
+            {
+                TsFileName = path,
+                CurrentDecodeMode = DecodeMode.Packet,
+            });
+
+            var completeCount = 0;
+            parser.OnParserComplete += () => completeCount++;
+
+            var run = parser.RunParserAsync();
+            await Task.Delay(50);
+            parser.StopParser();
+            await run;
+
+            Assert.That(completeCount, Is.EqualTo(1));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static string WriteTempTs(int packetCount, int packetSize = 188)
     {
         var bytes = new byte[packetCount * packetSize];
