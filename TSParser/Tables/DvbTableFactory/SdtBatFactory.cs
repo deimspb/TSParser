@@ -21,29 +21,25 @@ namespace TSParser.Tables.DvbTableFactory
 {
     internal class SdtBatFactory : TableFactory
     {
-        public event SdtReady OnSdtReady = null!;
-        public event BatReady OnBatReady = null!;
+        public event SdtReady? OnSdtReady;
+        public event BatReady? OnBatReady;
 
-        private SDT m_sdt = null!;
-        private BAT m_bat = null!;
-        private SDT CurrentSdt = null!;
-        private BAT CurrentBAT = null!;
+        private readonly SectionTableCache<SDT, (ushort OriginalNetworkId, ushort TransportStreamId, byte SectionNumber, byte LastSectionNumber)> _sdtCache = new();
+        private readonly SectionTableCache<BAT, (ushort BouquetId, byte SectionNumber, byte LastSectionNumber)> _batCache = new();
+        private SDT? m_sdt;
+        private BAT? m_bat;
 
-        internal SDT Sdt
+        internal SDT? Sdt
         {
             get => m_sdt;
             set => m_sdt = value;
         }
-        internal BAT Bat
+        internal BAT? Bat
         {
             get => m_bat;
             set => m_bat = value;
         }
 
-        private readonly Lazy<List<SDT>> sDTs = new Lazy<List<SDT>>();
-        private readonly Lazy<List<BAT>> bATs = new Lazy<List<BAT>>();
-        private List<SDT> m_sdtList => sDTs.Value;
-        private List<BAT> m_batList => bATs.Value;
         internal override void PushTable(TsPacket tsPacket)
         {
             ProcessAssembledSections(tsPacket);
@@ -82,7 +78,7 @@ namespace TSParser.Tables.DvbTableFactory
 
             var crc32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);            
 
-            if (m_sdtList.FindIndex(s => s.CRC32 == crc32) >= 0) return; // already push this table outside
+            if (_sdtCache.HasCrc(crc32)) return; // already push this table outside
 
             if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
             {
@@ -93,28 +89,24 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (!TryParseAssembledTable(() =>
             {
-                CurrentSdt = new SDT(TableData);
+                var currentSdt = new SDT(TableData);
+                var key = (
+                    currentSdt.OriginalNetworkId,
+                    currentSdt.TransportStreamId,
+                    currentSdt.SectionNumber,
+                    currentSdt.LastSectionNumber);
 
-                var idx = m_sdtList.FindIndex(sdt => sdt.OriginalNetworkId == CurrentSdt.OriginalNetworkId &&
-                                              sdt.TransportStreamId == CurrentSdt.TransportStreamId &&
-                                              sdt.SectionNumber == CurrentSdt.SectionNumber &&
-                                              sdt.LastSectionNumber == CurrentSdt.LastSectionNumber);
-                if (idx >= 0)
+                if (!_sdtCache.TryAccept(
+                    currentSdt,
+                    key,
+                    dropSameVersionForSameKey: true,
+                    (previous, _) => $"SDT table version changed for ts id: {previous.TransportStreamId}"))
                 {
-                    if (m_sdtList[idx].VersionNumber != CurrentSdt.VersionNumber)
-                    {
-                        Logger.Send(LogStatus.INFO, $"SDT table version changed for ts id: {m_sdtList[idx].TransportStreamId}");
-                        m_sdtList.RemoveAt(idx);
-                    }
-                    else
-                    {
-                        return;
-                    }
+                    return;
                 }
 
-                Sdt = CurrentSdt;
-                m_sdtList.Add(Sdt);
-                OnSdtReady?.Invoke(Sdt);
+                Sdt = currentSdt;
+                OnSdtReady?.Invoke(currentSdt);
             }, "SDT"))
             {
                 return;
@@ -126,7 +118,7 @@ namespace TSParser.Tables.DvbTableFactory
 
             var crc32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);            
 
-            if (m_batList.FindIndex(b => b.CRC32 == crc32) >= 0) return; // already push this table outside
+            if (_batCache.HasCrc(crc32)) return; // already push this table outside
 
             if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
             {
@@ -137,27 +129,23 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (!TryParseAssembledTable(() =>
             {
-                CurrentBAT = new BAT(TableData);
+                var currentBat = new BAT(TableData);
+                var key = (
+                    currentBat.BouquetId,
+                    currentBat.SectionNumber,
+                    currentBat.LastSectionNumber);
 
-                var idx = m_batList.FindIndex(bat => bat.BouquetId == CurrentBAT.BouquetId &&
-                                              bat.SectionNumber == CurrentBAT.SectionNumber &&
-                                              bat.LastSectionNumber == CurrentBAT.LastSectionNumber);
-                if (idx >= 0)
+                if (!_batCache.TryAccept(
+                    currentBat,
+                    key,
+                    dropSameVersionForSameKey: true,
+                    (_, current) => $"Bat version changed for bouquet id:{current.BouquetId}"))
                 {
-                    if (m_batList[idx].VersionNumber != CurrentBAT.VersionNumber)
-                    {
-                        Logger.Send(LogStatus.INFO, $"Bat version changed for bouquet id:{CurrentBAT.BouquetId}");
-                        m_batList.RemoveAt(idx);
-                    }
-                    else
-                    {
-                        return;
-                    }
+                    return;
                 }
 
-                Bat = CurrentBAT;
-                m_batList.Add(Bat);
-                OnBatReady?.Invoke(Bat);
+                Bat = currentBat;
+                OnBatReady?.Invoke(currentBat);
             }, "BAT"))
             {
                 return;

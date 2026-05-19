@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Net;
-using System.Net.Sockets;
 using System.Threading;
+using System.Net.Sockets;
 using System.Threading.Channels;
 using TSParser.Analysis;
 using TSParser.Comparer;
 using TSParser.Descriptors;
 using TSParser.Enums;
+using TSParser.Input;
+using TSParser.Routing;
 using TSParser.Service;
 using TSParser.Tables;
-using TSParser.Tables.DvbTableFactory;
 using TSParser.Tables.DvbTables;
 using TSParser.Tables.Mip;
 using TSParser.TransportStream;
@@ -103,12 +103,8 @@ namespace TSParser
     public class TsParser : IDisposable
     {
         #region Private fields
-        private delegate void m_currentTableFactory(TsPacket tsPacket);
-        private delegate void ParserDelegate();
         private delegate void ParserModeDelefate(ReadOnlySpan<byte> bytes, int packetLen);
 
-        private m_currentTableFactory SelectedTableFactory = _ => throw new TsParserConfigurationException("No table factory configured.");
-        private ParserDelegate RunParserDel = () => throw new TsParserConfigurationException("No parser input source configured.");
         private ParserModeDelefate ParserModeDel = (_, _) => throw new TsParserConfigurationException("No parser decode mode configured.");
 
         private readonly object _totReadyEventLock = new();
@@ -174,70 +170,26 @@ namespace TSParser
         public event PlpTsReady? OnPlpTsReady;
 
         private readonly Lazy<TsPacketFactory> packetFactory = new();
-        private readonly Lazy<TdtTotFactory> tdtTotFactory = new();
-        private readonly Lazy<SdtBatFactory> sdtBatFactory = new();
-        private readonly Lazy<CatFactory> catFactory = new();
-        private readonly Lazy<NitFactory> nitFactory = new();
-        private readonly Lazy<PatFactory> patFactory = new();
-        private readonly Lazy<EitFactory> eitFactory = new();
-        private readonly Lazy<MipFactory> mipFactory = new();
         private readonly Lazy<Analyzer> analyzer;
         private readonly BitrateMeasurementOptions? m_bitrateMeasurement;
         private readonly Lazy<Compare> compare = new();
-        private readonly Lazy<List<AitFactory>> aitFactories = new();
-        private readonly Lazy<List<Scte35Factory>> scte35Factories = new();
-        private readonly Lazy<List<EwsFactory>> ewsFactories = new();
-        private readonly Lazy<List<EewsFactory>> eewsFactories = new();
-        private PmtFactory[] m_pmtFactories = Array.Empty<PmtFactory>();
+        private readonly DvbTableRouter m_tableRouter;
+        private readonly PushTsSource m_pushSource = new();
+        private ITsInputSource m_inputSource;
 
         private TsPacketFactory m_tsPacketFactory => packetFactory.Value;
-        private TdtTotFactory m_TdtTotFactory => tdtTotFactory.Value;
-        private SdtBatFactory m_SdtBatFactory => sdtBatFactory.Value;
-        private CatFactory m_CatFactory => catFactory.Value;
-        private NitFactory m_NitFactory => nitFactory.Value;
-        private PatFactory m_PatFactory => patFactory.Value;
-        private EitFactory m_EitFactory => eitFactory.Value;
-        private MipFactory m_MipFactory => mipFactory.Value;
         private Analyzer m_analyzer => analyzer.Value;
         private Compare m_compare => compare.Value;
-        private List<AitFactory> m_aitFactories => aitFactories.Value;
-        private List<Scte35Factory> m_scte35Factories => scte35Factories.Value;
-        private List<EwsFactory> m_ewsFactories => ewsFactories.Value;
-        private List<EewsFactory> m_eewsFactories => eewsFactories.Value;
 
         public readonly byte[] PacketSize = new byte[] { 188, 204 };
-
-        private string? m_tsFileName;
-        private IPAddress? m_multicastGroup;
-        private IPAddress? m_incomingIpInterface;
-        private int m_multicastPort;
-        private Socket? socket;
 
         private CancellationTokenSource m_cts = new();
         private CancellationToken m_ct;
 
-        private Channel<byte[]>? m_udpChannel;
         private bool m_disposed;
 
         private Task? m_parserTask;
-        private Task? m_bufferReaderTask;
 
-
-        private ushort[] m_pmtPids = Array.Empty<ushort>();
-        private List<ushort> m_aitPids = new();
-        private List<ushort> m_scte35Pids = new();
-        private List<ushort> m_ewsPids = new();
-        private List<ushort> m_eewsPids = new();
-        private bool m_ewsPidListEmptyWarningSent;
-        private bool m_eewsPidListEmptyWarningSent;
-        private readonly bool m_t2miEnabled;
-        private readonly bool m_t2miAutoDetect;
-        private readonly bool m_t2miDeencapsulate;
-        private readonly List<T2miDemuxer> m_t2miDemuxers = new();
-        private int m_patProgramCount;
-
-        private int m_connectionAttempts = 5;
-        private int m_socketTimeOut = 5000;
         private int? m_parserRunTimeIn_ms = null;
         private bool m_allowAnalyzer;
         private long? m_fileStreamByteOffset;
@@ -262,13 +214,12 @@ namespace TSParser
         {
             set
             {
-                m_ewsPids = value ?? throw new ArgumentNullException(nameof(value));
-                m_ewsPidListEmptyWarningSent = false;
+                m_tableRouter.EwsPidList = value;
             }
 
             get
             {
-                return m_ewsPids;
+                return m_tableRouter.EwsPidList;
             }
         }
         /// <summary>
@@ -280,12 +231,11 @@ namespace TSParser
         {
             set
             {
-                m_eewsPids = value ?? throw new ArgumentNullException(nameof(value));
-                m_eewsPidListEmptyWarningSent = false;
+                m_tableRouter.EewsPidList = value;
             }
             get
             {
-                return m_eewsPids;
+                return m_tableRouter.EewsPidList;
             }
         }
         /// <summary>
@@ -307,13 +257,6 @@ namespace TSParser
             ArgumentNullException.ThrowIfNull(options);
 
             m_ct = m_cts.Token;
-
-            switch (options.CurrentTsMode)
-            {
-                case TsMode.DVB: SelectedTableFactory = DvbTableFactory; break;
-                case TsMode.ATSC: SelectedTableFactory = AtscTableFactory; break;
-                case TsMode.ISDB: SelectedTableFactory = IsdbTableFactory; break;
-            }
             switch (options.CurrentDecodeMode)
             {
                 case DecodeMode.Packet: ParserModeDel = ParseBytesToPackets; break;
@@ -323,29 +266,28 @@ namespace TSParser
             m_bitrateMeasurement = options.BitrateMeasurement;
             m_allowAnalyzer = options.AllowAnalyzer || (m_bitrateMeasurement?.Enabled ?? false);
             analyzer = new Lazy<Analyzer>(() => new Analyzer(m_bitrateMeasurement));
+            m_tableRouter = new DvbTableRouter(options.CurrentTsMode, options.T2mi);
+            m_inputSource = m_pushSource;
             MaxParserRunTime = GetParserRunTimeMilliseconds(options.ParserRunTime);
 
             ParserRunTimer();
 
             InitEvents();
 
-            m_t2miEnabled = options.T2mi.Enabled;
-            m_t2miAutoDetect = options.T2mi.AutoDetect;
-            m_t2miDeencapsulate = options.T2mi.Deencapsulate;
-            if (m_t2miEnabled && options.T2mi.Pids.Count > 0)
+            if (options.T2mi.Enabled && options.T2mi.Pids.Count > 0)
             {
-                RegisterT2miPids(options.T2mi.Pids);
+                m_tableRouter.RegisterT2miPids(options.T2mi.Pids);
             }
 
             if (options.TsFileName != null)
             {
-                FileParser(options.TsFileName);
+                m_inputSource = new FileTsSource(options.TsFileName);
                 return;
             }
 
             if (options.UdpSource != null)
             {
-                UdpParser(options.UdpSource);
+                m_inputSource = new UdpTsSource(options.UdpSource);
                 return;
             }
         }
@@ -374,10 +316,11 @@ namespace TSParser
             {
             }
 
-            m_udpChannel?.Writer.TryComplete();
-            CloseSocket();
+            m_inputSource.Stop();
 
             WaitForParserTasks();
+
+            m_inputSource.Dispose();
 
             if (m_timer != null)
             {
@@ -402,7 +345,8 @@ namespace TSParser
             ObjectDisposedException.ThrowIf(m_disposed, this);
             EnsureCancellationTokenReady();
 
-            var parserTask = Task.Run(() => RunParserDel(), m_ct);
+            var inputContext = CreateInputSourceContext();
+            var parserTask = Task.Run(() => m_inputSource.Run(inputContext), m_ct);
             m_parserTask = parserTask;
 
             Exception? parserException = null;
@@ -434,8 +378,7 @@ namespace TSParser
             if (!m_cts.IsCancellationRequested)
                 m_cts.Cancel();
 
-            m_udpChannel?.Writer.TryComplete();
-            CloseSocket();
+            m_inputSource.Stop();
         }
         /// <summary>
         /// Push bytes with known ts packet size. 188 or 204 bytes
@@ -446,9 +389,7 @@ namespace TSParser
         {
             ObjectDisposedException.ThrowIf(m_disposed, this);
 
-            if (m_timer != null && !m_timer.Enabled) m_timer.Enabled = true;
-
-            ParserModeDel(bytes, packetLength);
+            m_pushSource.Push(bytes, packetLength, CreateInputSourceContext());
         }
         /// <summary>
         /// Return ts packet array parsed from bytes.
@@ -552,53 +493,24 @@ namespace TSParser
             return (int)parserRunTime.Value.TotalMilliseconds;
         }
 
-        private void FileParser(string filePath)
+        private TsInputSourceContext CreateInputSourceContext()
         {
-            if (File.Exists(filePath))
-            {
-                if (new FileInfo(filePath).Length < 2040)
-                    throw new TsParserConfigurationException("File length is less than 2040 bytes.");
+            return new TsInputSourceContext(
+                m_ct,
+                ParserModeDel.Invoke,
+                StartParserTimer,
+                offset => m_fileStreamByteOffset = offset,
+                IsExpectedParserShutdown);
+        }
 
-                m_tsFileName = filePath;
-                RunParserDel = RunFileParser;
-            }
-            else
+        private void StartParserTimer()
+        {
+            if (m_timer != null && !m_timer.Enabled)
             {
-                throw new TsParserConfigurationException($"Invalid file name: {filePath}");
+                m_timer.Enabled = true;
             }
         }
 
-        private void UdpParser(UdpSourceOptions source)
-        {
-            if (string.IsNullOrWhiteSpace(source.MulticastGroup))
-            {
-                throw new TsParserConfigurationException("UDP multicast group must be set.");
-            }
-
-            var multicastPort = source.MulticastPort ?? 1234;
-            if (!string.IsNullOrWhiteSpace(source.IncomingIp) && !IPAddress.TryParse(source.IncomingIp, out m_incomingIpInterface))
-            {
-                throw new TsParserConfigurationException($"Invalid incoming IP address: {source.IncomingIp}");
-            }
-
-            m_incomingIpInterface ??= IPAddress.Any;
-
-            if (multicastPort > 1 && multicastPort < 65535)
-            {
-                m_multicastPort = multicastPort;
-            }
-            else
-            {
-                throw new TsParserConfigurationException("Invalid port number.");
-            }
-
-            if (!IPAddress.TryParse(source.MulticastGroup, out m_multicastGroup))
-            {
-                throw new TsParserConfigurationException($"Invalid multicast group: {source.MulticastGroup}");
-            }
-
-            RunParserDel = RunUdpParser;
-        }
         private void ParserRunTimer()
         {
             if (m_parserRunTimeIn_ms != null)
@@ -612,15 +524,23 @@ namespace TSParser
         }
         private void InitEvents()
         {
-            m_PatFactory.OnPatReady += PatFactory_OnPatReady;
-            m_EitFactory.OnEitReady += EitFactory_OnEitReady;
-            m_CatFactory.OnCatReady += CatFactory_OnCatReady;
-            m_NitFactory.OnNitReady += NitFactory_OnNitReady;
-            m_MipFactory.OnMipReady += MipFactory_OnMipReady;
-            m_TdtTotFactory.OnTdtReady += TdtTotFactory_OnTdtReady;
-            m_TdtTotFactory.OnTotReady += TdtTotFactory_OnTotReady;
-            m_SdtBatFactory.OnSdtReady += SdtBatFactory_OnSdtReady;
-            m_SdtBatFactory.OnBatReady += SdtBatFactory_OnBatReady;
+            m_tableRouter.OnPatReady += pat => OnPatReady?.Invoke(pat);
+            m_tableRouter.OnPmtReady += pmt => OnPmtReady?.Invoke(pmt);
+            m_tableRouter.OnEitReady += eit => OnEitReady?.Invoke(eit);
+            m_tableRouter.OnTdtReady += tdt => OnTdtReady?.Invoke(tdt);
+            m_tableRouter.OnTotReady += tot => _onTotReady?.Invoke(tot);
+            m_tableRouter.OnSdtReady += sdt => OnSdtReady?.Invoke(sdt);
+            m_tableRouter.OnBatReady += bat => OnBatReady?.Invoke(bat);
+            m_tableRouter.OnCatReady += cat => OnCatReady?.Invoke(cat);
+            m_tableRouter.OnNitReady += nit => OnNitReady?.Invoke(nit);
+            m_tableRouter.OnAitReady += ait => OnAitReady?.Invoke(ait);
+            m_tableRouter.OnMipReady += mip => OnMipReady?.Invoke(mip);
+            m_tableRouter.OnScte35Ready += scte35 => OnScte35Ready?.Invoke(scte35);
+            m_tableRouter.OnEwsReady += ews => OnEwsReady?.Invoke(ews);
+            m_tableRouter.OnEewsReady += eews => OnEewsReady?.Invoke(eews);
+            m_tableRouter.OnT2miPacketReady += packet => OnT2miPacketReady?.Invoke(packet);
+            m_tableRouter.OnT2miPlpDiscovered += plpId => OnT2miPlpDiscovered?.Invoke(plpId);
+            m_tableRouter.OnPlpTsReady += (pid, plpId, data) => OnPlpTsReady?.Invoke(pid, plpId, data);
             m_analyzer.OnRate += Analyzer_OnRate;
             m_analyzer.OnBitrateMeasured += Analyzer_OnBitrateMeasured;
         }
@@ -636,389 +556,6 @@ namespace TSParser
         {
             StopParser();
         }
-        private void MipFactory_OnMipReady(MIP mip)
-        {
-            OnMipReady?.Invoke(mip);
-        }
-        private void TdtTotFactory_OnTotReady(TOT tot)
-        {
-            _onTotReady?.Invoke(tot);
-        }
-        private void NitFactory_OnNitReady(NIT nit)
-        {
-            OnNitReady?.Invoke(nit);
-        }
-        private void CatFactory_OnCatReady(CAT cat)
-        {
-            OnCatReady?.Invoke(cat);
-        }
-        private void SdtBatFactory_OnBatReady(BAT bat)
-        {
-            OnBatReady?.Invoke(bat);
-        }
-        private void SdtBatFactory_OnSdtReady(SDT sdt)
-        {
-            OnSdtReady?.Invoke(sdt);
-        }
-        private void TdtTotFactory_OnTdtReady(TDT tdt)
-        {
-            OnTdtReady?.Invoke(tdt);
-        }
-        private void EitFactory_OnEitReady(EIT eit)
-        {
-            OnEitReady?.Invoke(eit);
-        }
-        private void PatFactory_OnPatReady(PAT pat)
-        {
-            OnPatReady?.Invoke(pat);
-
-            if (m_t2miEnabled && m_t2miAutoDetect)
-            {
-                m_patProgramCount = pat.PatRecords.Count(pr => pr.Pid != 0x16);
-            }
-
-            m_pmtPids = (from pr in pat.PatRecords where pr.Pid != 0x16 select pr.Pid).ToArray();
-
-            Array.Sort(m_pmtPids);
-
-            m_pmtFactories = new PmtFactory[m_pmtPids.Length];
-
-            for (int i = 0; i < m_pmtPids.Length; i++)
-            {
-                m_pmtFactories[i] = new PmtFactory
-                {
-                    CurrentPid = m_pmtPids[i]
-                };
-                m_pmtFactories[i].OnPmtReady += PmtFactory_OnPmtReady;
-            }
-
-        }
-        private void PmtFactory_OnPmtReady(PMT pmt)
-        {
-            OnPmtReady?.Invoke(pmt);
-
-            var aitIdx = pmt.EsInfoList.FindIndex(es => es.StreamType == 0x05);
-            if (aitIdx >= 0 && pmt.EsInfoList[aitIdx].EsDescriptorList.Exists(desc => desc.DescriptorTag == 0x6F))
-            {
-                var aitPid = pmt.EsInfoList[aitIdx].ElementaryPid;
-                // prevent to add already added ait table after pmt update ??? 
-                if (!m_aitPids.Contains(aitPid))
-                {
-                    m_aitPids.Add(aitPid);
-                    var aitFactory = new AitFactory
-                    {
-                        CurrentPid = aitPid
-                    };
-                    aitFactory.OnAitReady += AitFactory_OnAitReady;
-                    m_aitFactories.Add(aitFactory);
-                }
-
-            }
-            var scte35Idx = pmt.EsInfoList.FindIndex(es => es.StreamType == 0x86);
-            if (scte35Idx >= 0)
-            {
-                var scte35Pid = pmt.EsInfoList[scte35Idx].ElementaryPid;
-                if (!m_scte35Pids.Contains(scte35Pid))
-                {
-                    m_scte35Pids.Add(scte35Pid);
-                    var scte35Factory = new Scte35Factory
-                    {
-                        CurrentPid = scte35Pid
-                    };
-                    scte35Factory.OnScte35Ready += Scte35Factory_OnScte35Ready;
-                    m_scte35Factories.Add(scte35Factory);
-                }
-            }
-
-            if (m_t2miEnabled && m_t2miAutoDetect && m_patProgramCount == 1 && pmt.EsInfoList.Count == 1)
-            {
-                var es = pmt.EsInfoList[0];
-                if (es.StreamType == 0x06)
-                {
-                    RegisterT2miPid(es.ElementaryPid);
-                }
-            }
-        }
-        private void Scte35Factory_OnScte35Ready(SCTE35 scte35)
-        {
-            OnScte35Ready?.Invoke(scte35);
-        }
-        private void AitFactory_OnAitReady(AIT ait)
-        {
-            OnAitReady?.Invoke(ait);
-        }
-        private void DvbTableFactory(TsPacket tsPacket)
-        {
-            if (tsPacket.TransportErrorIndicator) return; // drop tei packets
-            if (tsPacket.Pid == (short)ReservedPids.NullPacket) return;  // drop null packets 
-
-            switch (tsPacket.Pid)
-            {
-                case (ushort)ReservedPids.PAT:
-                    {
-                        m_PatFactory.PushTable(tsPacket);
-                        break;
-                    }
-                case (ushort)ReservedPids.CAT:
-                    {
-                        m_CatFactory.PushTable(tsPacket);
-                        break;
-                    }
-                case (ushort)ReservedPids.NIT:
-                    {
-                        m_NitFactory.PushTable(tsPacket);
-                        break;
-                    }
-                case (ushort)ReservedPids.SDT:
-                    {
-                        m_SdtBatFactory.PushTable(tsPacket);
-                        break;
-                    }
-                case (ushort)ReservedPids.EIT:
-                    {
-                        m_EitFactory.PushTable(tsPacket);
-                        break;
-                    }
-                case (ushort)ReservedPids.RST:
-                    {
-                        Logger.Send(LogStatus.INFO, $"Not implement RST table");
-                        break;
-                    }
-                case (ushort)ReservedPids.TDT:
-                    {
-                        m_TdtTotFactory.PushTable(tsPacket);
-                        break;
-                    }
-                case (ushort)ReservedPids.NetworkSync:
-                    {
-                        m_MipFactory.PushTable(tsPacket);
-                        break;
-                    }
-                case (ushort)ReservedPids.RNT:
-                    {
-                        Logger.Send(LogStatus.INFO, $"Not implement RNT table");
-                        break;
-                    }
-                case (ushort)ReservedPids.LLinbandSignalink:
-                    {
-                        Logger.Send(LogStatus.INFO, $"Not implement L lindband signal link table");
-                        break;
-                    }
-                case (ushort)ReservedPids.Measurement:
-                    {
-                        Logger.Send(LogStatus.INFO, $"Not implement Measurmrnt table");
-                        break;
-                    }
-                case (ushort)ReservedPids.DIT:
-                    {
-                        Logger.Send(LogStatus.INFO, $"Not implement DIT table");
-                        break;
-                    }
-                case (ushort)ReservedPids.SIT:
-                    {
-                        Logger.Send(LogStatus.INFO, $"Not implement SIT table");
-                        break;
-                    }
-                default:
-                    {
-                        GetOtherTables(tsPacket);
-                        break;
-                    }
-            }
-
-            GetT2mi(tsPacket);
-        }
-        private void GetOtherTables(TsPacket tsPacket)
-        {
-            GetPmt(tsPacket);
-            GetAit(tsPacket);
-            GetScte35(tsPacket);
-            GetEws(tsPacket);
-            GetEews(tsPacket);
-        }
-        private void GetPmt(TsPacket tsPacket)
-        {
-            if (m_pmtPids.Length == 0) return;
-
-            var idx = Array.IndexOf(m_pmtPids, tsPacket.Pid);
-
-            if (idx >= 0)
-            {
-                m_pmtFactories[idx].PushTable(tsPacket);
-            }
-        }
-        private void GetAit(TsPacket tsPacket)
-        {
-            var idx = m_aitPids.IndexOf(tsPacket.Pid);
-
-            if (idx >= 0)
-            {
-                m_aitFactories[idx].PushTable(tsPacket);
-            }
-        }
-        private void GetScte35(TsPacket tsPacket)
-        {
-            var idx = m_scte35Pids.IndexOf(tsPacket.Pid);
-            if (idx >= 0)
-            {
-                m_scte35Factories[idx].PushTable(tsPacket);
-            }
-        }
-        private void GetEws(TsPacket tsPacket)
-        {
-            if (m_ewsPids.Count == 0)
-            {
-                if (!m_ewsPidListEmptyWarningSent)
-                {
-                    Logger.Send(LogStatus.WARNING, $"EWS pid list is empty, set EWS pid list to get EWS tables");
-                    m_ewsPidListEmptyWarningSent = true;
-                }
-                return;
-            }
-
-            m_ewsPidListEmptyWarningSent = false;
-
-            var idx = m_ewsPids.IndexOf(tsPacket.Pid);
-            if (idx >= 0)
-            {
-                if (idx < m_ewsFactories.Count)
-                {
-                    m_ewsFactories[idx].PushTable(tsPacket);
-                }
-                else
-                {
-                    var ewsFactory = new EwsFactory
-                    {
-                        CurrentPid = m_ewsPids[idx]
-                    };
-                    ewsFactory.OnEwsReady += EwsFactory_OnEwsReady;
-                    m_ewsFactories.Add(ewsFactory);
-                    ewsFactory.PushTable(tsPacket);
-                }
-
-            }
-        }
-        private void GetEews(TsPacket tsPacket)
-        {
-            if (m_eewsPids.Count == 0)
-            {
-                if (!m_eewsPidListEmptyWarningSent)
-                {
-                    Logger.Send(LogStatus.WARNING, $"EEWS pid list is empty, set EEWS pid list to get EEWS tables");
-                    m_eewsPidListEmptyWarningSent = true;
-                }
-                return;
-            }
-
-            m_eewsPidListEmptyWarningSent = false;
-
-            var idx = m_eewsPids.IndexOf(tsPacket.Pid);
-            if (idx >= 0)
-            {
-                if (idx < m_eewsFactories.Count)
-                {
-                    m_eewsFactories[idx].PushTable(tsPacket);
-                }
-                else
-                {
-                    var eewsFactory = new EewsFactory
-                    {
-                        CurrentPid = m_eewsPids[idx]
-                    };
-                    eewsFactory.OnEewsReady += EewsFactory_OnEewsReady;
-                    m_eewsFactories.Add(eewsFactory);
-                    eewsFactory.PushTable(tsPacket);
-                }
-            }
-        }
-        private void EwsFactory_OnEwsReady(EWS ews)
-        {
-            OnEwsReady?.Invoke(ews);
-        }
-
-        private void EewsFactory_OnEewsReady(EEWS eews)
-        {
-            OnEewsReady?.Invoke(eews);
-        }
-        private void RegisterT2miPids(IEnumerable<ushort> pids)
-        {
-            foreach (var pid in pids)
-            {
-                RegisterT2miPid(pid);
-            }
-        }
-
-        private void RegisterT2miPid(ushort pid)
-        {
-            if (m_t2miDemuxers.Exists(d => d.Pid == pid))
-            {
-                return;
-            }
-
-            var demuxer = new T2miDemuxer(pid, m_t2miDeencapsulate);
-            demuxer.PacketReady += T2miDemuxer_OnPacketReady;
-            demuxer.PlpDiscovered += T2miDemuxer_OnPlpDiscovered;
-            demuxer.PlpTsReady += (plpId, tsData) => OnPlpTsReady?.Invoke(pid, plpId, tsData);
-            m_t2miDemuxers.Add(demuxer);
-            Logger.Send(LogStatus.INFO, $"T2-MI demuxer registered on PID 0x{pid:X4}");
-        }
-
-        private void GetT2mi(TsPacket tsPacket)
-        {
-            if (!m_t2miEnabled || tsPacket.TransportErrorIndicator || tsPacket.Pid == 0xFFFF)
-            {
-                return;
-            }
-
-            for (var i = 0; i < m_t2miDemuxers.Count; i++)
-            {
-                if (m_t2miDemuxers[i].Pid == tsPacket.Pid)
-                {
-                    m_t2miDemuxers[i].PushPacket(tsPacket);
-                    return;
-                }
-            }
-        }
-
-        private void T2miDemuxer_OnPacketReady(T2miPacket packet)
-        {
-            OnT2miPacketReady?.Invoke(packet);
-        }
-
-        private void T2miDemuxer_OnPlpDiscovered(byte plpId)
-        {
-            OnT2miPlpDiscovered?.Invoke(plpId);
-        }
-
-        private void AtscTableFactory(TsPacket tsPacket)
-        {
-            throw new UnsupportedTsModeException(TsMode.ATSC);
-        }
-        private void IsdbTableFactory(TsPacket tsPacket)
-        {
-            throw new UnsupportedTsModeException(TsMode.ISDB);
-        }
-        private static int GetPacketLength(ReadOnlySpan<byte> byteArray, out int syncByteOffset)
-        {
-            syncByteOffset = -1;
-
-            for (int i = 0; i < byteArray.Length - 3 * 204; i++)
-            {
-                if (byteArray[i] == TsPacket.SYNC_BYTE && byteArray[204 + i] == TsPacket.SYNC_BYTE && byteArray[204 * 2 + i] == TsPacket.SYNC_BYTE && byteArray[3 * 204 + i] == TsPacket.SYNC_BYTE)
-                {
-                    syncByteOffset = i;
-                    return 204;
-                }
-                else if (byteArray[i] == TsPacket.SYNC_BYTE && byteArray[188 + i] == TsPacket.SYNC_BYTE && byteArray[188 * 2 + i] == TsPacket.SYNC_BYTE && byteArray[3 * 188 + i] == TsPacket.SYNC_BYTE)
-                {
-                    syncByteOffset = i;
-                    return 188;
-                }
-
-            }
-
-            return 0;
-        }
         private void ParseBytesToTables(ReadOnlySpan<byte> bytes, int packetLength)
         {
             var tsPackets = m_tsPacketFactory.GetTsPackets(bytes, packetLength);
@@ -1027,7 +564,7 @@ namespace TSParser
             {
                 if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
                 if (m_allowAnalyzer) PushPacketWithFileOffset(tsPackets[i], packetLength, i);
-                SelectedTableFactory(tsPackets[i]);
+                m_tableRouter.RouteTablePacket(tsPackets[i]);
             }
         }
         private void ParseBytesToPackets(ReadOnlySpan<byte> bytes, int packetLength)
@@ -1039,7 +576,7 @@ namespace TSParser
                 if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
                 if (m_allowAnalyzer) PushPacketWithFileOffset(tsPackets[i], packetLength, i);
                 OnTsPacketReady?.Invoke(tsPackets[i]);
-                GetT2mi(tsPackets[i]);
+                m_tableRouter.RouteT2mi(tsPackets[i]);
             }
         }
 
@@ -1052,259 +589,9 @@ namespace TSParser
 
             m_analyzer.PushPacket(packet, packetLength);
         }
-        private void RunFileParser()
-        {
-            var fileName = m_tsFileName
-                ?? throw new TsParserConfigurationException("TS file source is not configured.");
-
-            using FileStream fileStream = new(fileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 348 * 188, FileOptions.SequentialScan);
-            using BinaryReader binaryReader = new(fileStream);
-            try
-            {
-                var firstFileBytes = binaryReader.ReadBytes(2040);
-                var packLen = GetPacketLength(firstFileBytes, out int syncByte);
-
-                if (syncByte == -1)
-                    throw new TsSyncException("Cannot sync with TS.");
-
-                int MAX_BUFFER = 22 * packLen;
-
-                Span<byte> Buffer = new byte[MAX_BUFFER];
-
-                int BytesRead;
-
-                if (syncByte > 0)
-                    fileStream.Seek(syncByte, SeekOrigin.Begin);
-                else
-                    fileStream.Seek(0, SeekOrigin.Begin);
-
-                if (m_timer != null) m_timer.Enabled = true;
-
-                Logger.Send(LogStatus.INFO, $"Start ts file {fileName} parsing, ts packet length: {packLen}");
-
-                long gOffset = 0;
-
-                while ((BytesRead = fileStream.Read(Buffer)) > 0 && !m_ct.IsCancellationRequested)
-                {
-                    var offset = 0;
-                    _ = GetPacketLength(Buffer, out offset);
-
-                    if (offset > 0)
-                        fileStream.Seek(offset + gOffset, SeekOrigin.Begin);
-
-                    m_fileStreamByteOffset = gOffset;
-                    ParserModeDel(Buffer[0..BytesRead], packLen);
-                    m_fileStreamByteOffset = null;
-                    gOffset += BytesRead;
-                }
-            }
-            catch (Exception ex) when (IsExpectedParserShutdown(ex))
-            {
-            }
-            catch (Exception ex)
-            {
-                Logger.Send(LogStatus.EXCEPTION, $"Exception catch in file reader method {ex}", ex);
-                throw;
-            }
-            finally
-            {
-                fileStream.Close();
-                binaryReader.Close();
-            }
-        }
         internal static bool TryResolveUdpTsPacketLength(int datagramByteCount, out int packetLength)
         {
-            packetLength = 0;
-
-            if (datagramByteCount < 188)
-                return false;
-
-            var supports188 = datagramByteCount % 188 == 0;
-            var supports204 = datagramByteCount % 204 == 0;
-
-            if (supports188 == supports204)
-                return false;
-
-            packetLength = supports188 ? 188 : 204;
-            return true;
-        }
-
-        private void RunUdpParser()
-        {
-            var channel = CreateUdpChannel();
-            m_udpChannel = channel;
-            Exception? producerException = null;
-
-            try
-            {
-                var multicastGroup = m_multicastGroup
-                    ?? throw new TsParserConfigurationException("UDP multicast group is not configured.");
-                var incomingIpInterface = m_incomingIpInterface ?? IPAddress.Any;
-                var bytesCount = 0;
-                var udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                socket = udpSocket;
-                IPEndPoint endPoint = new(incomingIpInterface, m_multicastPort);
-                udpSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                udpSocket.Bind(endPoint);
-                udpSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(multicastGroup, incomingIpInterface));
-                udpSocket.ReceiveBufferSize = 1316 * 1000;
-                udpSocket.ReceiveTimeout = m_socketTimeOut;
-
-                byte[] bytes = new byte[1500];
-
-                while (!m_ct.IsCancellationRequested)
-                {
-                    if (m_connectionAttempts <= 0) return;
-                    try
-                    {
-                        bytesCount = udpSocket.Receive(bytes);
-                        break;
-                    }
-                    catch (Exception ex) when (IsExpectedParserShutdown(ex))
-                    {
-                        return;
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Send(LogStatus.EXCEPTION, $"Receive exception attempts left: {m_connectionAttempts}", ex);
-                        m_connectionAttempts--;
-                    }
-                }
-
-                if (m_ct.IsCancellationRequested)
-                    return;
-
-                if (!TryResolveUdpTsPacketLength(bytesCount, out var packetLen))
-                {
-                    Logger.Send(
-                        LogStatus.EXCEPTION,
-                        $"UDP datagram length {bytesCount} is not a valid multiple of 188 or 204 byte TS packets");
-                    return;
-                }
-
-                if (m_timer != null) m_timer.Enabled = true;
-
-                Logger.Send(LogStatus.INFO, $"Start with network {multicastGroup}:{m_multicastPort} ts packet length: {packetLen}, network packet lenght: {bytesCount}");
-
-                m_bufferReaderTask = Task.Run(() => ReadFromBuffer(channel.Reader, packetLen, m_ct), m_ct);
-
-                WriteUdpDatagram(channel.Writer, bytes, bytesCount);
-                ThrowIfBufferReaderFaulted();
-
-                m_connectionAttempts = 5;
-                while (!m_ct.IsCancellationRequested)
-                {
-                    if (m_connectionAttempts <= 0) return;
-                    try
-                    {
-                        ThrowIfBufferReaderFaulted();
-                        var bytesLen = udpSocket.Receive(bytes);
-                        WriteUdpDatagram(channel.Writer, bytes, bytesLen);
-                    }
-                    catch (Exception ex) when (IsExpectedParserShutdown(ex))
-                    {
-                        return;
-                    }
-                    catch (Exception ex)
-                    {
-                        ThrowIfBufferReaderFaulted();
-                        Logger.Send(LogStatus.EXCEPTION, $"Receive exception attempts left: {m_connectionAttempts}", ex);
-                        m_connectionAttempts--;
-                    }
-
-                }
-
-            }
-            catch (Exception ex) when (IsExpectedParserShutdown(ex))
-            {
-            }
-            catch (Exception ex)
-            {
-                producerException = ex;
-                Logger.Send(LogStatus.EXCEPTION, $"Exception in Run UDP parser", ex);
-                throw;
-            }
-            finally
-            {
-                channel.Writer.TryComplete(producerException);
-                try
-                {
-                    if (producerException == null)
-                    {
-                        WaitForBufferReaderTask();
-                    }
-                    else
-                    {
-                        ObserveBufferReaderTask();
-                    }
-                }
-                finally
-                {
-                    if (ReferenceEquals(m_udpChannel, channel))
-                        m_udpChannel = null;
-
-                    CloseSocket();
-                }
-            }
-        }
-
-        private static Channel<byte[]> CreateUdpChannel()
-        {
-            return Channel.CreateBounded<byte[]>(new BoundedChannelOptions(5000)
-            {
-                FullMode = BoundedChannelFullMode.Wait,
-                SingleReader = true,
-                SingleWriter = true
-            });
-        }
-
-        private void WriteUdpDatagram(ChannelWriter<byte[]> writer, byte[] bytes, int bytesCount)
-        {
-            var datagram = new byte[bytesCount];
-            Buffer.BlockCopy(bytes, 0, datagram, 0, bytesCount);
-            writer.WriteAsync(datagram, m_ct).AsTask().GetAwaiter().GetResult();
-        }
-
-        private async Task ReadFromBuffer(ChannelReader<byte[]> reader, int packetLen, CancellationToken cancellationToken)
-        {
-            await foreach (var datagram in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
-            {
-                ParserModeDel(datagram, packetLen);
-            }
-        }
-
-        private void ThrowIfBufferReaderFaulted()
-        {
-            var task = m_bufferReaderTask;
-            if (task?.IsFaulted == true)
-                task.GetAwaiter().GetResult();
-        }
-
-        private void WaitForBufferReaderTask()
-        {
-            var task = m_bufferReaderTask;
-            if (task == null)
-                return;
-
-            try
-            {
-                task.GetAwaiter().GetResult();
-            }
-            catch (Exception ex) when (IsExpectedParserShutdown(ex))
-            {
-            }
-        }
-
-        private void ObserveBufferReaderTask()
-        {
-            try
-            {
-                WaitForBufferReaderTask();
-            }
-            catch (Exception ex)
-            {
-                Logger.Send(LogStatus.EXCEPTION, "Exception while waiting for UDP buffer reader", ex);
-            }
+            return UdpTsSource.TryResolveUdpTsPacketLength(datagramByteCount, out packetLength);
         }
 
         private void CompleteParserRun(Exception? parserException)
@@ -1329,9 +616,6 @@ namespace TSParser
             finally
             {
                 m_parserTask = null;
-                m_bufferReaderTask = null;
-
-                CloseSocket();
 
                 if (m_timer != null)
                 {
@@ -1376,39 +660,14 @@ namespace TSParser
                 || ex is ChannelClosedException;
         }
 
-        private void CloseSocket()
-        {
-            if (socket == null)
-                return;
-
-            try
-            {
-                socket.Close();
-            }
-            catch (Exception ex)
-            {
-                Logger.Send(LogStatus.EXCEPTION, "Exception while closing UDP socket", ex);
-            }
-            finally
-            {
-                socket = null;
-            }
-        }
-
         private void WaitForParserTasks()
         {
-            var tasks = new List<Task>(2);
-            if (m_parserTask != null)
-                tasks.Add(m_parserTask);
-            if (m_bufferReaderTask != null)
-                tasks.Add(m_bufferReaderTask);
-
-            if (tasks.Count == 0)
+            if (m_parserTask == null)
                 return;
 
             try
             {
-                Task.WaitAll(tasks.ToArray(), TimeSpan.FromSeconds(5));
+                m_parserTask.Wait(TimeSpan.FromSeconds(5));
             }
             catch (AggregateException ex)
             {

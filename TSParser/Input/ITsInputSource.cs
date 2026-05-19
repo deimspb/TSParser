@@ -12,29 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using TSParser.Tables.DvbTables;
+namespace TSParser.Input;
 
-namespace TSParser.Tables.DvbTableFactory;
+internal delegate void TsBytesReceived(ReadOnlySpan<byte> bytes, int packetLength);
 
-internal sealed class CatFactory : SectionTableFactory<CAT, byte>
+internal interface ITsInputSource : IDisposable
 {
-    public CatFactory()
-        : base("CAT")
-    {
-    }
+    void Run(TsInputSourceContext context);
 
-    internal event CatReady? OnCatReady;
-
-    public CAT? Cat => CurrentTable;
-
-    protected override bool IsExpectedTableId(byte tableId) => tableId == 0x01;
-
-    protected override CAT ParseTable(ReadOnlySpan<byte> bytes) => new(bytes);
-
-    protected override byte GetSectionKey(CAT table) => 0;
-
-    protected override void Publish(CAT table)
-    {
-        OnCatReady?.Invoke(table);
-    }
+    void Stop();
 }

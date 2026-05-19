@@ -12,29 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using TSParser.Tables.DvbTables;
+namespace TSParser.Input;
 
-namespace TSParser.Tables.DvbTableFactory;
-
-internal sealed class CatFactory : SectionTableFactory<CAT, byte>
+internal sealed class PushTsSource : ITsInputSource
 {
-    public CatFactory()
-        : base("CAT")
+    public void Run(TsInputSourceContext context)
+    {
+        throw new TsParserConfigurationException("Push source receives data through PushBytes; RunParser is not used.");
+    }
+
+    public void Push(ReadOnlySpan<byte> bytes, int packetLength, TsInputSourceContext context)
+    {
+        context.SourceStarted();
+        context.Publish(bytes, packetLength);
+    }
+
+    public void Stop()
     {
     }
 
-    internal event CatReady? OnCatReady;
-
-    public CAT? Cat => CurrentTable;
-
-    protected override bool IsExpectedTableId(byte tableId) => tableId == 0x01;
-
-    protected override CAT ParseTable(ReadOnlySpan<byte> bytes) => new(bytes);
-
-    protected override byte GetSectionKey(CAT table) => 0;
-
-    protected override void Publish(CAT table)
+    public void Dispose()
     {
-        OnCatReady?.Invoke(table);
     }
 }

@@ -1,10 +1,10 @@
-﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
-//  
+// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at 
+// You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0 
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,77 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Buffers.Binary;
-using TSParser.Service;
 using TSParser.Tables.DvbTables;
-using TSParser.TransportStream;
 
-namespace TSParser.Tables.DvbTableFactory
+namespace TSParser.Tables.DvbTableFactory;
+
+internal sealed class EitFactory : SectionTableFactory<EIT, (byte TableId, ushort ServiceId, byte SectionNumber, byte LastSectionNumber)>
 {
-    internal class EitFactory : TableFactory
+    public EitFactory()
+        : base("EIT")
     {
-        internal event EitReady OnEitReady = null!;
-        private EIT m_eit = null!;
-        internal EIT Eit
-        {
-            get { return m_eit; }
-            set { m_eit = value; }
-        }
-        private EIT CurrentEit = null!;
-        private List<EIT> eitList = new List<EIT>(100);
-        internal override void PushTable(TsPacket tsPacket)
-        {           
-            ProcessAssembledSections(tsPacket);
-        }
+    }
 
-        protected override void ProcessCurrentSection()
-        {
-            ReadOnlySpan<byte> bytes = TableData.AsSpan();
+    internal event EitReady? OnEitReady;
 
-            if (bytes[0] != 0x4F && bytes[0] != 0x4E && !(0x50 <= bytes[0] && bytes[0] <= 0x5F) && !(0x60 <= bytes[0] && bytes[0] <= 0x6F)) // check eit table id
-            {
-                Logger.Send(LogStatus.ETSI, $"Invalid table id: {bytes[0]} for EIT table");
-                return;
-            }
+    internal EIT? Eit => CurrentTable;
 
-            var crc32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);            
+    protected override bool DropSameVersionForSameKey => true;
 
-            if (eitList.FindIndex(e => e.CRC32 == crc32) >= 0) return; // find index on crc32 base. if we have table with the same crc32, we shall drop curent table to prevent push outside duplicate tables 
+    protected override bool IsExpectedTableId(byte tableId)
+    {
+        return tableId is 0x4F or 0x4E || (0x50 <= tableId && tableId <= 0x5F) || (0x60 <= tableId && tableId <= 0x6F);
+    }
 
-            if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
-            {
-                Logger.Send(LogStatus.ETSI, $"EIT CRC incorrect!");
-                ResetFactory();
-                return;
-            }
+    protected override EIT ParseTable(ReadOnlySpan<byte> bytes) => new(bytes);
 
-            if (!TryParseAssembledTable(() =>
-            {
-                CurrentEit = new EIT(TableData);
-                var idx = eitList.FindIndex(e => e.TableId == CurrentEit.TableId &&
-                                            e.ServiceId == CurrentEit.ServiceId &&
-                                            e.SectionNumber == CurrentEit.SectionNumber &&
-                                            e.LastSectionNumber == CurrentEit.LastSectionNumber);
+    protected override (byte TableId, ushort ServiceId, byte SectionNumber, byte LastSectionNumber) GetSectionKey(EIT table)
+    {
+        return (table.TableId, table.ServiceId, table.SectionNumber, table.LastSectionNumber);
+    }
 
-                if (idx >= 0)
-                {
-                    if (eitList[idx].VersionNumber != CurrentEit.VersionNumber)
-                    {
-                        eitList.RemoveAt(idx);
-                    }
-                    else
-                    {
-                        return;
-                    }
-                }
+    protected override string GetInvalidTableIdMessage(byte tableId) => $"Invalid table id: {tableId} for EIT table";
 
-                Eit = CurrentEit;
-                eitList.Add(Eit);
-                OnEitReady?.Invoke(Eit);
-            }, "EIT"))
-            {
-                return;
-            }
-        }
+    protected override string? GetVersionChangedMessage(EIT previous, EIT current) => null;
+
+    protected override void Publish(EIT table)
+    {
+        OnEitReady?.Invoke(table);
     }
 }

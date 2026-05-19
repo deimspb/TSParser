@@ -1,10 +1,10 @@
-﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
-//  
+// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at 
+// You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0 
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,67 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Buffers.Binary;
-using TSParser.Service;
 using TSParser.Tables.DvbTables;
-using TSParser.TransportStream;
 
-namespace TSParser.Tables.DvbTableFactory
+namespace TSParser.Tables.DvbTableFactory;
+
+internal sealed class PatFactory : SectionTableFactory<PAT, byte>
 {
-    internal class PatFactory : TableFactory
+    public PatFactory()
+        : base("PAT")
     {
-        internal event PatReady OnPatReady = null!;
-        private PAT m_pat = null!;
-        internal PAT Pat
-        {
-            get { return m_pat; }
-            private set { m_pat = value; }
-        }
+    }
 
-        private PAT CurrentPat = null!;
-        private uint CurrentCRC32;
-        
-        internal override void PushTable(TsPacket tsPacket)
-        {
-            ProcessAssembledSections(tsPacket);
-        }
+    internal event PatReady? OnPatReady;
 
-        protected override void ProcessCurrentSection()
-        {
-            ReadOnlySpan<byte> bytes = TableData.AsSpan();
+    internal PAT? Pat => CurrentTable;
 
-            if (bytes[0] != 0x00)
-            {
-                Logger.Send(LogStatus.ETSI, $"Invalid table id: {bytes[0]} for PAT");
-                return;
-            }
+    protected override bool IsExpectedTableId(byte tableId) => tableId == 0x00;
 
-            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);           
+    protected override PAT ParseTable(ReadOnlySpan<byte> bytes) => new(bytes);
 
-            if (Pat?.CRC32 == CurrentCRC32) return; // if we already have pat table and its crc32 equal curent table crc drop it. because it is the same pat            
+    protected override byte GetSectionKey(PAT table) => 0;
 
-            if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) //
-            {
-                Logger.Send(LogStatus.ETSI, $"PAT CRC incorrect!");
-                ResetFactory();
-                return;
-            }
+    protected override string GetInvalidTableIdMessage(byte tableId) => $"Invalid table id: {tableId} for PAT";
 
-            if (!TryParseAssembledTable(() =>
-            {
-                CurrentPat = new PAT(TableData);
-
-                if (Pat != null && Pat.VersionNumber != CurrentPat.VersionNumber)
-                {
-                    Logger.Send(LogStatus.INFO, $"Pat version changed from {Pat.VersionNumber} to {CurrentPat.VersionNumber}");
-                }
-
-                Pat = CurrentPat;
-                OnPatReady?.Invoke(Pat);
-            }, "PAT"))
-            {
-                return;
-            }
-        }
+    protected override void Publish(PAT table)
+    {
+        OnPatReady?.Invoke(table);
     }
 }

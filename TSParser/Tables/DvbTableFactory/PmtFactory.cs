@@ -1,10 +1,10 @@
-﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
-//  
+// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at 
+// You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0 
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,66 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Buffers.Binary;
-using TSParser.Service;
 using TSParser.Tables.DvbTables;
-using TSParser.TransportStream;
 
-namespace TSParser.Tables.DvbTableFactory
+namespace TSParser.Tables.DvbTableFactory;
+
+internal sealed class PmtFactory : SectionTableFactory<PMT, byte>
 {
-    internal class PmtFactory : TableFactory
+    public PmtFactory()
+        : base("PMT")
     {
-        internal event PmtReady OnPmtReady = null!;
-        private PMT m_pmt = null!;
-        internal PMT Pmt
-        {
-            get { return m_pmt; }
-            set { m_pmt = value; }
-        }
+    }
 
-        private PMT CurrentPmt = null!;
-        private uint CurrentCRC32;
-        internal override void PushTable(TsPacket tsPacket)
-        {
-            ProcessAssembledSections(tsPacket);
-        }
+    internal event PmtReady? OnPmtReady;
 
-        protected override void ProcessCurrentSection()
-        {
-            ReadOnlySpan<byte> bytes = TableData.AsSpan();
+    internal PMT? Pmt => CurrentTable;
 
-            if (bytes[0] != 0x02)
-            {
-                Logger.Send(LogStatus.ETSI, $"Invalid table id: {bytes[0]} for PMT table");
-                return;
-            }
+    protected override bool IsExpectedTableId(byte tableId) => tableId == 0x02;
 
-            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
+    protected override PMT ParseTable(ReadOnlySpan<byte> bytes) => new(bytes, CurrentPid);
 
-            if (Pmt?.CRC32 == CurrentCRC32) return; // if we already have pmt table and its crc32 equal curent table crc drop it. because it is the same pmt             
+    protected override byte GetSectionKey(PMT table) => 0;
 
-            if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) // drop invalid ts packet
-            {
-                Logger.Send(LogStatus.ETSI, $"PMT pid {CurrentPid} CRC incorrect!");
-                ResetFactory();
-                return;
-            }
+    protected override string GetInvalidTableIdMessage(byte tableId) => $"Invalid table id: {tableId} for PMT table";
 
-            if (!TryParseAssembledTable(() =>
-            {
-                CurrentPmt = new PMT(TableData, CurrentPid);
+    protected override string GetCrcErrorMessage() => $"PMT pid {CurrentPid} CRC incorrect!";
 
-                if (Pmt != null && Pmt.VersionNumber != CurrentPmt.VersionNumber)
-                {
-                    Logger.Send(LogStatus.INFO, $"PMT version changed from {Pmt.VersionNumber} to {CurrentPmt.VersionNumber}");
-                }
-
-                Pmt = CurrentPmt;
-                OnPmtReady?.Invoke(Pmt);
-            }, "PMT"))
-            {
-                return;
-            }
-        }
+    protected override void Publish(PMT table)
+    {
+        OnPmtReady?.Invoke(table);
     }
 }

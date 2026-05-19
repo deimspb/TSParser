@@ -1,10 +1,10 @@
-﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
-//  
+// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at 
+// You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0 
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,68 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Buffers.Binary;
-using TSParser.Service;
 using TSParser.Tables.DvbTables;
-using TSParser.TransportStream;
 
-namespace TSParser.Tables.DvbTableFactory
+namespace TSParser.Tables.DvbTableFactory;
+
+internal sealed class AitFactory : SectionTableFactory<AIT, byte>
 {
-    internal class AitFactory : TableFactory
+    public AitFactory()
+        : base("AIT")
     {
-        internal event AitReady OnAitReady = null!;
-        private AIT m_ait = null!;
+    }
 
-        internal AIT Ait
-        {
-            get => m_ait;
-            set => m_ait = value;
-        }
-        private AIT CurrentAit = null!;
-        private uint CurrentCRC32;
+    internal event AitReady? OnAitReady;
 
+    internal AIT? Ait => CurrentTable;
 
-        internal override void PushTable(TsPacket tsPacket)
-        {            
-            ProcessAssembledSections(tsPacket);
-        }
+    protected override bool IsExpectedTableId(byte tableId) => tableId == 0x74;
 
-        protected override void ProcessCurrentSection()
-        {
-            ReadOnlySpan<byte> bytes = TableData.AsSpan();
+    protected override AIT ParseTable(ReadOnlySpan<byte> bytes) => new(bytes, CurrentPid);
 
-            if (bytes[0] != 0x74)
-            {
-                Logger.Send(LogStatus.ETSI, $"Invalid table id: 0x{bytes[0]:X} for AIT table");
-                return;
-            }
+    protected override byte GetSectionKey(AIT table) => 0;
 
-            CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);            
+    protected override string GetInvalidTableIdMessage(byte tableId) => $"Invalid table id: 0x{tableId:X} for AIT table";
 
-            if (Ait?.CRC32 == CurrentCRC32) return; //// if we already have ait table and its crc32 equal curent table crc drop it. because it is the same ait
+    protected override string GetCrcErrorMessage() => $"AIT pid {CurrentPid} CRC incorrect!";
 
-            if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) // drop invalid ts packet
-            {
-                Logger.Send(LogStatus.ETSI, $"AIT pid {CurrentPid} CRC incorrect!");
-                ResetFactory();
-                return;
-            }
-
-            if (!TryParseAssembledTable(() =>
-            {
-                CurrentAit = new AIT(TableData, CurrentPid);
-
-                if (Ait != null && Ait.VersionNumber != CurrentAit.VersionNumber)
-                {
-                    Logger.Send(LogStatus.INFO, $"AIT version changed from {Ait.VersionNumber} to {CurrentAit.VersionNumber}");
-                }
-
-                Ait = CurrentAit;
-                OnAitReady?.Invoke(Ait);
-            }, "AIT"))
-            {
-                return;
-            }
-        }
+    protected override void Publish(AIT table)
+    {
+        OnAitReady?.Invoke(table);
     }
 }

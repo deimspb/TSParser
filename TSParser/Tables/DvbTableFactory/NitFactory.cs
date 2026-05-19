@@ -1,10 +1,10 @@
-﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
-//  
+// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at 
+// You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0 
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,98 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Buffers.Binary;
-using TSParser.Service;
 using TSParser.Tables.DvbTables;
-using TSParser.TransportStream;
 
-namespace TSParser.Tables.DvbTableFactory
+namespace TSParser.Tables.DvbTableFactory;
+
+internal sealed class NitFactory : SectionTableFactory<NIT, (ushort NetworkId, byte SectionNumber, byte LastSectionNumber)>
 {
-    internal class NitFactory : TableFactory
+    public NitFactory()
+        : base("NIT")
     {
-        internal event NitReady OnNitReady = null!;
-        private NIT m_nit = null!;
+    }
 
-        internal NIT Nit
-        {
-            get=> m_nit;
-            set => m_nit = value;
-        }
+    internal event NitReady? OnNitReady;
 
-        private readonly Lazy<List<NIT>> nITs = new Lazy<List<NIT>>();
-        private List<NIT> m_nitList =>nITs.Value;
+    internal NIT? Nit => CurrentTable;
 
-        private NIT CurrentNit = null!;
-        internal override void PushTable(TsPacket tsPacket)
-        {
-            ProcessAssembledSections(tsPacket);
-        }
+    protected override bool DropSameVersionForSameKey => true;
 
-        protected override void ProcessCurrentSection()
-        {
-            switch (TableData[0])
-            {
-                case 0x40: // nit actual
-                    {
-                        ParseNit();
-                    }
-                    break;
-                case 0x41: // nit other
-                    {
-                        ParseNit();
-                    }
-                    break;
-                default:
-                    {
-                        Logger.Send(LogStatus.ETSI, $"Not implement table id: {TableData[0]} for NIT"); 
-                    }
-                    break;
-            }
-        }
+    protected override bool IsExpectedTableId(byte tableId) => tableId is 0x40 or 0x41;
 
-        private void ParseNit()
-        {
-            ReadOnlySpan<byte> bytes = TableData.AsSpan();
+    protected override NIT ParseTable(ReadOnlySpan<byte> bytes) => new(bytes);
 
-            var crc32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);           
+    protected override (ushort NetworkId, byte SectionNumber, byte LastSectionNumber) GetSectionKey(NIT table)
+    {
+        return (table.NetworkId, table.SectionNumber, table.LastSectionNumber);
+    }
 
-            if (m_nitList.FindIndex(s => s.CRC32 == crc32) >= 0) return; // already push this table outside
+    protected override string GetInvalidTableIdMessage(byte tableId) => $"Not implement table id: {tableId} for NIT";
 
-            if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
-            {
-                Logger.Send(LogStatus.ETSI, $"NIT CRC incorrect!");
-                ResetFactory();
-                return;
-            }
+    protected override string? GetVersionChangedMessage(NIT previous, NIT current)
+    {
+        return $"NIT table version changed for ts id: {previous.NetworkId} from {previous.VersionNumber} to {current.VersionNumber}";
+    }
 
-            if (!TryParseAssembledTable(() =>
-            {
-                CurrentNit = new NIT(TableData);
-
-                var idx = m_nitList.FindIndex(nit => nit.NetworkId == CurrentNit.NetworkId &&
-                                              nit.SectionNumber == CurrentNit.SectionNumber &&
-                                              nit.LastSectionNumber == CurrentNit.LastSectionNumber);
-
-                if (idx >= 0)
-                {
-                    if (m_nitList[idx].VersionNumber != CurrentNit.VersionNumber)
-                    {
-                        Logger.Send(LogStatus.INFO, $"NIT table version changed for ts id: {m_nitList[idx].NetworkId} from {m_nitList[idx].VersionNumber} to {CurrentNit.VersionNumber}");
-                        m_nitList.RemoveAt(idx);
-                    }
-                    else
-                    {
-                        return;
-                    }
-                }
-
-                Nit = CurrentNit;
-                m_nitList.Add(Nit);
-                OnNitReady?.Invoke(Nit);
-            }, "NIT"))
-            {
-                return;
-            }
-        }
+    protected override void Publish(NIT table)
+    {
+        OnNitReady?.Invoke(table);
     }
 }

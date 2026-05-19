@@ -1,10 +1,10 @@
-﻿// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com 
-//  
+// Copyright 2021 Eldar Nizamutdinov deim.mobile<at>gmail.com
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at 
+// You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0 
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,57 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Buffers.Binary;
-using TSParser.Service;
 using TSParser.Tables.DvbTables;
-using TSParser.TransportStream;
 
 namespace TSParser.Tables.DvbTableFactory;
 
-internal class EewsFactory : TableFactory
+internal sealed class EewsFactory : SectionTableFactory<EEWS, byte>
 {
-    internal event EewsReady OnEewsReady = null!;
-
-    private EEWS m_eews = null!;
-
-    internal EEWS Eews
+    public EewsFactory()
+        : base("EEWS")
     {
-        get { return m_eews; }
-        set { m_eews = value; }
     }
 
-    private EEWS CurrentEews = null!;
-    private uint CurrentCRC32;
+    internal event EewsReady? OnEewsReady;
 
-    internal override void PushTable(TsPacket tsPacket)
+    internal EEWS? Eews => CurrentTable;
+
+    protected override bool IsExpectedTableId(byte tableId) => tableId is 0x94 or 0x95;
+
+    protected override EEWS ParseTable(ReadOnlySpan<byte> bytes) => new(bytes, CurrentPid);
+
+    protected override byte GetSectionKey(EEWS table) => 0;
+
+    protected override string GetInvalidTableIdMessage(byte tableId) => $"Invalid table id: {tableId} for EEWS table";
+
+    protected override string GetCrcErrorMessage() => $"EEWS pid {CurrentPid} CRC incorrect!";
+
+    protected override void Publish(EEWS table)
     {
-        ProcessAssembledSections(tsPacket);
-    }
-
-    protected override void ProcessCurrentSection()
-    {
-        ReadOnlySpan<byte> bytes = TableData.AsSpan();
-
-        if (bytes[0] != 0x94 && bytes[0] != 0x95)
-        {
-            Logger.Send(LogStatus.ETSI, $"Invalid table id: {bytes[0]} for EEWS table");
-            return;
-        }
-        CurrentCRC32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
-        if (Eews?.CRC32 == CurrentCRC32) return; // if we already have ews table and its crc32 equal curent table crc drop it. because it is the same ews
-        if (Utils.GetCRC32(bytes[..^4]) != CurrentCRC32) // drop invalid ts packet
-        {
-            Logger.Send(LogStatus.ETSI, $"EEWS pid {CurrentPid} CRC incorrect!");
-            ResetFactory();
-            return;
-        }
-        if (!TryParseAssembledTable(() =>
-        {
-            Eews = new EEWS(TableData, CurrentPid);
-            OnEewsReady?.Invoke(Eews);
-        }, "EEWS"))
-        {
-            return;
-        }
+        OnEewsReady?.Invoke(table);
     }
 }

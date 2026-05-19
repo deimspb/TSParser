@@ -62,16 +62,16 @@ namespace TSParser.Tables.DvbTableFactory
             }
         }
 
-        private TDT m_tdt = null!;
-        private TOT m_tot = null!;
+        private TDT? m_tdt;
+        private TOT? m_tot;
 
-        internal TDT Tdt
+        internal TDT? Tdt
         {
             get => m_tdt;
             set => m_tdt = value;
         }
 
-        internal TOT Tot
+        internal TOT? Tot
         {
             get => m_tot;
             set => m_tot = value;
@@ -109,8 +109,9 @@ namespace TSParser.Tables.DvbTableFactory
         {
             if (!TryParseAssembledTable(() =>
             {
-                Tdt = new TDT(TableData);
-                OnTdtReady?.Invoke(Tdt);
+                var tdt = new TDT(TableData);
+                Tdt = tdt;
+                OnTdtReady?.Invoke(tdt);
             }, "TDT"))
             {
                 return;
@@ -132,8 +133,9 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (!TryParseAssembledTable(() =>
             {
-                Tot = new TOT(TableData);
-                _onTotReady?.Invoke(Tot);
+                var tot = new TOT(TableData);
+                Tot = tot;
+                _onTotReady?.Invoke(tot);
             }, "TOT"))
             {
                 return;
