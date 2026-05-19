@@ -42,7 +42,7 @@ internal sealed class TsCorpusHarvester
         parser.OnSdtReady += t => Collect(t);
         parser.OnBatReady += t => Collect(t);
         parser.OnEitReady += t => Collect(t);
-        parser.OnTotready += t => Collect(t);
+        parser.OnTotReady += t => Collect(t);
         parser.OnAitReady += t => Collect(t);
         parser.OnScte35Ready += t => Collect(t);
         parser.OnEwsReady += t => Collect(t);

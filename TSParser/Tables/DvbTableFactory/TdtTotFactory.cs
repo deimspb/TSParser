@@ -21,8 +21,46 @@ namespace TSParser.Tables.DvbTableFactory
 {
     internal class TdtTotFactory : TableFactory
     {
-        internal event TdtReady OnTdtReady = null!;
-        internal event TotReady OnTotready = null!;
+        private readonly object _totReadyEventLock = new();
+        private TotReady? _onTotReady;
+
+        internal event TdtReady? OnTdtReady;
+        internal event TotReady? OnTotReady
+        {
+            add
+            {
+                lock (_totReadyEventLock)
+                {
+                    _onTotReady += value;
+                }
+            }
+            remove
+            {
+                lock (_totReadyEventLock)
+                {
+                    _onTotReady -= value;
+                }
+            }
+        }
+
+        [Obsolete("Use OnTotReady instead.")]
+        internal event TotReady? OnTotready
+        {
+            add
+            {
+                lock (_totReadyEventLock)
+                {
+                    _onTotReady += value;
+                }
+            }
+            remove
+            {
+                lock (_totReadyEventLock)
+                {
+                    _onTotReady -= value;
+                }
+            }
+        }
 
         private TDT m_tdt = null!;
         private TOT m_tot = null!;
@@ -95,7 +133,7 @@ namespace TSParser.Tables.DvbTableFactory
             if (!TryParseAssembledTable(() =>
             {
                 Tot = new TOT(TableData);
-                OnTotready?.Invoke(Tot);
+                _onTotReady?.Invoke(Tot);
             }, "TOT"))
             {
                 return;

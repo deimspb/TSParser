@@ -16,8 +16,9 @@ namespace TSParser.Analysis
 {
     /// <summary>
     /// Configures transport-stream bitrate measurement (window length, clock source, scope).
-    /// Assign via <see cref="ParserConfig.BitrateMeasurement"/>; when <see cref="Enabled"/> is
-    /// <see langword="true"/>, the analyzer runs regardless of legacy <see cref="ParserConfig.AllowAnalyzer"/>.
+    /// Assign via <see cref="ParserOptions.BitrateMeasurement"/> or legacy
+    /// <see cref="ParserConfig.BitrateMeasurement"/>; when <see cref="Enabled"/> is
+    /// <see langword="true"/>, the analyzer runs regardless of <see cref="ParserOptions.AllowAnalyzer"/>.
     /// </summary>
     public class BitrateMeasurementOptions
     {

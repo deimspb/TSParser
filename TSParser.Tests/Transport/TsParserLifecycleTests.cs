@@ -14,6 +14,9 @@
 
 using NUnit.Framework;
 using TSParser.Enums;
+using TSParser.Tables.DvbTables;
+using TSParser.Tests.Helpers;
+using TSParser.TransportStream;
 
 namespace TSParser.Tests.Transport;
 
@@ -109,6 +112,60 @@ public sealed class TsParserLifecycleTests
     }
 
     [Test]
+    public void ParserOptions_pushbytes_invokes_packet_events_without_file_source()
+    {
+        var parser = new TsParser(new ParserOptions
+        {
+            CurrentDecodeMode = DecodeMode.Packet,
+        });
+
+        var packets = new List<TsPacket>();
+        parser.OnTsPacketReady += packets.Add;
+
+        var bytes = BuildNullPackets(10);
+
+        parser.PushBytes(bytes, 188);
+
+        Assert.That(packets, Has.Count.EqualTo(10));
+    }
+
+    [Test]
+    public void Default_constructor_configures_push_packet_mode()
+    {
+        var parser = new TsParser();
+        var packets = new List<TsPacket>();
+        parser.OnTsPacketReady += packets.Add;
+
+        parser.PushBytes(BuildNullPackets(1), 188);
+
+        Assert.That(packets, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void OnTotReady_and_legacy_OnTotready_share_delivery()
+    {
+        var parser = new TsParser(new ParserOptions
+        {
+            CurrentDecodeMode = DecodeMode.Table,
+        });
+        var totSection = FixtureLoader.LoadBytes("Tables/TOT/TOT_S.tbl");
+        var tsBytes = PsiTsPacketFactory.BuildPsiTsStream((ushort)ReservedPids.TDT, totSection);
+        TOT? newApiTot = null;
+        TOT? legacyTot = null;
+
+        parser.OnTotReady += t => newApiTot = t;
+#pragma warning disable CS0618
+        parser.OnTotready += t => legacyTot = t;
+#pragma warning restore CS0618
+
+        parser.PushBytes(tsBytes, 188);
+
+        Assert.That(newApiTot, Is.Not.Null);
+        Assert.That(legacyTot, Is.Not.Null);
+        Assert.That(legacyTot!.CRC32, Is.EqualTo(newApiTot!.CRC32));
+    }
+
+    [Test]
     public void Dispose_after_stop_does_not_throw()
     {
         var path = WriteTempTs(packetCount: 12_000);
@@ -190,6 +247,14 @@ public sealed class TsParserLifecycleTests
 
     private static string WriteTempTs(int packetCount, int packetSize = 188)
     {
+        var bytes = BuildNullPackets(packetCount, packetSize);
+        var path = Path.Combine(Path.GetTempPath(), $"tsparser-lifecycle-{Guid.NewGuid():N}.ts");
+        File.WriteAllBytes(path, bytes);
+        return path;
+    }
+
+    private static byte[] BuildNullPackets(int packetCount, int packetSize = 188)
+    {
         var bytes = new byte[packetCount * packetSize];
         for (var p = 0; p < packetCount; p++)
         {
@@ -199,8 +264,6 @@ public sealed class TsParserLifecycleTests
             bytes[offset + 2] = 0xFF;
         }
 
-        var path = Path.Combine(Path.GetTempPath(), $"tsparser-lifecycle-{Guid.NewGuid():N}.ts");
-        File.WriteAllBytes(path, bytes);
-        return path;
+        return bytes;
     }
 }

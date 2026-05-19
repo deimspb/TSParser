@@ -25,7 +25,7 @@ public sealed class TransportStreamValidationTests
         var parser = new TsParser();
         var bytes = new byte[100];
 
-        var ex = Assert.Throws<Exception>(() => parser.GetOneTsPacketFromBytes(bytes, 188));
+        var ex = Assert.Throws<ArgumentException>(() => parser.GetOneTsPacketFromBytes(bytes, 188));
         Assert.That(ex!.Message, Does.Contain("188 or 204"));
     }
 
@@ -36,7 +36,7 @@ public sealed class TransportStreamValidationTests
         var bytes = new byte[188];
         bytes[0] = 0x47;
 
-        var ex = Assert.Throws<Exception>(() => parser.GetOneTsPacketFromBytes(bytes, 204));
-        Assert.That(ex!.Message, Does.Contain("Not equal"));
+        var ex = Assert.Throws<ArgumentException>(() => parser.GetOneTsPacketFromBytes(bytes, 204));
+        Assert.That(ex!.Message, Does.Contain("must match"));
     }
 }

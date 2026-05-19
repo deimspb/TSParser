@@ -37,18 +37,18 @@ dotnet build TSParser.sln
 
 ### Файл или multicast
 
-Конструктор `TsParser(ParserConfig)` при указании `TsFileName` или пары `MulticastGroup` + `MulticastPort` сам запускает разбор после подписки на события и вызова `RunParser()` / `RunParserAsync()`.
+Для нового кода используйте `TsParser(ParserOptions)`. Старый `ParserConfig` оставлен совместимым адаптером. При указании `TsFileName` или UDP-источника конструктор настраивает источник, а разбор начинается после подписки на события и вызова `RunParser()` / `RunParserAsync()`.
 
 ```csharp
 using TSParser;
 using TSParser.Analysis;
 using TSParser.Service;
 
-var config = new ParserConfig
+var options = new ParserOptions
 {
     TsFileName = @"C:\captures\stream.ts",
     CurrentDecodeMode = DecodeMode.Table,
-    ParserRunTime = 60_000, // необязательно; минимум 100 мс, если задано
+    ParserRunTime = TimeSpan.FromSeconds(60), // необязательно; минимум 100 мс, если задано
     BitrateMeasurement = new BitrateMeasurementOptions
     {
         Enabled = true,
@@ -57,7 +57,7 @@ var config = new ParserConfig
     },
 };
 
-using var parser = new TsParser(config);
+using var parser = new TsParser(options);
 
 parser.OnPatReady += pat => { /* PAT */ };
 parser.OnPmtReady += pmt => { /* PMT */ };
@@ -73,11 +73,13 @@ parser.RunParser();
 Для UDP:
 
 ```csharp
-var config = new ParserConfig
+var options = new ParserOptions
 {
-    MulticastGroup = "239.0.0.1",
-    MulticastPort = 1234,
-    MulticastIncomingIp = null, // null → любой интерфейс
+    UdpSource = new UdpSourceOptions("239.0.0.1")
+    {
+        MulticastPort = 1234,
+        IncomingIp = null, // null → любой интерфейс
+    },
     CurrentDecodeMode = DecodeMode.Table,
 };
 ```
@@ -86,13 +88,13 @@ var config = new ParserConfig
 
 ### PushBytes (DekTec и др.)
 
-Для внешней подачи пакетов используйте **`TsParser(ParserConfig)`** с нужным `CurrentDecodeMode` и `CurrentTsMode`. Конструктор без параметров предназначен только для статических helper-методов; **`PushBytes` с ним приведёт к ошибке** — не инициализированы внутренние фабрики.
+Для внешней подачи пакетов используйте **`TsParser(ParserOptions)`** с нужным `CurrentDecodeMode` и `CurrentTsMode`. Конструктор без параметров теперь тоже безопасен для push-сценария в режиме `DecodeMode.Packet`.
 
 `RunParser()` не вызывайте — только подписка на события и цикл чтения:
 
 ```csharp
-var config = new ParserConfig { CurrentDecodeMode = DecodeMode.Table };
-using var parser = new TsParser(config);
+var options = new ParserOptions { CurrentDecodeMode = DecodeMode.Table };
+using var parser = new TsParser(options);
 
 parser.OnPatReady += /* ... */;
 
@@ -108,15 +110,17 @@ while (!cancellationToken.IsCancellationRequested)
 
 ---
 
-## Конфигурация (`ParserConfig`)
+## Конфигурация (`ParserOptions` / `ParserConfig`)
+
+`ParserOptions` — основной API для нового кода. `ParserConfig` с mutable fields остается для обратной совместимости и преобразуется во внутренние immutable options.
 
 | Поле | Назначение |
 |------|------------|
-| `CurrentTsMode` | `DVB` — рабочий режим. `ATSC` / `ISDB` есть в enum, но фабрики таблиц выбрасывают `NotImplementedException` при первой SI-секции. |
+| `CurrentTsMode` | `DVB` — рабочий режим. `ATSC` / `ISDB` есть в enum, но фабрики таблиц выбрасывают `UnsupportedTsModeException` при первой SI-секции. |
 | `CurrentDecodeMode` | `Table` — события SI-таблиц; `Packet` — только `OnTsPacketReady` (быстрее, без сборки секций). |
 | `TsFileName` | Путь к `.ts`; размер ≥ 2040 байт. |
-| `MulticastGroup`, `MulticastPort`, `MulticastIncomingIp` | UDP; порт по умолчанию **1234**, если `MulticastPort` не задан. |
-| `ParserRunTime` | Лимит работы (мс), минимум **100** при установке. |
+| `UdpSource` | UDP; порт по умолчанию **1234**, если `MulticastPort` не задан. В `ParserConfig` это старые поля `MulticastGroup`, `MulticastPort`, `MulticastIncomingIp`. |
+| `ParserRunTime` | Лимит работы (`TimeSpan`; в `ParserConfig` — мс), минимум **100** при установке. |
 | `AllowAnalyzer` | CC и legacy `OnRate` по PID. |
 | `BitrateMeasurement` | При `Enabled == true` анализатор включается **даже если** `AllowAnalyzer == false`; результаты в `OnBitrateMeasured`. |
 
@@ -143,7 +147,7 @@ while (!cancellationToken.IsCancellationRequested)
 | `OnBatReady` | `BAT` | |
 | `OnEitReady` | `EIT` | |
 | `OnTdtReady` | `TDT` | |
-| `OnTotready` | `TOT` | Имя с маленькой **`r`** — `OnTotready`, не `OnTotReady`. |
+| `OnTotReady` | `TOT` | Основное имя события. Старое `OnTotready` оставлено как `[Obsolete]`-alias для обратной совместимости. |
 | `OnAitReady` | `AIT` | PID из PMT |
 | `OnMipReady` | `MIP` | PID `0x15` |
 | `OnScte35Ready` | `SCTE35` | PID из PMT (`0x86`) |

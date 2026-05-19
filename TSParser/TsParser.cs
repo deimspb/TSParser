@@ -107,32 +107,71 @@ namespace TSParser
         private delegate void ParserDelegate();
         private delegate void ParserModeDelefate(ReadOnlySpan<byte> bytes, int packetLen);
 
-        private m_currentTableFactory SelectedTableFactory = null!;
-        private ParserDelegate RunParserDel = null!;
-        private ParserModeDelefate ParserModeDel = null!;
+        private m_currentTableFactory SelectedTableFactory = _ => throw new TsParserConfigurationException("No table factory configured.");
+        private ParserDelegate RunParserDel = () => throw new TsParserConfigurationException("No parser input source configured.");
+        private ParserModeDelefate ParserModeDel = (_, _) => throw new TsParserConfigurationException("No parser decode mode configured.");
 
-        public event ParserComplete OnParserComplete = null!;
-        public event PatReady OnPatReady = null!;
-        public event PmtReady OnPmtReady = null!;
-        public event EitReady OnEitReady = null!;
-        public event TdtReady OnTdtReady = null!;
-        public event TotReady OnTotready = null!;
-        public event SdtReady OnSdtReady = null!;
-        public event BatReady OnBatReady = null!;
-        public event CatReady OnCatReady = null!;
-        public event NitReady OnNitReady = null!;
-        public event AitReady OnAitReady = null!;
-        public event MipReady OnMipReady = null!;
-        public event Scte35Ready OnScte35Ready = null!;
-        public event TsPacketReady OnTsPacketReady = null!;
-        public event RateDelegate OnRate = null!;
-        /// <summary>Raised when a bitrate measurement window completes (requires <see cref="ParserConfig.BitrateMeasurement"/>).</summary>
-        public event BitrateMeasuredDelegate OnBitrateMeasured = null!;
-        public event EwsReady OnEwsReady = null!;
-        public event EewsReady OnEewsReady = null!;
-        public event T2miPacketReady OnT2miPacketReady = null!;
-        public event T2miPlpDiscovered OnT2miPlpDiscovered = null!;
-        public event PlpTsReady OnPlpTsReady = null!;
+        private readonly object _totReadyEventLock = new();
+        private TotReady? _onTotReady;
+
+        public event ParserComplete? OnParserComplete;
+        public event PatReady? OnPatReady;
+        public event PmtReady? OnPmtReady;
+        public event EitReady? OnEitReady;
+        public event TdtReady? OnTdtReady;
+        public event TotReady? OnTotReady
+        {
+            add
+            {
+                lock (_totReadyEventLock)
+                {
+                    _onTotReady += value;
+                }
+            }
+            remove
+            {
+                lock (_totReadyEventLock)
+                {
+                    _onTotReady -= value;
+                }
+            }
+        }
+
+        [Obsolete("Use OnTotReady instead.")]
+        public event TotReady? OnTotready
+        {
+            add
+            {
+                lock (_totReadyEventLock)
+                {
+                    _onTotReady += value;
+                }
+            }
+            remove
+            {
+                lock (_totReadyEventLock)
+                {
+                    _onTotReady -= value;
+                }
+            }
+        }
+
+        public event SdtReady? OnSdtReady;
+        public event BatReady? OnBatReady;
+        public event CatReady? OnCatReady;
+        public event NitReady? OnNitReady;
+        public event AitReady? OnAitReady;
+        public event MipReady? OnMipReady;
+        public event Scte35Ready? OnScte35Ready;
+        public event TsPacketReady? OnTsPacketReady;
+        public event RateDelegate? OnRate;
+        /// <summary>Raised when a bitrate measurement window completes (requires <see cref="ParserOptions.BitrateMeasurement"/>).</summary>
+        public event BitrateMeasuredDelegate? OnBitrateMeasured;
+        public event EwsReady? OnEwsReady;
+        public event EewsReady? OnEewsReady;
+        public event T2miPacketReady? OnT2miPacketReady;
+        public event T2miPlpDiscovered? OnT2miPlpDiscovered;
+        public event PlpTsReady? OnPlpTsReady;
 
         private readonly Lazy<TsPacketFactory> packetFactory = new();
         private readonly Lazy<TdtTotFactory> tdtTotFactory = new();
@@ -149,7 +188,7 @@ namespace TSParser
         private readonly Lazy<List<Scte35Factory>> scte35Factories = new();
         private readonly Lazy<List<EwsFactory>> ewsFactories = new();
         private readonly Lazy<List<EewsFactory>> eewsFactories = new();
-        private PmtFactory[] m_pmtFactories = null!;
+        private PmtFactory[] m_pmtFactories = Array.Empty<PmtFactory>();
 
         private TsPacketFactory m_tsPacketFactory => packetFactory.Value;
         private TdtTotFactory m_TdtTotFactory => tdtTotFactory.Value;
@@ -168,11 +207,11 @@ namespace TSParser
 
         public readonly byte[] PacketSize = new byte[] { 188, 204 };
 
-        private string m_tsFileName = null!;
-        private IPAddress m_multicastGroup = null!;
-        private IPAddress m_incomingIpInterface = null!;
+        private string? m_tsFileName;
+        private IPAddress? m_multicastGroup;
+        private IPAddress? m_incomingIpInterface;
         private int m_multicastPort;
-        private Socket socket = null!;
+        private Socket? socket;
 
         private CancellationTokenSource m_cts = new();
         private CancellationToken m_ct;
@@ -184,7 +223,7 @@ namespace TSParser
         private Task? m_bufferReaderTask;
 
 
-        private ushort[] m_pmtPids = null!;
+        private ushort[] m_pmtPids = Array.Empty<ushort>();
         private List<ushort> m_aitPids = new();
         private List<ushort> m_scte35Pids = new();
         private List<ushort> m_ewsPids = new();
@@ -202,13 +241,13 @@ namespace TSParser
         private int? m_parserRunTimeIn_ms = null;
         private bool m_allowAnalyzer;
         private long? m_fileStreamByteOffset;
-        private System.Timers.Timer m_timer = null!;
+        private System.Timers.Timer? m_timer;
         private int? MaxParserRunTime
         {
             get => m_parserRunTimeIn_ms;
             set
             {
-                if (value < 100) throw new Exception("Too short max run time for parser ");
+                if (value < 100) throw new TsParserConfigurationException("Parser run time must be at least 100 ms.");
                 m_parserRunTimeIn_ms = value;
             }
         }
@@ -223,7 +262,7 @@ namespace TSParser
         {
             set
             {
-                m_ewsPids = value;
+                m_ewsPids = value ?? throw new ArgumentNullException(nameof(value));
                 m_ewsPidListEmptyWarningSent = false;
             }
 
@@ -241,7 +280,7 @@ namespace TSParser
         {
             set
             {
-                m_eewsPids = value;
+                m_eewsPids = value ?? throw new ArgumentNullException(nameof(value));
                 m_eewsPidListEmptyWarningSent = false;
             }
             get
@@ -256,51 +295,57 @@ namespace TSParser
         {
             get => m_analyzer.PidList;
         }
-        /// <summary>
-        /// Maximum run time for parser in milliseconds. minimum value 100 ms.
-        /// </summary>        
+        /// <summary>Creates a parser from legacy mutable configuration.</summary>
         public TsParser(ParserConfig config)
+            : this(ParserOptions.FromParserConfig(config))
         {
+        }
+
+        /// <summary>Creates a parser from immutable options.</summary>
+        public TsParser(ParserOptions options)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+
             m_ct = m_cts.Token;
 
-            switch (config.CurrentTsMode)
+            switch (options.CurrentTsMode)
             {
                 case TsMode.DVB: SelectedTableFactory = DvbTableFactory; break;
                 case TsMode.ATSC: SelectedTableFactory = AtscTableFactory; break;
                 case TsMode.ISDB: SelectedTableFactory = IsdbTableFactory; break;
             }
-            switch (config.CurrentDecodeMode)
+            switch (options.CurrentDecodeMode)
             {
                 case DecodeMode.Packet: ParserModeDel = ParseBytesToPackets; break;
                 case DecodeMode.Table: ParserModeDel = ParseBytesToTables; break;
             }
 
-            m_bitrateMeasurement = config.BitrateMeasurement;
-            m_allowAnalyzer = config.AllowAnalyzer || (m_bitrateMeasurement?.Enabled ?? false);
+            m_bitrateMeasurement = options.BitrateMeasurement;
+            m_allowAnalyzer = options.AllowAnalyzer || (m_bitrateMeasurement?.Enabled ?? false);
             analyzer = new Lazy<Analyzer>(() => new Analyzer(m_bitrateMeasurement));
-            MaxParserRunTime = config.ParserRunTime;
+            MaxParserRunTime = GetParserRunTimeMilliseconds(options.ParserRunTime);
 
             ParserRunTimer();
 
             InitEvents();
 
-            m_t2miEnabled = config.T2miEnabled;
-            m_t2miAutoDetect = config.T2miAutoDetect;
-            m_t2miDeencapsulate = config.T2miDeencapsulate;
-            if (m_t2miEnabled && config.T2miPids is { Length: > 0 } pids)
+            m_t2miEnabled = options.T2mi.Enabled;
+            m_t2miAutoDetect = options.T2mi.AutoDetect;
+            m_t2miDeencapsulate = options.T2mi.Deencapsulate;
+            if (m_t2miEnabled && options.T2mi.Pids.Count > 0)
             {
-                RegisterT2miPids(pids);
+                RegisterT2miPids(options.T2mi.Pids);
             }
 
-            if (config.TsFileName != null)
+            if (options.TsFileName != null)
             {
-                FileParser(config.TsFileName);
+                FileParser(options.TsFileName);
                 return;
             }
 
-            if (config.MulticastGroup != null && config.MulticastPort != null)
+            if (options.UdpSource != null)
             {
-                UdpParser(config.MulticastGroup, config.MulticastPort, config.MulticastIncomingIp);
+                UdpParser(options.UdpSource);
                 return;
             }
         }
@@ -309,9 +354,8 @@ namespace TSParser
         /// </summary>
 
         public TsParser()
+            : this(ParserOptions.Default)
         {
-            m_ct = m_cts.Token;
-            analyzer = new Lazy<Analyzer>(() => new Analyzer(m_bitrateMeasurement));
         }
 
         public void Dispose()
@@ -339,7 +383,7 @@ namespace TSParser
             {
                 m_timer.Elapsed -= Timer_Elapsed;
                 m_timer.Dispose();
-                m_timer = null!;
+                m_timer = null;
             }
 
             m_cts.Dispose();
@@ -422,11 +466,15 @@ namespace TSParser
         /// <param name="bytes"></param>
         /// <param name="packetLength"></param>
         /// <returns></returns>
-        /// <exception cref="Exception"></exception>
+        /// <exception cref="ArgumentException"></exception>
         public TsPacket GetOneTsPacketFromBytes(ReadOnlySpan<byte> bytes, int packetLength)
         {
-            if (bytes.Length != 188 && bytes.Length != 204) throw new Exception("bytes length shall be 188 or 204 bytes");
-            if (packetLength != bytes.Length) throw new Exception("Not equal bytes length and packet length");
+            if (bytes.Length != 188 && bytes.Length != 204)
+                throw new ArgumentException("Bytes length shall be 188 or 204 bytes.", nameof(bytes));
+
+            if (packetLength != bytes.Length)
+                throw new ArgumentException("Packet length must match bytes length.", nameof(packetLength));
+
             return m_tsPacketFactory.GetTsPacket(bytes, packetLength);
         }
         /// <summary>
@@ -435,7 +483,7 @@ namespace TSParser
         /// <param name="bytes"></param>
         /// <param name="mip">When true, parse as DVB-T MIP (PID 0x15); first byte is synchronization id, not MPEG table_id.</param>
         /// <returns></returns>
-        /// <exception cref="Exception"></exception>
+        /// <exception cref="TsParserException"></exception>
         public static Table GetOneTableFromBytes(ReadOnlySpan<byte> bytes, bool mip = false)
         {
             if (mip)
@@ -457,7 +505,7 @@ namespace TSParser
                 byte n when n == 0x42 || n == 0x46 => new SDT(bytes),
                 byte n when n == 0x40 || n == 0x41 => new NIT(bytes),
                 byte n when n == 0x4F || n == 0x4E || (n >= 0x50 && n <= 0x5F) || (n >= 0x60 && n <= 0x6F) => new EIT(bytes),
-                _ => throw new Exception($"Unknown table id: 0x{bytes[0]:X2}"),
+                _ => throw new TsParserException($"Unknown table id: 0x{bytes[0]:X2}"),
             };
         }
         /// <summary>
@@ -489,23 +537,51 @@ namespace TSParser
         public static T2miDemuxer CreateT2miDemuxer(ushort pid, bool deencapsulate = false) => new(pid, deencapsulate);
         #endregion
         #region Private methods
+        private static int? GetParserRunTimeMilliseconds(TimeSpan? parserRunTime)
+        {
+            if (!parserRunTime.HasValue)
+            {
+                return null;
+            }
+
+            if (parserRunTime.Value.TotalMilliseconds > int.MaxValue)
+            {
+                throw new TsParserConfigurationException("Parser run time is too large.");
+            }
+
+            return (int)parserRunTime.Value.TotalMilliseconds;
+        }
+
         private void FileParser(string filePath)
         {
             if (File.Exists(filePath))
             {
-                if (new FileInfo(filePath).Length < 2040) throw new Exception("File length is less then 2040 bytes");
+                if (new FileInfo(filePath).Length < 2040)
+                    throw new TsParserConfigurationException("File length is less than 2040 bytes.");
+
                 m_tsFileName = filePath;
                 RunParserDel = RunFileParser;
             }
             else
             {
-                throw new Exception($"Invalid file name: {filePath}");
+                throw new TsParserConfigurationException($"Invalid file name: {filePath}");
             }
         }
-        private void UdpParser(string multicastGroup, int? m_port, string? incomingIpInterface)
+
+        private void UdpParser(UdpSourceOptions source)
         {
-            var multicastPort = (int)(m_port == null ? 1234 : m_port);
-            m_incomingIpInterface = incomingIpInterface == null ? IPAddress.Any : IPAddress.Parse(incomingIpInterface);
+            if (string.IsNullOrWhiteSpace(source.MulticastGroup))
+            {
+                throw new TsParserConfigurationException("UDP multicast group must be set.");
+            }
+
+            var multicastPort = source.MulticastPort ?? 1234;
+            if (!string.IsNullOrWhiteSpace(source.IncomingIp) && !IPAddress.TryParse(source.IncomingIp, out m_incomingIpInterface))
+            {
+                throw new TsParserConfigurationException($"Invalid incoming IP address: {source.IncomingIp}");
+            }
+
+            m_incomingIpInterface ??= IPAddress.Any;
 
             if (multicastPort > 1 && multicastPort < 65535)
             {
@@ -513,9 +589,13 @@ namespace TSParser
             }
             else
             {
-                throw new Exception("Invalid port number");
+                throw new TsParserConfigurationException("Invalid port number.");
             }
-            m_multicastGroup = IPAddress.Parse(multicastGroup);
+
+            if (!IPAddress.TryParse(source.MulticastGroup, out m_multicastGroup))
+            {
+                throw new TsParserConfigurationException($"Invalid multicast group: {source.MulticastGroup}");
+            }
 
             RunParserDel = RunUdpParser;
         }
@@ -538,7 +618,7 @@ namespace TSParser
             m_NitFactory.OnNitReady += NitFactory_OnNitReady;
             m_MipFactory.OnMipReady += MipFactory_OnMipReady;
             m_TdtTotFactory.OnTdtReady += TdtTotFactory_OnTdtReady;
-            m_TdtTotFactory.OnTotready += TdtTotFactory_OnTotready;
+            m_TdtTotFactory.OnTotReady += TdtTotFactory_OnTotReady;
             m_SdtBatFactory.OnSdtReady += SdtBatFactory_OnSdtReady;
             m_SdtBatFactory.OnBatReady += SdtBatFactory_OnBatReady;
             m_analyzer.OnRate += Analyzer_OnRate;
@@ -560,9 +640,9 @@ namespace TSParser
         {
             OnMipReady?.Invoke(mip);
         }
-        private void TdtTotFactory_OnTotready(TOT tot)
+        private void TdtTotFactory_OnTotReady(TOT tot)
         {
-            OnTotready?.Invoke(tot);
+            _onTotReady?.Invoke(tot);
         }
         private void NitFactory_OnNitReady(NIT nit)
         {
@@ -758,7 +838,7 @@ namespace TSParser
         }
         private void GetPmt(TsPacket tsPacket)
         {
-            if (m_pmtPids == null) return;
+            if (m_pmtPids.Length == 0) return;
 
             var idx = Array.IndexOf(m_pmtPids, tsPacket.Pid);
 
@@ -786,7 +866,7 @@ namespace TSParser
         }
         private void GetEws(TsPacket tsPacket)
         {
-            if (m_ewsPids == null || m_ewsPids.Count == 0)
+            if (m_ewsPids.Count == 0)
             {
                 if (!m_ewsPidListEmptyWarningSent)
                 {
@@ -820,7 +900,7 @@ namespace TSParser
         }
         private void GetEews(TsPacket tsPacket)
         {
-            if (m_eewsPids == null || m_eewsPids.Count == 0)
+            if (m_eewsPids.Count == 0)
             {
                 if (!m_eewsPidListEmptyWarningSent)
                 {
@@ -912,11 +992,11 @@ namespace TSParser
 
         private void AtscTableFactory(TsPacket tsPacket)
         {
-            throw new NotImplementedException("ATSC table factory");
+            throw new UnsupportedTsModeException(TsMode.ATSC);
         }
         private void IsdbTableFactory(TsPacket tsPacket)
         {
-            throw new NotImplementedException("ISDB table factory");
+            throw new UnsupportedTsModeException(TsMode.ISDB);
         }
         private static int GetPacketLength(ReadOnlySpan<byte> byteArray, out int syncByteOffset)
         {
@@ -974,7 +1054,10 @@ namespace TSParser
         }
         private void RunFileParser()
         {
-            using FileStream fileStream = new(m_tsFileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 348 * 188, FileOptions.SequentialScan);
+            var fileName = m_tsFileName
+                ?? throw new TsParserConfigurationException("TS file source is not configured.");
+
+            using FileStream fileStream = new(fileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 348 * 188, FileOptions.SequentialScan);
             using BinaryReader binaryReader = new(fileStream);
             try
             {
@@ -982,7 +1065,7 @@ namespace TSParser
                 var packLen = GetPacketLength(firstFileBytes, out int syncByte);
 
                 if (syncByte == -1)
-                    throw new Exception("Cannot sync with ts");
+                    throw new TsSyncException("Cannot sync with TS.");
 
                 int MAX_BUFFER = 22 * packLen;
 
@@ -997,7 +1080,7 @@ namespace TSParser
 
                 if (m_timer != null) m_timer.Enabled = true;
 
-                Logger.Send(LogStatus.INFO, $"Start ts file {m_tsFileName} parsing, ts packet length: {packLen}");
+                Logger.Send(LogStatus.INFO, $"Start ts file {fileName} parsing, ts packet length: {packLen}");
 
                 long gOffset = 0;
 
@@ -1054,13 +1137,16 @@ namespace TSParser
 
             try
             {
+                var multicastGroup = m_multicastGroup
+                    ?? throw new TsParserConfigurationException("UDP multicast group is not configured.");
+                var incomingIpInterface = m_incomingIpInterface ?? IPAddress.Any;
                 var bytesCount = 0;
                 var udpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
                 socket = udpSocket;
-                IPEndPoint endPoint = new(m_incomingIpInterface, m_multicastPort);
+                IPEndPoint endPoint = new(incomingIpInterface, m_multicastPort);
                 udpSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
                 udpSocket.Bind(endPoint);
-                udpSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(m_multicastGroup, m_incomingIpInterface));
+                udpSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(multicastGroup, incomingIpInterface));
                 udpSocket.ReceiveBufferSize = 1316 * 1000;
                 udpSocket.ReceiveTimeout = m_socketTimeOut;
 
@@ -1098,7 +1184,7 @@ namespace TSParser
 
                 if (m_timer != null) m_timer.Enabled = true;
 
-                Logger.Send(LogStatus.INFO, $"Start with network {m_multicastGroup}:{m_multicastPort} ts packet length: {packetLen}, network packet lenght: {bytesCount}");
+                Logger.Send(LogStatus.INFO, $"Start with network {multicastGroup}:{m_multicastPort} ts packet length: {packetLen}, network packet lenght: {bytesCount}");
 
                 m_bufferReaderTask = Task.Run(() => ReadFromBuffer(channel.Reader, packetLen, m_ct), m_ct);
 
@@ -1251,7 +1337,7 @@ namespace TSParser
                 {
                     m_timer.Elapsed -= Timer_Elapsed;
                     m_timer.Dispose();
-                    m_timer = null!;
+                    m_timer = null;
                 }
 
                 if (!m_disposed)
@@ -1305,7 +1391,7 @@ namespace TSParser
             }
             finally
             {
-                socket = null!;
+                socket = null;
             }
         }
 

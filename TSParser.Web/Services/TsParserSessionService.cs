@@ -442,7 +442,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
         parser.OnBatReady += OnBatReady;
         parser.OnEitReady += OnEitReady;
         parser.OnTdtReady += OnTdtReady;
-        parser.OnTotready += OnTotReady;
+        parser.OnTotReady += OnTotReady;
         parser.OnAitReady += OnAitReady;
         parser.OnMipReady += OnMipReady;
         parser.OnScte35Ready += OnScte35Ready;
@@ -462,7 +462,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
         parser.OnBatReady -= OnBatReady;
         parser.OnEitReady -= OnEitReady;
         parser.OnTdtReady -= OnTdtReady;
-        parser.OnTotready -= OnTotReady;
+        parser.OnTotReady -= OnTotReady;
         parser.OnAitReady -= OnAitReady;
         parser.OnMipReady -= OnMipReady;
         parser.OnScte35Ready -= OnScte35Ready;
