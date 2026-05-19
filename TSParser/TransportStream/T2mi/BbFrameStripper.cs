@@ -320,7 +320,7 @@ public sealed class BbFrameStripper
         int cbIssy,
         int cbDnp)
     {
-        var cbSyncd = header.Sync >> 3;
+        var cbSyncd = header.Syncd >> 3;
         if (_writtenSoFar != 0)
         {
             if (_writtenSoFar + cbSyncd != cbUpl)

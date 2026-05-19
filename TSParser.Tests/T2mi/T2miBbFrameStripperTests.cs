@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Buffers.Binary;
 using NUnit.Framework;
 using TSParser.Service;
 using TSParser.Tests.Helpers;
@@ -58,6 +59,45 @@ public sealed class T2miBbFrameStripperTests
     }
 
     [Test]
+    public void Stripper_normal_mode_non_zero_syncd_completes_cached_packet()
+    {
+        var expected = new byte[T2miAccessors.TsPacketSize];
+        expected[0] = TsPacket.SYNC_BYTE;
+        expected[1] = TsPacket.SYNC_BYTE;
+        for (var i = 2; i < expected.Length; i++)
+        {
+            expected[i] = (byte)i;
+        }
+
+        var firstFrame = BuildNormalModeBbFrameData(
+            new[] { expected[0] },
+            syncdBits: 0,
+            sync: TsPacket.SYNC_BYTE);
+
+        var secondData = new byte[187];
+        expected.AsSpan(2, 186).CopyTo(secondData);
+        secondData[^1] = 0x00;
+        var secondFrame = BuildNormalModeBbFrameData(
+            secondData,
+            syncdBits: 186 * 8,
+            sync: 0);
+
+        var stripper = new BbFrameStripper(T2miTestPacketFactory.SampleBasebandPlpId);
+        byte[]? emitted = null;
+        stripper.TsPacketsReady += data => emitted = data.ToArray();
+
+        stripper.Receive(firstFrame);
+
+        Assert.That(emitted, Is.Null);
+
+        stripper.Receive(secondFrame);
+
+        Assert.That(emitted, Is.Not.Null);
+        Assert.That(emitted!.Length, Is.EqualTo(T2miAccessors.TsPacketSize));
+        Assert.That(emitted, Is.EqualTo(expected));
+    }
+
+    [Test]
     public void Demuxer_with_deencapsulate_wires_bb_stripper_per_plp()
     {
         var demuxer = TsParser.CreateT2miDemuxer(FixtureLoader.T2miSamplePid, deencapsulate: true);
@@ -74,5 +114,26 @@ public sealed class T2miBbFrameStripperTests
 
         Assert.That(plpTs, Is.Not.Null);
         Assert.That(plpTs![0], Is.EqualTo(TsPacket.SYNC_BYTE));
+    }
+
+    private static byte[] BuildNormalModeBbFrameData(
+        ReadOnlySpan<byte> dataField,
+        ushort syncdBits,
+        byte sync)
+    {
+        const ushort uplBits = T2miAccessors.TsPacketSize * 8;
+        var header = new byte[BbHeader.Size];
+        header[0] = 0xC0;
+        BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(2), uplBits);
+        BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(4), (ushort)(dataField.Length * 8));
+        header[6] = sync;
+        BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(7), syncdBits);
+        header[9] = Utils.GetCRC8(header.AsSpan(0, 9));
+
+        var frame = new byte[BbHeader.Size + dataField.Length];
+        header.CopyTo(frame, 0);
+        dataField.CopyTo(frame.AsSpan(BbHeader.Size));
+
+        return frame;
     }
 }
