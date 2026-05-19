@@ -22,7 +22,7 @@ namespace TSParser.Tests.T2mi;
 
 internal static class T2miTestPacketFactory
 {
-    /// <summary>Known DVB-T2 timestamp T2-MI packet (22 bytes, from sl-demux sample).</summary>
+    /// <summary>Known DVB-T2 timestamp T2-MI packet.</summary>
     public static ReadOnlySpan<byte> DvbT2TimestampPacket => DvbT2TimestampPacketBytes;
 
     private static readonly byte[] DvbT2TimestampPacketBytes =

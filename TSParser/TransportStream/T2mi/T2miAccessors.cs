@@ -16,7 +16,7 @@ using System.Buffers.Binary;
 
 namespace TSParser.TransportStream.T2mi;
 
-/// <summary>Bit-level accessors for 188-byte MPEG-TS and assembled T2-MI packets (ported from sl-demux <c>t2mi.h</c>).</summary>
+/// <summary>Bit-level accessors for 188-byte MPEG-TS and assembled T2-MI packets.</summary>
 internal static class T2miAccessors
 {
     public const int TsPacketSize = 188;

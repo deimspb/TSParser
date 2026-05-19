@@ -16,7 +16,7 @@ using TSParser.Service;
 
 namespace TSParser.TransportStream.T2mi;
 
-/// <summary>Reassembles T2-MI packets from MPEG-TS payloads (ported from sl-demux <c>PacketStripper</c>).</summary>
+/// <summary>Reassembles T2-MI packets from MPEG-TS payloads.</summary>
 public sealed class T2miPacketAssembler
 {
     private const int BufferSize = 0x3000;

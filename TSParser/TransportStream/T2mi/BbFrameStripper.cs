@@ -16,7 +16,7 @@ using TSParser.Service;
 
 namespace TSParser.TransportStream.T2mi;
 
-/// <summary>Extracts MPEG-TS packets from a DVB-T2 baseband frame payload (ported from sl-demux <c>BBFrameStripper</c>).</summary>
+/// <summary>Extracts MPEG-TS packets from a DVB-T2 baseband frame payload.</summary>
 public sealed class BbFrameStripper
 {
     private const int MaxPartialBufferSize = 214;
