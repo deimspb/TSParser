@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:TSParser.Desktop.Controls"
+             xmlns:models="using:TSParser.Desktop.Models"
+             x:Class="TSParser.Desktop.Controls.TableTreeControl"
+             x:Name="Self">
+    <UserControl.Styles>
+        <Style Selector="Button.table-tree-toggle">
+            <Setter Property="Foreground" Value="#495057"/>
+        </Style>
+        <Style Selector="Button.table-tree-toggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#e9ecef"/>
+        </Style>
+        <Style Selector="Button.table-tree-label">
+            <Setter Property="Foreground" Value="#212529"/>
+        </Style>
+        <Style Selector="Button.table-tree-label:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#e9ecef"/>
+        </Style>
+        <Style Selector="Button.table-tree-label.active">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.table-tree-label.stale">
+            <Setter Property="Foreground" Value="#868e96"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+        </Style>
+        <Style Selector="Button.table-tree-label.selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="#cfe2ff"/>
+        </Style>
+        <Style Selector="Button.table-tree-label.pid-missing">
+            <Setter Property="Foreground" Value="#c92a2a"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.table-tree-label.category">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <Style Selector="Button.table-tree-label.stream">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <Panel MinHeight="40">
+            <TextBlock x:Name="EmptyText"
+                       Text="No tables yet. Open a file or start UDP to parse."
+                       Margin="12"
+                       Foreground="#6c757d"
+                       FontSize="13"
+                       TextWrapping="Wrap"
+                       IsVisible="True"/>
+            <ItemsControl x:Name="RootItems" IsVisible="False">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="models:TableTreeNode">
+                        <controls:TableTreeNodeControl Node="{Binding}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Panel>
+    </ScrollViewer>
+</UserControl>

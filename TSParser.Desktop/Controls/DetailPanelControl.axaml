@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:TSParser.Desktop.Models"
+             x:Class="TSParser.Desktop.Controls.DetailPanelControl"
+             x:Name="Self">
+    <UserControl.Styles>
+        <Style Selector="ToggleButton.detail-view-btn">
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MinWidth" Value="48"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="#f8f9fa"/>
+            <Setter Property="Foreground" Value="#495057"/>
+        </Style>
+        <Style Selector="ToggleButton.detail-view-btn:checked">
+            <Setter Property="Background" Value="#0d6efd"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="TextBox.detail-panel-content">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Mono,monospace"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="Background" Value="#f8f9fa"/>
+            <Setter Property="BorderBrush" Value="#e9ecef"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="8"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+            <TextBlock x:Name="TitleText"
+                       Grid.Column="0"
+                       FontWeight="SemiBold"
+                       FontSize="14"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="0">
+                <ToggleButton x:Name="HexModeButton"
+                              Classes="detail-view-btn"
+                              Content="Hex"
+                              Click="OnHexModeClick"/>
+                <ToggleButton x:Name="StringModeButton"
+                              Classes="detail-view-btn"
+                              Content="String"
+                              Click="OnStringModeClick"/>
+            </StackPanel>
+        </Grid>
+
+        <Panel Grid.Row="1">
+            <TextBlock x:Name="PlaceholderText"
+                       Text="Select a table or descriptor in the tree."
+                       Foreground="#868e96"
+                       FontSize="13"/>
+            <TextBox x:Name="ContentBox"
+                     Classes="detail-panel-content"
+                     IsVisible="False"
+                     VerticalAlignment="Stretch"
+                     VerticalContentAlignment="Top"/>
+        </Panel>
+    </Grid>
+</UserControl>

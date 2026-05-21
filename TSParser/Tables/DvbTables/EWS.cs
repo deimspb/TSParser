@@ -132,7 +132,7 @@ public struct ZoneLoop
         EwsZoneId = BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]);
         pointer += 2;
         //reserved 7 bits
-        EwsState = (bytes[pointer + 2] & 0x01) != 0;
+        EwsState = (bytes[pointer] & 0x01) != 0;
         pointer++;
         //reserved 4 bits
         ZoneDescriptorLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x0FFF);

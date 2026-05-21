@@ -1,0 +1,121 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:TSParser.Desktop.ViewModels"
+        x:Class="TSParser.Desktop.Views.Dialogs.BitrateSettingsWindow"
+        x:DataType="vm:BitrateSettingsViewModel"
+        Title="Bitrate"
+        Classes="dialog-window dialog-window-bitrate">
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20" Spacing="4" MinWidth="480">
+            <TextBlock Classes="dialog-title" Text="Bitrate"/>
+            <TextBlock Classes="dialog-hint"
+                       Text="Changing measurement options or selected PIDs restarts the current file or UDP session when one is open. Chart display options (stream / sum lines) update immediately."/>
+
+            <TextBlock Classes="dialog-section" Text="Measurement"/>
+
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+                  ColumnSpacing="12" RowSpacing="8">
+                <TextBlock Grid.Row="0" Grid.Column="0" Classes="dialog-label" Text="Clock source"/>
+                <ComboBox Grid.Row="0" Grid.Column="1"
+                          Classes="dialog-select"
+                          ItemsSource="{Binding ClockSourceOptions}"
+                          SelectedItem="{Binding SelectedClockSource}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BitrateSettingsViewModel+ClockSourceOption">
+                            <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="dialog-label" Text="Window (seconds)"/>
+                <TextBox Grid.Row="1" Grid.Column="1"
+                         Classes="dialog-input"
+                         Text="{Binding MeasurementWindowSeconds}"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Classes="dialog-label" Text="Reference PID"/>
+                <TextBox Grid.Row="2" Grid.Column="1"
+                         Classes="dialog-input"
+                         PlaceholderText="optional, e.g. 0x0100"
+                         Text="{Binding ReferencePidText}"/>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Classes="dialog-label"
+                           Text="Assumed rate (Mb/s)"
+                           IsVisible="{Binding ShowAssumedRate}"/>
+                <TextBox Grid.Row="3" Grid.Column="1"
+                         Classes="dialog-input"
+                         IsVisible="{Binding ShowAssumedRate}"
+                         Text="{Binding AssumedMbps}"/>
+
+                <StackPanel Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="1" Spacing="6">
+                    <CheckBox Content="Measure stream bitrate" IsChecked="{Binding MeasureStreamBitrate}"/>
+                    <CheckBox Content="Total + useful (exclude null PID)" IsChecked="{Binding MeasureUsefulAndTotal}"/>
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Classes="dialog-section" Text="Chart"/>
+            <StackPanel Orientation="Horizontal" Spacing="16">
+                <CheckBox Content="Stream (total / useful)" IsChecked="{Binding ShowStreamOnChart}"/>
+                <CheckBox Content="Sum of selected PIDs"
+                          ToolTip.Tip="Sum of selected PID bitrates at each window"
+                          IsChecked="{Binding ShowPidSumOnChart}"
+                          IsEnabled="{Binding CanEnablePidSum}"/>
+                <CheckBox Content="Per-PID lines"
+                          ToolTip.Tip="Separate line per selected PID"
+                          IsChecked="{Binding ShowIndividualPidsOnChart}"
+                          IsEnabled="{Binding CanEnableIndividualPids}"/>
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                <TextBlock Classes="dialog-label" Text="PIDs in stream" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                    <Button Classes="dialog-btn dialog-btn-small" Content="Refresh" Click="OnRefreshPidsClick"/>
+                    <Button Classes="dialog-btn dialog-btn-small" Content="All" Click="OnSelectAllPidsClick"
+                            IsEnabled="{Binding HasAvailablePids}"/>
+                    <Button Classes="dialog-btn dialog-btn-small" Content="Clear" Click="OnClearPidsClick"
+                            IsEnabled="{Binding CanEnableIndividualPids}"/>
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Classes="dialog-hint"
+                       Margin="0,4,0,0"
+                       IsVisible="{Binding !HasAvailablePids}"
+                       Text="No PIDs observed yet. Open a file or start UDP, then refresh this list."/>
+
+            <ScrollViewer Classes="dialog-pid-scroll"
+                          IsVisible="{Binding HasAvailablePids}"
+                          HorizontalScrollBarVisibility="Disabled">
+                <Border Classes="dialog-pid-picker">
+                    <ItemsControl ItemsSource="{Binding PidItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:BitrateSettingsViewModel+PidChartItem">
+                                <CheckBox Margin="0,2,12,2"
+                                          Content="{Binding Display}"
+                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                          FontFamily="Consolas,Courier New,monospace"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </ScrollViewer>
+
+            <TextBlock Classes="dialog-error"
+                       Text="{Binding ErrorMessage}"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8"
+                        Margin="0,16,0,0">
+                <Button Classes="dialog-btn dialog-btn-primary" Content="OK" Click="OnOkClick" IsDefault="True"/>
+                <Button Classes="dialog-btn" Content="Cancel" Click="OnCancelClick" IsCancel="True"/>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

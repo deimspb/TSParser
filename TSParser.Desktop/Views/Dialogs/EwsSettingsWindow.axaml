@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:TSParser.Desktop.ViewModels"
+        x:Class="TSParser.Desktop.Views.Dialogs.EwsSettingsWindow"
+        x:DataType="vm:EwsSettingsViewModel"
+        Title="EWS / EEWS PIDs"
+        Classes="dialog-window"
+        Width="440"
+        SizeToContent="Height">
+
+    <StackPanel Margin="20" Spacing="4">
+        <TextBlock Classes="dialog-title" Text="EWS / EEWS PIDs"/>
+        <TextBlock Classes="dialog-hint"
+                   Text="Operator EWS and EEWS tables require their PIDs. If a file or UDP source is already open, OK re-parses it with these PIDs. Comma-separated decimal or hex (for example 0x1A00, 0x1A01)."/>
+
+        <TextBlock Classes="dialog-field-label" Text="EWS PIDs"/>
+        <TextBox Classes="dialog-input"
+                 PlaceholderText="0x1A00"
+                 Text="{Binding EwsPidsText}"/>
+
+        <TextBlock Classes="dialog-field-label" Text="EEWS PIDs"/>
+        <TextBox Classes="dialog-input"
+                 PlaceholderText="0x1A01"
+                 Text="{Binding EewsPidsText}"/>
+
+        <TextBlock Classes="dialog-error"
+                   Text="{Binding ErrorMessage}"
+                   IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8"
+                    Margin="0,16,0,0">
+            <Button Classes="dialog-btn dialog-btn-primary" Content="OK" Click="OnOkClick" IsDefault="True"/>
+            <Button Classes="dialog-btn" Content="Cancel" Click="OnCancelClick" IsCancel="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

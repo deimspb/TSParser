@@ -29,6 +29,8 @@ TSParser/                 # Core library (ship target), net10.0
   Buffers/, Comparer/, DictionariesData/, Enums/
 TSParser.Tests/           # NUnit + manifest JSON + TestResources/**/*.tbl|.desc
 TSParser.Benchmarks/      # BenchmarkDotNet
+TSParser.Desktop/         # Avalonia desktop UI (file + UDP SI viewer, ScottPlot bitrate); Services/Models mirror TSParser.Web in `TSParser.Desktop.*`
+TSParser.Web/             # Blazor reference UI for same session/tree/chart behavior
 tools/CorpusHarvester/    # harvest real TS → descriptor fixtures
 tools/BlessManifest/      # bless/refresh manifest.descriptors.json
 StreamParser/             # Local sample CLI (.gitignore); T2-MI PLP service listing via --plp_services
@@ -298,7 +300,26 @@ End-user docs: [Readme.md](Readme.md) (Russian). When editing README, prefer thi
 dotnet build TSParser.sln
 dotnet test TSParser.Tests/TSParser.Tests.csproj
 dotnet run --project TSParser.Benchmarks -c Release
+dotnet run --project TSParser.Desktop
 ```
+
+**TSParser.Desktop** (cross-platform GUI, `net10.0`):
+
+```bash
+dotnet run --project TSParser.Desktop
+```
+
+Release publish (self-contained; RIDs in `TSParser.Desktop.csproj`: `win-x64`, `linux-x64`, `osx-x64`, `osx-arm64`):
+
+```bash
+dotnet publish TSParser.Desktop -c Release -r win-x64 --self-contained -o artifacts/desktop/win-x64
+dotnet publish TSParser.Desktop -c Release -r linux-x64 --self-contained -o artifacts/desktop/linux-x64
+dotnet publish TSParser.Desktop -c Release -r osx-arm64 --self-contained -o artifacts/desktop/osx-arm64
+```
+
+Windows wrapper: `tools\publish-desktop.ps1` (all three RIDs by default, or `-Rid win-x64`).
+
+On exit, `MainWindow.Closing` and `ShutdownRequested` call `MainWindowViewModel.DisposeAsync()` (parser stop, pump cancel). UI services are duplicated from `TSParser.Web/Services` under `TSParser.Desktop.Services` — keep both in sync when changing session behavior.
 
 **StreamParser** (local checkout only; project may be gitignored):
 

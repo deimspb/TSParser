@@ -1,0 +1,52 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:TSParser.Desktop.ViewModels"
+        xmlns:controls="using:TSParser.Desktop.Controls"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="1200"
+        d:DesignHeight="800"
+        x:Class="TSParser.Desktop.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="TSParser"
+        Width="1200"
+        Height="800"
+        MinWidth="900"
+        MinHeight="600">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*,220">
+        <controls:ParserToolbarControl Grid.Row="0"
+                                         DataContext="{Binding}"/>
+
+        <Grid Grid.Row="1"
+              ColumnDefinitions="320,*"
+              MinHeight="0">
+            <Border Grid.Column="0"
+                    Classes="parser-tree-panel">
+                <controls:TableTreeControl x:Name="TableTree"
+                                           Store="{Binding TreeStore}"
+                                           TreeRevision="{Binding TreeRevision}"
+                                           SelectedNodeId="{Binding SelectedNodeId}"/>
+            </Border>
+
+            <Border Grid.Column="1"
+                    Classes="parser-detail-panel">
+                <controls:DetailPanelControl SelectedNode="{Binding SelectedNode}"/>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2"
+                Classes="parser-chart-panel">
+            <controls:BitrateChartControl Store="{Binding BitrateStore}"
+                                            DataRevision="{Binding BitrateRevision}"
+                                            ChartConfigRevision="{Binding ChartConfigRevision}"
+                                            FitRevision="{Binding ChartFitRevision}"/>
+        </Border>
+    </Grid>
+</Window>

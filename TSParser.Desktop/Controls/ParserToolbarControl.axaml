@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:TSParser.Desktop.ViewModels"
+             x:Class="TSParser.Desktop.Controls.ParserToolbarControl"
+             x:DataType="vm:MainWindowViewModel"
+             x:Name="Self">
+    <Border Classes="parser-toolbar">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+            <TextBlock Grid.Column="0"
+                       Classes="parser-brand"
+                       Text="TSParser"
+                       Margin="0,0,12,0"/>
+
+            <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                <Button x:Name="OpenFileButton"
+                        Classes="toolbar-btn"
+                        Content="File…"
+                        Click="OnOpenFileClick"/>
+                <Button x:Name="BitrateButton"
+                        Classes="toolbar-btn"
+                        Content="Bitrate…"
+                        Click="OnBitrateClick"/>
+
+                <TextBlock Classes="toolbar-label" Text="Multicast"/>
+                <TextBox x:Name="EndpointBox"
+                         Classes="toolbar-input-endpoint"
+                         PlaceholderText="239.1.2.3:1234"/>
+                <TextBlock Classes="toolbar-label" Text="Source IP"/>
+                <ComboBox x:Name="BindCombo"
+                          Classes="toolbar-select"/>
+                <Button x:Name="PlayButton"
+                        Classes="toolbar-btn toolbar-btn-primary"
+                        Content="Play"
+                        Click="OnPlayUdpClick"/>
+                <Button x:Name="StopButton"
+                        Classes="toolbar-btn"
+                        Content="Stop"
+                        Click="OnStopUdpClick"/>
+
+                <Button x:Name="EwsButton"
+                        Classes="toolbar-btn"
+                        Content="EWS…"
+                        Click="OnEwsClick"
+                        Margin="8,0,0,0"/>
+            </WrapPanel>
+
+            <TextBlock x:Name="StatusText"
+                       Grid.Column="2"
+                       Classes="parser-status"/>
+        </Grid>
+    </Border>
+</UserControl>

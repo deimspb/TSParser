@@ -1,0 +1,121 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style Selector="Border.parser-toolbar">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#dee2e6"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="Padding" Value="8,6"/>
+    </Style>
+
+    <Style Selector="TextBlock.parser-brand">
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="Button.toolbar-btn">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="6,4"/>
+        <Setter Property="Margin" Value="0,0,4,0"/>
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="BorderBrush" Value="#ced4da"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Background" Value="#f8f9fa"/>
+        <Setter Property="Foreground" Value="#212529"/>
+    </Style>
+
+    <Style Selector="Button.toolbar-btn:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#e9ecef"/>
+    </Style>
+
+    <Style Selector="Button.toolbar-btn:disabled">
+        <Setter Property="Opacity" Value="0.55"/>
+    </Style>
+
+    <Style Selector="Button.toolbar-btn-primary">
+        <Setter Property="Background" Value="#0d6efd"/>
+        <Setter Property="BorderBrush" Value="#0d6efd"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="Button.toolbar-btn-primary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#0b5ed7"/>
+    </Style>
+
+    <Style Selector="TextBox.toolbar-input-endpoint">
+        <Setter Property="Width" Value="168"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="BorderBrush" Value="#ced4da"/>
+    </Style>
+
+    <Style Selector="ComboBox.toolbar-select">
+        <Setter Property="MinWidth" Value="140"/>
+        <Setter Property="MaxWidth" Value="220"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+
+    <Style Selector="TextBlock.toolbar-label">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="#6c757d"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="8,0,4,0"/>
+    </Style>
+
+    <Style Selector="TextBlock.parser-status">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="#495057"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="MaxWidth" Value="320"/>
+    </Style>
+
+    <Style Selector="TextBlock.parser-status-error">
+        <Setter Property="Foreground" Value="#b02a37"/>
+    </Style>
+
+    <Style Selector="Border.parser-chart-panel">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#dee2e6"/>
+        <Setter Property="BorderThickness" Value="0,1,0,0"/>
+        <Setter Property="Padding" Value="8,6,10,8"/>
+    </Style>
+
+    <Style Selector="Grid.bitrate-chart-panel">
+        <Setter Property="MinHeight" Value="0"/>
+    </Style>
+
+    <Style Selector="TextBlock.bitrate-chart-title">
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>
+
+    <Style Selector="TextBlock.bitrate-chart-stats">
+        <Setter Property="Foreground" Value="#495057"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <Style Selector="TextBlock.bitrate-chart-placeholder">
+        <Setter Property="Foreground" Value="#868e96"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="TextAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="Border.parser-tree-panel">
+        <Setter Property="Background" Value="#f8f9fa"/>
+        <Setter Property="BorderBrush" Value="#dee2e6"/>
+        <Setter Property="BorderThickness" Value="0,0,1,0"/>
+    </Style>
+
+    <Style Selector="Border.parser-detail-panel">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="Padding" Value="12,12,16,12"/>
+    </Style>
+</Styles>
+

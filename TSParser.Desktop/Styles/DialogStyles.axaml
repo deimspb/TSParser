@@ -1,0 +1,93 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style Selector="Window.dialog-window">
+        <Setter Property="SizeToContent" Value="WidthAndHeight"/>
+        <Setter Property="MinWidth" Value="420"/>
+        <Setter Property="MaxWidth" Value="580"/>
+        <Setter Property="WindowStartupLocation" Value="CenterOwner"/>
+        <Setter Property="CanResize" Value="True"/>
+    </Style>
+
+    <Style Selector="Window.dialog-window-bitrate">
+        <Setter Property="MaxWidth" Value="620"/>
+        <Setter Property="MaxHeight" Value="680"/>
+        <Setter Property="Width" Value="560"/>
+        <Setter Property="Height" Value="620"/>
+        <Setter Property="SizeToContent" Value="Manual"/>
+    </Style>
+
+    <Style Selector="TextBlock.dialog-title">
+        <Setter Property="FontSize" Value="17"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Margin" Value="0,0,0,6"/>
+    </Style>
+
+    <Style Selector="TextBlock.dialog-hint">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#6c757d"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+
+    <Style Selector="TextBlock.dialog-section">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Margin" Value="0,12,0,8"/>
+    </Style>
+
+    <Style Selector="TextBlock.dialog-label">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="TextBlock.dialog-field-label">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Margin" Value="0,10,0,4"/>
+    </Style>
+
+    <Style Selector="TextBlock.dialog-error">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#b02a37"/>
+        <Setter Property="Margin" Value="0,8,0,0"/>
+    </Style>
+
+    <Style Selector="TextBox.dialog-input">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="MinHeight" Value="28"/>
+    </Style>
+
+    <Style Selector="ComboBox.dialog-select">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="MinHeight" Value="28"/>
+    </Style>
+
+    <Style Selector="Button.dialog-btn">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="MinWidth" Value="72"/>
+    </Style>
+
+    <Style Selector="Button.dialog-btn-primary">
+        <Setter Property="Background" Value="#0d6efd"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="Button.dialog-btn-small">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Padding" Value="6,3"/>
+        <Setter Property="MinWidth" Value="0"/>
+    </Style>
+
+    <Style Selector="Border.dialog-pid-picker">
+        <Setter Property="Background" Value="#f8f9fa"/>
+        <Setter Property="BorderBrush" Value="#dee2e6"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="8"/>
+        <Setter Property="MaxHeight" Value="160"/>
+    </Style>
+
+    <Style Selector="ScrollViewer.dialog-pid-scroll">
+        <Setter Property="MaxHeight" Value="160"/>
+    </Style>
+</Styles>

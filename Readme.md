@@ -224,6 +224,23 @@ dotnet test TSParser.Tests/TSParser.Tests.csproj
 | [tools/CorpusHarvester](tools/CorpusHarvester) | Сбор реальных TS → выборка дескрипторов для фикстур |
 | [tools/BlessManifest](tools/BlessManifest) | Обновление `manifest.descriptors.json` / checksums |
 | [TSParser.Benchmarks](TSParser.Benchmarks) | BenchmarkDotNet: `dotnet run --project TSParser.Benchmarks -c Release` |
+| [TSParser.Desktop](TSParser.Desktop) | Кроссплатформенный GUI (Avalonia): файл TS, UDP multicast, дерево SI, битрейт (ScottPlot) |
+
+### TSParser.Desktop
+
+Запуск из корня репозитория:
+
+```bash
+dotnet run --project TSParser.Desktop
+```
+
+Сборка релиза (self-contained, пример для Windows):
+
+```bash
+dotnet publish TSParser.Desktop -c Release -r win-x64 --self-contained
+```
+
+Для Linux и macOS: `-r linux-x64` или `-r osx-arm64`. Скрипт для всех целевых RID: `tools\publish-desktop.ps1`.
 
 ---
 

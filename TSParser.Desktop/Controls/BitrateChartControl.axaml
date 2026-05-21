@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sp="using:ScottPlot.Avalonia"
+             x:Class="TSParser.Desktop.Controls.BitrateChartControl">
+
+    <Grid RowDefinitions="Auto,*"
+          Classes="bitrate-chart-panel">
+        <Grid Grid.Row="0"
+              ColumnDefinitions="*,Auto"
+              Margin="0,0,0,4">
+            <TextBlock x:Name="ChartTitle"
+                       Grid.Column="0"
+                       Classes="bitrate-chart-title"
+                       Text="Bitrate"/>
+            <TextBlock x:Name="ChartStats"
+                       Grid.Column="1"
+                       Classes="bitrate-chart-stats"
+                       Text=""/>
+        </Grid>
+
+        <Grid Grid.Row="1"
+              MinHeight="120">
+            <sp:AvaPlot x:Name="ChartPlot"
+                        IsVisible="False"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"/>
+            <TextBlock x:Name="PlaceholderText"
+                       Classes="bitrate-chart-placeholder"
+                       Text="Open Bitrate… to choose stream and/or PID traces, then parse a file or UDP stream."
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center"/>
+        </Grid>
+    </Grid>
+</UserControl>
