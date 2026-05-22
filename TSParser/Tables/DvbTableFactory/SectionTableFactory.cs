@@ -47,7 +47,10 @@ internal abstract class SectionTableFactory<TTable, TKey> : TableFactory
 
         if (!IsExpectedTableId(bytes[0]))
         {
-            Logger.Send(LogStatus.ETSI, GetInvalidTableIdMessage(bytes[0]));
+            var tableId = bytes[0];
+            if (!IsTableIdHandledBySiblingFactory(tableId))
+                Logger.Send(LogStatus.ETSI, GetInvalidTableIdMessage(tableId));
+
             return;
         }
 
@@ -71,6 +74,11 @@ internal abstract class SectionTableFactory<TTable, TKey> : TableFactory
     }
 
     protected abstract bool IsExpectedTableId(byte tableId);
+
+    /// <summary>
+    /// When the same PID carries EWS (0x93) and EEWS (0x94/0x95), the sibling factory owns these table IDs.
+    /// </summary>
+    protected virtual bool IsTableIdHandledBySiblingFactory(byte tableId) => false;
 
     protected abstract TTable ParseTable(ReadOnlySpan<byte> bytes);
 

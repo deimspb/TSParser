@@ -57,3 +57,10 @@
     color: #868e96;
     font-size: 0.8rem;
 }
+
+/* Vertical spike + unified hover tooltip (Mbps per trace at cursor X) */
+.bitrate-chart-plot ::deep .hoverlayer .vertical-line {
+    stroke: #6c757d;
+    stroke-width: 1.5px;
+    stroke-dasharray: 4, 3;
+}

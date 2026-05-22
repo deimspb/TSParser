@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:TSParser.Desktop.Controls"
              xmlns:models="using:TSParser.Desktop.Models"
              x:Class="TSParser.Desktop.Controls.DetailPanelControl"
              x:Name="Self">
@@ -16,13 +17,15 @@
             <Setter Property="Background" Value="#0d6efd"/>
             <Setter Property="Foreground" Value="White"/>
         </Style>
-        <Style Selector="TextBox.detail-panel-content">
+        <Style Selector="TextBlock.detail-panel-content">
             <Setter Property="FontFamily" Value="Consolas,Cascadia Mono,monospace"/>
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="AcceptsReturn" Value="True"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="IsReadOnly" Value="True"/>
-            <Setter Property="Background" Value="#f8f9fa"/>
+            <Setter Property="Foreground" Value="#212529"/>
+            <Setter Property="Background" Value="White"/>
+        </Style>
+        <Style Selector="Border.detail-panel-content-border">
+            <Setter Property="Background" Value="White"/>
             <Setter Property="BorderBrush" Value="#e9ecef"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="4"/>
@@ -55,11 +58,23 @@
                        Text="Select a table or descriptor in the tree."
                        Foreground="#868e96"
                        FontSize="13"/>
-            <TextBox x:Name="ContentBox"
-                     Classes="detail-panel-content"
-                     IsVisible="False"
-                     VerticalAlignment="Stretch"
-                     VerticalContentAlignment="Top"/>
+            <Border x:Name="ContentBorder"
+                    Classes="detail-panel-content-border"
+                    IsVisible="False"
+                    Padding="0">
+                <Panel>
+                    <controls:HexDumpControl x:Name="HexView"
+                                             IsVisible="False"/>
+                    <ScrollViewer x:Name="StringScroll"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  IsVisible="False">
+                        <TextBlock x:Name="ContentText"
+                                   Classes="detail-panel-content"
+                                   Margin="8"/>
+                    </ScrollViewer>
+                </Panel>
+            </Border>
         </Panel>
     </Grid>
 </UserControl>

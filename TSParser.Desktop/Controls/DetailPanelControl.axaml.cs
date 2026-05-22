@@ -64,13 +64,55 @@ public partial class DetailPanelControl : UserControl
         var node = SelectedNode;
         TitleText.Text = node?.Label ?? "Details";
 
-        var content = ParseDisplayFormatter.Format(node, _mode);
-        var showPlaceholder = node is null || string.IsNullOrEmpty(content);
+        if (node is null)
+        {
+            ShowPlaceholder("Select a table or descriptor in the tree.");
+            return;
+        }
 
-        PlaceholderText.IsVisible = showPlaceholder;
-        ContentBox.IsVisible = !showPlaceholder;
+        if (_mode == DetailViewMode.Hex)
+        {
+            var bytes = HexDumpFormatter.TryGetRawBytes(node);
+            if (bytes is null)
+            {
+                ShowPlaceholder("No raw bytes available for this node.");
+                return;
+            }
 
-        if (!showPlaceholder)
-            ContentBox.Text = content;
+            if (bytes.Length == 0)
+            {
+                ShowPlaceholder("(empty)");
+                return;
+            }
+
+            PlaceholderText.IsVisible = false;
+            ContentBorder.IsVisible = true;
+            HexView.Bytes = bytes;
+            HexView.IsVisible = true;
+            StringScroll.IsVisible = false;
+            return;
+        }
+
+        var content = ParseDisplayFormatter.Format(node, DetailViewMode.String);
+        if (string.IsNullOrEmpty(content))
+        {
+            ShowPlaceholder("No displayable content for this node.");
+            return;
+        }
+
+        PlaceholderText.IsVisible = false;
+        ContentBorder.IsVisible = true;
+        HexView.IsVisible = false;
+        StringScroll.IsVisible = true;
+        ContentText.Text = content;
+    }
+
+    private void ShowPlaceholder(string message)
+    {
+        PlaceholderText.Text = message;
+        PlaceholderText.IsVisible = true;
+        ContentBorder.IsVisible = false;
+        HexView.IsVisible = false;
+        StringScroll.IsVisible = false;
     }
 }

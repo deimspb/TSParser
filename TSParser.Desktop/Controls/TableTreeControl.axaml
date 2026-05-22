@@ -45,7 +45,7 @@
         <Panel MinHeight="40">
             <TextBlock x:Name="EmptyText"
                        Text="No tables yet. Open a file or start UDP to parse."
-                       Margin="12"
+                       Margin="0"
                        Foreground="#6c757d"
                        FontSize="13"
                        TextWrapping="Wrap"

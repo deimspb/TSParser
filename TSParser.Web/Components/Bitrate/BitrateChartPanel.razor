@@ -368,7 +368,8 @@
             Mode = ModeFlag.Lines,
             X = x,
             Y = y,
-            Line = new Line { Color = color, Width = width }
+            Line = new Line { Color = color, Width = width },
+            HoverTemplate = "%{y:.2f} Mbps<extra>%{fullData.Name}</extra>"
         };
 
     private static Layout CreateLayout(
@@ -383,6 +384,8 @@
             Title = new Plotly.Blazor.LayoutLib.Title { Text = title },
             AutoSize = true,
             UiRevision = uiRevision.ToString(),
+            HoverMode = Plotly.Blazor.LayoutLib.HoverModeEnum.XUnified,
+            SpikeDistance = -1,
             Margin = new Margin { L = 56, R = 24, T = 48, B = 56 },
             XAxis = new List<XAxis>
             {
@@ -390,7 +393,11 @@
                 {
                     Title = new Plotly.Blazor.LayoutLib.XAxisLib.Title { Text = xLabel },
                     ZeroLine = false,
-                    Range = new List<object> { xRange.Min, xRange.Max }
+                    Range = new List<object> { xRange.Min, xRange.Max },
+                    ShowSpikes = true,
+                    SpikeMode = Plotly.Blazor.LayoutLib.XAxisLib.SpikeModeFlag.ToAxis,
+                    SpikeThickness = 1,
+                    SpikeColor = "#6c757d"
                 }
             },
             YAxis = new List<YAxis>

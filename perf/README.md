@@ -59,6 +59,25 @@ dotnet run -c Release --project TSParser.Benchmarks -p:Platform=x64 -- `
 
 Each run writes `perf/baselines/current.json` (via `PerfBaselineExporter`). Markdown summaries are under `BenchmarkDotNet.Artifacts/results/`.
 
+## Full-file SI smoke (correctness)
+
+Table-mode functional check with event counters and `Logger` capture (`ETSI`, `EXCEPTION`). Use **Release** so `Logger.OnLogMessage` is raised.
+
+```powershell
+$env:TSPARSER_PERF_TS_MEDIUM = 'D:\Dvb\dvb_lib\9.ts'
+$env:TSPARSER_PERF_TS_LARGE  = 'D:\Dvb\dvb_lib\27_5min.ts'
+cd tools
+.\run-full-ts-smoke.ps1
+```
+
+Or explicit paths:
+
+```powershell
+dotnet run -c Release --project TSParser.Benchmarks -p:Platform=x64 -- --smoke D:\Dvb\dvb_lib\9.ts D:\Dvb\dvb_lib\27_5min.ts
+```
+
+Exit code **0** when each file reaches `OnParserComplete` with PAT ≥ 1 and PMT ≥ 1 and no unhandled exception.
+
 ## Baseline format
 
 `perf/baselines/*.json` (schema version 1):

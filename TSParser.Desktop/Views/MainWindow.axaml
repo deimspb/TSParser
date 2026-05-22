@@ -10,7 +10,7 @@
         x:Class="TSParser.Desktop.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="TSParser"
+        Title="{Binding WindowTitle}"
         Width="1200"
         Height="800"
         MinWidth="900"
@@ -42,7 +42,8 @@
         </Grid>
 
         <Border Grid.Row="2"
-                Classes="parser-chart-panel">
+                Classes="parser-chart-panel"
+                ClipToBounds="True">
             <controls:BitrateChartControl Store="{Binding BitrateStore}"
                                             DataRevision="{Binding BitrateRevision}"
                                             ChartConfigRevision="{Binding ChartConfigRevision}"

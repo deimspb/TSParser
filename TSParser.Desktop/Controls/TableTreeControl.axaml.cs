@@ -19,8 +19,6 @@ public partial class TableTreeControl : UserControl
 
     public event Action<TableTreeNode>? NodeSelected;
 
-    public event Action? StructureChanged;
-
     public TableVersionStore? Store
     {
         get => GetValue(StoreProperty);
@@ -48,12 +46,10 @@ public partial class TableTreeControl : UserControl
     {
         base.OnPropertyChanged(change);
 
-        if (change.Property == TreeRevisionProperty
-            || change.Property == StoreProperty
-            || change.Property == SelectedNodeIdProperty)
-        {
+        if (change.Property == TreeRevisionProperty || change.Property == StoreProperty)
             RefreshNodes();
-        }
+        else if (change.Property == SelectedNodeIdProperty)
+            RefreshNodePresentation();
     }
 
     public void HandleNodeSelected(TableTreeNode node)
@@ -63,11 +59,11 @@ public partial class TableTreeControl : UserControl
         RefreshNodePresentation();
     }
 
-    public void HandleToggleExpand(TableTreeNode node, bool expanded)
+    public void HandleToggleExpand(TableTreeNode node, bool expanded, TableTreeNodeControl source)
     {
         Store?.SetExpanded(node.Id, expanded);
-        StructureChanged?.Invoke();
-        RefreshNodes();
+        source.ReloadChildrenPanel();
+        source.RefreshPresentation();
     }
 
     private void RefreshNodes()

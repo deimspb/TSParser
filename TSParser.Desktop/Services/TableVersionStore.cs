@@ -124,13 +124,7 @@ public sealed class TableVersionStore
     public void SetSelectedNode(Guid? nodeId)
     {
         lock (_sync)
-        {
-            if (SelectedNodeId == nodeId)
-                return;
-
             SelectedNodeId = nodeId;
-            BumpRevision();
-        }
     }
 
     public void SetExpanded(Guid nodeId, bool expanded)
@@ -143,8 +137,6 @@ public sealed class TableVersionStore
             node.IsExpanded = expanded;
             if (expanded && node.Kind == TableTreeNodeKind.Version)
                 TableDescriptorChildrenBuilder.LoadDescriptorChildren(node);
-
-            BumpRevision();
         }
     }
 

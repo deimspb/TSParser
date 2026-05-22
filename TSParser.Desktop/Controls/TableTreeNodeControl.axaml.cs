@@ -30,6 +30,17 @@ public partial class TableTreeNodeControl : UserControl
             RefreshPresentation();
     }
 
+    public void ReloadChildrenPanel()
+    {
+        var node = Node;
+        if (node is null)
+            return;
+
+        var showChildren = node.IsExpanded && node.Children.Count > 0;
+        ChildrenPanel.IsVisible = showChildren;
+        ChildrenPanel.ItemsSource = showChildren ? node.Children : null;
+    }
+
     public void RefreshPresentation()
     {
         var node = Node;
@@ -49,7 +60,7 @@ public partial class TableTreeNodeControl : UserControl
         if (showToggle)
             ToggleButton.Content = node.IsExpanded ? "▼" : "▶";
 
-        ChildrenPanel.IsVisible = node.IsExpanded && node.Children.Count > 0;
+        ReloadChildrenPanel();
 
         LabelButton.Classes.Clear();
         switch (node.Kind)
@@ -95,7 +106,7 @@ public partial class TableTreeNodeControl : UserControl
         if (Node is null)
             return;
 
-        FindTreeHost()?.HandleToggleExpand(Node, !Node.IsExpanded);
+        FindTreeHost()?.HandleToggleExpand(Node, !Node.IsExpanded, this);
     }
 
     private void OnSelectClick(object? sender, RoutedEventArgs e)

@@ -29,6 +29,8 @@ internal sealed class EewsFactory : SectionTableFactory<EEWS, byte>
 
     protected override bool IsExpectedTableId(byte tableId) => tableId is 0x94 or 0x95;
 
+    protected override bool IsTableIdHandledBySiblingFactory(byte tableId) => tableId == 0x93;
+
     protected override EEWS ParseTable(ReadOnlySpan<byte> bytes) => new(bytes, CurrentPid);
 
     protected override byte GetSectionKey(EEWS table) => 0;

@@ -22,19 +22,35 @@
     {
         <p class="detail-panel-placeholder">Select a table or descriptor in the tree.</p>
     }
-    else if (string.IsNullOrEmpty(_content))
+    else if (_mode == DetailViewMode.Hex)
+    {
+        @if (_hexBytes is null)
+        {
+            <p class="detail-panel-placeholder">No raw bytes available for this node.</p>
+        }
+        else if (_hexBytes.Length == 0)
+        {
+            <p class="detail-panel-placeholder">(empty)</p>
+        }
+        else
+        {
+            <HexDumpPanel Bytes="_hexBytes" />
+        }
+    }
+    else if (string.IsNullOrEmpty(_stringContent))
     {
         <p class="detail-panel-placeholder">No displayable content for this node.</p>
     }
     else
     {
-        <pre class="detail-panel-content" spellcheck="false">@_content</pre>
+        <pre class="detail-panel-content" spellcheck="false">@_stringContent</pre>
     }
 </div>
 
 @code {
     private DetailViewMode _mode = DetailViewMode.String;
-    private string _content = "";
+    private string _stringContent = "";
+    private byte[]? _hexBytes;
     private TableTreeNode? _lastNode;
 
     [Parameter]
@@ -61,6 +77,13 @@
         StateHasChanged();
     }
 
-    private void RefreshContent() =>
-        _content = ParseDisplayFormatter.Format(SelectedNode, _mode);
+    private void RefreshContent()
+    {
+        _hexBytes = _mode == DetailViewMode.Hex
+            ? HexDumpFormatter.TryGetRawBytes(SelectedNode)
+            : null;
+        _stringContent = _mode == DetailViewMode.String
+            ? ParseDisplayFormatter.Format(SelectedNode, DetailViewMode.String)
+            : "";
+    }
 }

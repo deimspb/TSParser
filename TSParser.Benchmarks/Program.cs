@@ -15,14 +15,29 @@
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
 using TSParser.Benchmarks.Infrastructure;
+using TSParser.Benchmarks.Transport;
 
 namespace TSParser.Benchmarks;
 
 internal static class Program
 {
-    public static void Main(string[] args)
+    public static int Main(string[] args)
     {
+        if (IsSmokeMode(args))
+        {
+            return FullTsSmokeHarness.Run(GetSmokeArgs(args));
+        }
+
         var config = DefaultConfig.Instance.AddExporter(new PerfBaselineExporter());
         BenchmarkRunner.Run(typeof(Program).Assembly, config, args);
+        return 0;
     }
+
+    private static bool IsSmokeMode(string[] args) =>
+        args.Length > 0 &&
+        (args[0].Equals("--smoke", StringComparison.OrdinalIgnoreCase) ||
+         args[0].Equals("--full-ts-smoke", StringComparison.OrdinalIgnoreCase));
+
+    private static string[] GetSmokeArgs(string[] args) =>
+        args.Length > 1 ? args[1..] : [];
 }

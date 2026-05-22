@@ -3,7 +3,7 @@
              xmlns:sp="using:ScottPlot.Avalonia"
              x:Class="TSParser.Desktop.Controls.BitrateChartControl">
 
-    <Grid RowDefinitions="Auto,*"
+    <Grid RowDefinitions="Auto,*,Auto"
           Classes="bitrate-chart-panel">
         <Grid Grid.Row="0"
               ColumnDefinitions="*,Auto"
@@ -18,12 +18,28 @@
                        Text=""/>
         </Grid>
 
-        <Grid Grid.Row="1"
-              MinHeight="120">
+        <Grid x:Name="PlotHost"
+              Grid.Row="1"
+              MinHeight="120"
+              ClipToBounds="True">
             <sp:AvaPlot x:Name="ChartPlot"
                         IsVisible="False"
+                        ClipToBounds="True"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"/>
+            <Border x:Name="ProbeOverlay"
+                    IsVisible="False"
+                    IsHitTestVisible="False"
+                    Classes="bitrate-chart-probe"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Margin="8,8,0,0"
+                    Padding="6,4"
+                    CornerRadius="4">
+                <TextBlock x:Name="ProbeText"
+                           FontSize="11"
+                           TextWrapping="Wrap"/>
+            </Border>
             <TextBlock x:Name="PlaceholderText"
                        Classes="bitrate-chart-placeholder"
                        Text="Open Bitrate… to choose stream and/or PID traces, then parse a file or UDP stream."
@@ -31,5 +47,12 @@
                        VerticalAlignment="Center"
                        HorizontalAlignment="Center"/>
         </Grid>
+
+        <WrapPanel x:Name="LegendHost"
+                   Grid.Row="2"
+                   Classes="bitrate-chart-legend"
+                   IsVisible="False"
+                   HorizontalAlignment="Center"
+                   Margin="0,4,0,0"/>
     </Grid>
 </UserControl>

@@ -27,7 +27,8 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
-    <PackageReference Include="ScottPlot.Avalonia" Version="5.1.58" />
+    <!-- ScottPlot.Avalonia on nuget.org targets Avalonia 11; Sesame build supports Avalonia 12 -->
+    <PackageReference Include="Sesame.ScottPlot.Avalonia" Version="5.1.58" />
   </ItemGroup>
 
   <ItemGroup>

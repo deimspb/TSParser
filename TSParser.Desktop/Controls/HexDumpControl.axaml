@@ -1,0 +1,114 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TSParser.Desktop.Controls.HexDumpControl"
+             x:Name="Self"
+             Focusable="True"
+             KeyDown="OnKeyDown">
+    <UserControl.Styles>
+        <Style Selector="TextBlock.hex-dump-cell">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Mono,monospace"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#495057"/>
+            <Setter Property="Width" Value="21"/>
+            <Setter Property="MinWidth" Value="21"/>
+            <Setter Property="MaxWidth" Value="21"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="TextAlignment" Value="Left"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="TextBlock.hex-dump-offset">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Mono,monospace"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#6c757d"/>
+            <Setter Property="Padding" Value="8,1,10,1"/>
+            <Setter Property="MinWidth" Value="44"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+        </Style>
+        <Style Selector="SelectableTextBlock.hex-dump-data">
+            <Setter Property="FontFamily" Value="Consolas,Cascadia Mono,monospace"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#212529"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Padding" Value="4,1,8,1"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="SelectionBrush" Value="#cfe2ff"/>
+            <Setter Property="SelectionForegroundBrush" Value="#212529"/>
+        </Style>
+        <Style Selector="SelectableTextBlock.hex-dump-data:pointerover">
+            <Setter Property="Background" Value="#FFFFFF"/>
+        </Style>
+        <Style Selector="SelectableTextBlock.hex-dump-data:focus">
+            <Setter Property="Background" Value="#FFFFFF"/>
+        </Style>
+    </UserControl.Styles>
+
+    <UserControl.ContextMenu>
+        <ContextMenu>
+            <MenuItem Header="Copy" Click="OnCopyClick"/>
+        </ContextMenu>
+    </UserControl.ContextMenu>
+
+    <Grid RowDefinitions="Auto,*" ColumnDefinitions="Auto,*">
+        <Border Grid.Row="0"
+                Grid.Column="0"
+                Background="#f1f3f5"
+                BorderBrush="#dee2e6"
+                BorderThickness="0,0,1,1"
+                MinWidth="44"
+                MinHeight="22"/>
+
+        <Border Grid.Row="0"
+                Grid.Column="1"
+                Background="#f1f3f5"
+                BorderBrush="#dee2e6"
+                BorderThickness="0,0,0,1"
+                Padding="4,2,8,2"
+                HorizontalAlignment="Left">
+            <ItemsControl x:Name="ColumnHeaderItems"
+                          HorizontalAlignment="Left"
+                          Width="336">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="16" Rows="1"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Classes="hex-dump-cell" Text="{Binding}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+
+        <ScrollViewer x:Name="OffsetScroll"
+                      Grid.Row="1"
+                      Grid.Column="0"
+                      IsHitTestVisible="False"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Hidden"
+                      Background="#f8f9fa"
+                      BorderBrush="#dee2e6"
+                      BorderThickness="0,0,1,0">
+            <StackPanel x:Name="OffsetPanel"/>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="DataScroll"
+                      Grid.Row="1"
+                      Grid.Column="1"
+                      Background="#FFFFFF"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalContentAlignment="Left"
+                      ScrollChanged="OnDataScrollChanged">
+            <SelectableTextBlock x:Name="DataText"
+                                 Classes="hex-dump-data"/>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

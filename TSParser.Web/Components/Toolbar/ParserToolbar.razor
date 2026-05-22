@@ -429,10 +429,6 @@
         try
         {
             await Session.RestartCurrentSessionAsync();
-            // #region agent log
-            AgentDebugLog.Write("B", "ParserToolbar.RestartActiveSessionAsync", "session restarted",
-                new { hasActiveSource = Session.HasActiveSource }, runId: "post-fix");
-            // #endregion
         }
         catch (Exception ex)
         {
@@ -464,17 +460,6 @@
 
         Session.Settings.SetEwsPids(ews);
         Session.Settings.SetEewsPids(eews);
-        // #region agent log
-        AgentDebugLog.Write("A", "ParserToolbar.SaveEwsSettings", "saved ews/eews pids",
-            new
-            {
-                ews,
-                eews,
-                hasActiveSource = Session.HasActiveSource,
-                isRunning = Session.IsRunning
-            });
-        Session.AgentLogParserEwsState("ParserToolbar.SaveEwsSettings");
-        // #endregion
         _showEwsDialog = false;
 
         if (Session.HasActiveSource)

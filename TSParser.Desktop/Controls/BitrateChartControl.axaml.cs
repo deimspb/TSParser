@@ -1,6 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Layout;
+using Avalonia.Media;
 using ScottPlot;
+using ScottPlot.Plottables;
 using TSParser.Desktop.Services;
 
 namespace TSParser.Desktop.Controls;
@@ -12,9 +16,17 @@ public partial class BitrateChartControl : UserControl
     private const double XAxisPaddingRatio = 0.02;
     private const double MinXAxisPadding = 0.25;
 
+    private const double MinPlotDimension = 8;
+
     private int _appliedRevision = -1;
     private int _appliedConfigRevision = -1;
     private int _lastFitRevisionSeen = -1;
+    private bool _renderPending;
+    private readonly List<(string Name, string ColorHex)> _legendEntries = [];
+    private readonly List<ChartSeries> _series = [];
+    private string _xAxisUnit = "";
+    private VerticalLine? _probeLine;
+    private bool _probeHandlersAttached;
 
     public static readonly StyledProperty<BitrateHistoryStore?> StoreProperty =
         AvaloniaProperty.Register<BitrateChartControl, BitrateHistoryStore?>(nameof(Store));
@@ -55,6 +67,25 @@ public partial class BitrateChartControl : UserControl
     public BitrateChartControl()
     {
         InitializeComponent();
+        PlotHost.LayoutUpdated += OnPlotHostLayoutUpdated;
+        EnsureProbePointerHandlers();
+    }
+
+    private void EnsureProbePointerHandlers()
+    {
+        if (_probeHandlersAttached)
+            return;
+
+        _probeHandlersAttached = true;
+        ChartPlot.PointerMoved += OnChartPointerMoved;
+        ChartPlot.PointerExited += OnChartPointerExited;
+        PlotHost.PointerExited += OnChartPointerExited;
+    }
+
+    private void OnPlotHostLayoutUpdated(object? sender, EventArgs e)
+    {
+        if (_renderPending)
+            TryRender();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -82,22 +113,34 @@ public partial class BitrateChartControl : UserControl
         ChartTitle.Text = BuildChartTitle(snapshot);
         ChartStats.Text = BuildStatsText(snapshot);
 
-        ChartPlot.IsVisible = hasData;
-        PlaceholderText.IsVisible = !hasData;
-
         if (!hasData)
         {
             _appliedRevision = -1;
-            ChartPlot.Plot.Clear();
-            ChartPlot.Refresh();
+            _renderPending = false;
+            ChartPlot.IsVisible = false;
+            PlaceholderText.IsVisible = true;
+            ClearPlotAndLegend();
             return;
         }
+
+        if (!HasValidPlotBounds())
+        {
+            _renderPending = true;
+            ChartPlot.IsVisible = false;
+            PlaceholderText.IsVisible = true;
+            PlaceholderText.Text = "Rendering bitrate chart…";
+            return;
+        }
+
+        _renderPending = false;
+        ChartPlot.IsVisible = true;
+        PlaceholderText.IsVisible = false;
 
         var fitChanged = FitRevision != _lastFitRevisionSeen;
         _lastFitRevisionSeen = FitRevision;
 
         var configChanged = ChartConfigRevision != _appliedConfigRevision;
-        if (!fitChanged && !configChanged && DataRevision == _appliedRevision)
+        if (!_renderPending && !fitChanged && !configChanged && DataRevision == _appliedRevision)
             return;
 
         _appliedRevision = DataRevision;
@@ -120,7 +163,7 @@ public partial class BitrateChartControl : UserControl
         var allY = new List<double>();
         var allX = new List<double>();
 
-        ChartPlot.Plot.Clear();
+        ClearPlotAndLegend();
 
         if (snapshot.ShowStreamOnChart && snapshot.FilePoints.Count > 0)
         {
@@ -178,7 +221,7 @@ public partial class BitrateChartControl : UserControl
         var allX = new List<double>();
         DateTime? origin = null;
 
-        ChartPlot.Plot.Clear();
+        ClearPlotAndLegend();
 
         if (snapshot.ShowStreamOnChart && snapshot.UdpPoints.Count > 0)
         {
@@ -298,9 +341,11 @@ public partial class BitrateChartControl : UserControl
         if (xs.Length == 0)
             return;
 
+        _legendEntries.Add((name, colorHex));
+        _series.Add(new ChartSeries(name, colorHex, xs, ys));
+
         var line = ChartPlot.Plot.Add.ScatterLine(xs, ys);
-        line.LegendText = name;
-        line.Color = Color.FromHex(colorHex);
+        line.Color = ScottPlot.Color.FromHex(colorHex);
         line.LineWidth = lineWidth;
     }
 
@@ -314,21 +359,231 @@ public partial class BitrateChartControl : UserControl
         {
             ChartPlot.IsVisible = false;
             PlaceholderText.IsVisible = true;
-            ChartPlot.Refresh();
             return;
         }
 
-        var xRange = ComputeXRange(allX);
-        var yRange = ComputeYRange(allY);
+        if (!HasValidPlotBounds())
+        {
+            _renderPending = true;
+            ChartPlot.IsVisible = false;
+            PlaceholderText.IsVisible = true;
+            return;
+        }
+
+        var xRange = SanitizeAxisRange(ComputeXRange(allX));
+        var yRange = SanitizeAxisRange(ComputeYRange(allY));
 
         ChartPlot.Plot.Title(title);
         ChartPlot.Plot.Axes.Bottom.Label.Text = xLabel;
         ChartPlot.Plot.Axes.Left.Label.Text = "Mbps";
+        _xAxisUnit = xLabel;
+
         ChartPlot.Plot.Axes.SetLimits(xRange.Min, xRange.Max, yRange.Min, yRange.Max);
-        ChartPlot.Plot.Legend.IsVisible = true;
-        ChartPlot.Plot.Legend.Orientation = Orientation.Horizontal;
-        ChartPlot.Plot.Legend.Alignment = Alignment.UpperCenter;
-        ChartPlot.Refresh();
+        ApplyExternalLegend();
+        EnsureProbePlottables();
+        HideProbe();
+        SafeRefreshChart();
+    }
+
+    private void ClearPlotAndLegend()
+    {
+        ChartPlot.Plot.Clear();
+        ChartPlot.Plot.HideLegend();
+        _legendEntries.Clear();
+        _series.Clear();
+        _probeLine = null;
+        LegendHost.Children.Clear();
+        LegendHost.IsVisible = false;
+        HideProbe();
+    }
+
+    private void EnsureProbePlottables()
+    {
+        _probeLine ??= ChartPlot.Plot.Add.VerticalLine(0);
+        _probeLine.IsVisible = false;
+        _probeLine.IsDraggable = false;
+        _probeLine.LineWidth = 1.5f;
+        _probeLine.LinePattern = LinePattern.Dashed;
+        _probeLine.Color = ScottPlot.Color.FromHex("#6c757d");
+    }
+
+    private void OnChartPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!ChartPlot.IsVisible || _series.Count == 0 || _probeLine is null)
+        {
+            HideProbe();
+            return;
+        }
+
+        var position = e.GetCurrentPoint(ChartPlot).Position;
+        if (position.X < 0 || position.Y < 0
+            || position.X > ChartPlot.Bounds.Width || position.Y > ChartPlot.Bounds.Height)
+        {
+            HideProbe();
+            return;
+        }
+
+        var pixel = new Pixel((float)position.X, (float)position.Y);
+        var mouseCoords = ChartPlot.Plot.GetCoordinates(pixel);
+        var x = mouseCoords.X;
+        var limits = ChartPlot.Plot.Axes.GetLimits();
+
+        if (x < limits.Left || x > limits.Right)
+        {
+            HideProbe();
+            return;
+        }
+
+        _probeLine.X = x;
+        _probeLine.IsVisible = true;
+
+        var lines = new List<string> { $"{FormatProbeX(x)}" };
+        var anyValue = false;
+
+        foreach (var series in _series)
+        {
+            if (!TryInterpolateY(series.Xs, series.Ys, x, out var yMbps))
+                continue;
+
+            anyValue = true;
+            lines.Add($"{series.Name}: {yMbps:F2} Mbps");
+        }
+
+        if (!anyValue)
+        {
+            HideProbe();
+            return;
+        }
+
+        ProbeText.Text = string.Join(Environment.NewLine, lines);
+        ProbeOverlay.IsVisible = true;
+        SafeRefreshChart();
+    }
+
+    private void OnChartPointerExited(object? sender, PointerEventArgs e) => HideProbe();
+
+    private void HideProbe()
+    {
+        if (_probeLine is not null)
+            _probeLine.IsVisible = false;
+
+        ProbeOverlay.IsVisible = false;
+
+        if (ChartPlot.IsVisible)
+            SafeRefreshChart();
+    }
+
+    private string FormatProbeX(double x)
+    {
+        if (_xAxisUnit.Contains('%', StringComparison.Ordinal))
+            return $"X: {x:F2} %";
+
+        if (_xAxisUnit.Contains("(s)", StringComparison.OrdinalIgnoreCase))
+            return $"X: {x:F2} s";
+
+        if (_xAxisUnit.Contains("(MB)", StringComparison.OrdinalIgnoreCase))
+            return $"X: {x:F2} MB";
+
+        return $"X: {x:F2}";
+    }
+
+    private static bool TryInterpolateY(double[] xs, double[] ys, double x, out double y)
+    {
+        y = 0;
+        if (xs.Length == 0 || ys.Length != xs.Length)
+            return false;
+
+        if (x < xs[0] || x > xs[^1])
+            return false;
+
+        if (xs.Length == 1)
+        {
+            y = ys[0];
+            return true;
+        }
+
+        var index = Array.BinarySearch(xs, x);
+        if (index >= 0)
+        {
+            y = ys[index];
+            return true;
+        }
+
+        index = ~index;
+        if (index <= 0 || index >= xs.Length)
+            return false;
+
+        var x0 = xs[index - 1];
+        var x1 = xs[index];
+        var y0 = ys[index - 1];
+        var y1 = ys[index];
+        var t = (x - x0) / (x1 - x0);
+        y = y0 + t * (y1 - y0);
+        return true;
+    }
+
+    private sealed record ChartSeries(string Name, string ColorHex, double[] Xs, double[] Ys);
+
+    private void ApplyExternalLegend()
+    {
+        LegendHost.Children.Clear();
+
+        foreach (var (name, colorHex) in _legendEntries)
+        {
+            var swatch = new Border
+            {
+                Width = 16,
+                Height = 3,
+                CornerRadius = new CornerRadius(1),
+                Background = new SolidColorBrush(Avalonia.Media.Color.Parse(colorHex)),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            };
+
+            var item = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                Spacing = 6,
+                Margin = new Thickness(0, 0, 14, 0),
+                Children =
+                {
+                    swatch,
+                    new TextBlock { Text = name },
+                },
+            };
+
+            LegendHost.Children.Add(item);
+        }
+
+        LegendHost.IsVisible = _legendEntries.Count > 0;
+    }
+
+    private bool HasValidPlotBounds()
+    {
+        // PlotHost stays in the visual tree; ChartPlot.Bounds stay 0 while IsVisible=false.
+        var w = PlotHost.Bounds.Width;
+        var h = PlotHost.Bounds.Height;
+        return w >= MinPlotDimension && h >= MinPlotDimension
+               && !double.IsNaN(w) && !double.IsNaN(h);
+    }
+
+    private static (double Min, double Max) SanitizeAxisRange((double Min, double Max) range) =>
+        double.IsFinite(range.Min) && double.IsFinite(range.Max) && range.Max > range.Min
+            ? range
+            : (0, 1);
+
+    private void SafeRefreshChart()
+    {
+        try
+        {
+            ChartPlot.Refresh();
+        }
+        catch
+        {
+            _renderPending = false;
+            ChartPlot.IsVisible = false;
+            PlaceholderText.IsVisible = true;
+            PlaceholderText.Text = "Bitrate chart failed to render.";
+        }
     }
 
     private static double ToFileX(long byteOffset, long? fileLengthBytes, bool usePercent) =>
