@@ -14,11 +14,12 @@
 
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using BenchmarkDotNet.Engines;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Environments;
-using Perfolizer.Horology;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Reports;
+using Perfolizer.Horology;
 
 namespace TSParser.Benchmarks.Infrastructure;
 
@@ -52,21 +53,16 @@ internal sealed class PerfBaselineExporter : IExporter
             s_lastRepoRoot = repoRoot;
             s_hostInfo = summary.HostEnvironmentInfo;
 
-            var timeUnit = summary.Style.TimeUnit ?? TimeUnit.Microsecond;
             foreach (var report in summary.Reports)
             {
                 var key = BuildKey(report);
-                var mean = report.ResultStatistics?.Mean ?? 0;
-                var stdDev = report.ResultStatistics?.StandardDeviation ?? 0;
+                var (meanNs, stdDevNs) = GetTimingNanoseconds(report, summary);
 
                 long? allocated = report.Metrics.TryGetValue("Allocated Memory", out var metric)
                     ? (long?)Convert.ToInt64(metric.Value)
                     : null;
 
-                s_accumulated[key] = new BenchmarkEntry(
-                    ToNanoseconds(mean, timeUnit),
-                    ToNanoseconds(stdDev, timeUnit),
-                    allocated);
+                s_accumulated[key] = new BenchmarkEntry(meanNs, stdDevNs, allocated);
             }
         }
 
@@ -168,6 +164,31 @@ internal sealed class PerfBaselineExporter : IExporter
         return paramParts.Length > 0
             ? $"{descriptor.Type.Name}.{descriptor.WorkloadMethod.Name}({string.Join(',', paramParts)})"
             : $"{descriptor.Type.Name}.{descriptor.WorkloadMethod.Name}";
+    }
+
+    /// <summary>
+    /// Workload measurements are always in nanoseconds; summary time unit can disagree for long runs.
+    /// </summary>
+    private static (long MeanNs, long StdDevNs) GetTimingNanoseconds(BenchmarkReport report, Summary summary)
+    {
+        var workloadNs = report.AllMeasurements
+            .Where(m => m.IterationMode == IterationMode.Workload && m.IterationStage == IterationStage.Result)
+            .Select(m => m.Operations > 0 ? m.Nanoseconds / m.Operations : m.Nanoseconds)
+            .ToArray();
+
+        if (workloadNs.Length > 0)
+        {
+            var mean = workloadNs.Average();
+            var stdDev = workloadNs.Length > 1
+                ? Math.Sqrt(workloadNs.Select(x => (x - mean) * (x - mean)).Average())
+                : 0;
+            return ((long)Math.Round(mean), (long)Math.Round(stdDev));
+        }
+
+        var timeUnit = summary.Style.TimeUnit ?? TimeUnit.Nanosecond;
+        return (
+            ToNanoseconds(report.ResultStatistics?.Mean ?? 0, timeUnit),
+            ToNanoseconds(report.ResultStatistics?.StandardDeviation ?? 0, timeUnit));
     }
 
     private static long ToNanoseconds(double value, TimeUnit unit)

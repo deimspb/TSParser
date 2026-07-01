@@ -18,8 +18,8 @@ namespace TSParser.TransportStream
 {
     internal class TsPacketFactory
     {
-        private ulong m_packetCounter = 0;
-        private uint m_syncLoss = 0;
+        private ulong m_packetCounter;
+        private uint m_syncLoss;
 
         internal TsPacket[] GetTsPackets(ReadOnlySpan<byte> bytes, int packetLength)
         {
@@ -41,42 +41,45 @@ namespace TSParser.TransportStream
             {
                 if (bytes[i * packetLength] == TsPacket.SYNC_BYTE)
                 {
-                    tsPackets[i] = GetTsPacket(bytes.Slice(i * packetLength, packetLength), packetLength);
-                    m_packetCounter++;
+                    tsPackets[i] = GetTsPacket(bytes.Slice(i * packetLength, packetLength), packetLength, TsPacketBuildOptions.FullWithRaw);
                 }
                 else
                 {
                     Logger.Send(LogStatus.ETSI, $"Sync loss after packet: {m_packetCounter}");                    
                     m_syncLoss++;
-                    tsPackets[i] = default(TsPacket); // if sync loss return default tspacket with pid 0xFFFF
+                    tsPackets[i] = default;
                 }
             }
 
             return tsPackets;
         }
+
         internal TsPacket GetTsPacket(ReadOnlySpan<byte> data, int packetLength)
         {
-            ReadOnlySpan<byte> bytes;
+            return GetTsPacket(data, packetLength, TsPacketBuildOptions.FullWithRaw);
+        }
 
-            if (packetLength == 204)
-            {
-                bytes = data[..^16]; // TODO: implement FEC or TimeStamp
-                packetLength = 188;
-            }
-            else
-            {
-                bytes = data;
-            }
+        internal TsPacket GetTsPacket(ReadOnlySpan<byte> data, int packetLength, TsPacketBuildOptions options)
+        {
+            var bytes = TsPacketHeader.GetTransportPacketSpan(data, packetLength);
 
             try
             {
-                return new TsPacket(bytes, m_packetCounter);
+                var packet = new TsPacket(bytes, m_packetCounter, options);
+                m_packetCounter++;
+                return packet;
             }
             catch (Exception ex)
             {
-                Logger.Send(LogStatus.EXCEPTION, $"Exception in GetTsPacket Method",ex);
-                return default(TsPacket); // if something goes wrong return default tspacket with pid 0xFFFF
+                Logger.Send(LogStatus.EXCEPTION, $"Exception in GetTsPacket Method", ex);
+                return default;
             }
+        }
+
+        internal void RecordSyncLoss()
+        {
+            Logger.Send(LogStatus.ETSI, $"Sync loss after packet: {m_packetCounter}");
+            m_syncLoss++;
         }
     }
 }

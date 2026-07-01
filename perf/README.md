@@ -78,6 +78,22 @@ dotnet run -c Release --project TSParser.Benchmarks -p:Platform=x64 -- --smoke D
 
 Exit code **0** when each file reaches `OnParserComplete` with PAT ≥ 1 and PMT ≥ 1 and no unhandled exception.
 
+## CPU trace (`ParseFullTs_AllTables`)
+
+Single parse of the medium corpus (same workload as the BDN benchmark, without warmup/iterations):
+
+```powershell
+$env:DOTNET_TC_QuickJitForLoop = '0'
+$env:TSPARSER_PERF_TS_MEDIUM = 'D:\Dvb\dvb_lib\9.ts'
+.\tools\run-trace-parsefullts.ps1
+```
+
+Writes `perf/traces/ParseFullTs_AllTables_9ts.nettrace` and top-N text reports. Summary and interpretation: [perf/traces/ParseFullTs_AllTables_9ts-cpu-profile.md](traces/ParseFullTs_AllTables_9ts-cpu-profile.md).
+
+Alternative entry point: `dotnet run -c Release --project TSParser.Benchmarks -p:Platform=x64 -- --profile-once [path.ts]`.
+
+**Note:** Profiling the full BenchmarkDotNet job (`--filter *ParseFullTs_AllTables*`, 1 warmup + 3 iterations) takes ~40+ minutes on `9.ts`; use `--profile-once` for hot-path CPU samples.
+
 ## Baseline format
 
 `perf/baselines/*.json` (schema version 1):

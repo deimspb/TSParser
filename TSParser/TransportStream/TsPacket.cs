@@ -39,11 +39,18 @@ namespace TSParser.TransportStream
         /// <summary>Full 188-byte transport packet as received (used by T2-MI demux and lab tools).</summary>
         public readonly byte[]? RawPacket { get; }
         internal TsPacket(ReadOnlySpan<byte> bytes, ulong packetCounter)
+            : this(bytes, packetCounter, TsPacketBuildOptions.FullWithRaw)
+        {
+        }
+
+        internal TsPacket(ReadOnlySpan<byte> bytes, ulong packetCounter, TsPacketBuildOptions options)
         {
             var pointer = 0;
             var pid = 0xFFFF;
             PacketNumber = packetCounter;
-            RawPacket = bytes.Length >= 188 ? bytes[..188].ToArray() : bytes.ToArray();
+            RawPacket = options.CaptureRawPacket
+                ? (bytes.Length >= 188 ? bytes[..188].ToArray() : bytes.ToArray())
+                : null;
             PacketHeader = new byte[4];
             bytes[0..4].CopyTo(PacketHeader);
             try
@@ -57,10 +64,9 @@ namespace TSParser.TransportStream
                 TransportErrorIndicator = ((bytes[1] & 0x80) >> 7) != 0;
                 pid = Pid = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(1, 2)) & 0x1FFF);
 
-                if (TransportErrorIndicator || Pid == 0x1FFF) // if tei or null packet, copy payload and return
+                if (TransportErrorIndicator || Pid == 0x1FFF)
                 {
-                    Payload = new byte[184];
-                    bytes.Slice(4).CopyTo(Payload);
+                    Payload = options.IncludePayload ? CopyTrailingPayload(bytes) : Array.Empty<byte>();
                     return;
                 }
 
@@ -79,7 +85,7 @@ namespace TSParser.TransportStream
                     pointer += outPointer;
                 }
 
-                if (PayloadUnitStartIndicator)
+                if (options.ParsePesHeader && PayloadUnitStartIndicator)
                 {
                     if (188 - pointer > 6 && (BinaryPrimitives.ReadUInt32BigEndian(bytes.Slice(pointer - 1, 4)) & 0x00FFFFFF) == 0x000001)
                     {
@@ -87,6 +93,12 @@ namespace TSParser.TransportStream
                         Pes_header = new PesHeader(bytes.Slice(pointer + 3), out int outPointer);
                         pointer += outPointer;
                     }
+                }
+
+                if (!options.IncludePayload)
+                {
+                    Payload = Array.Empty<byte>();
+                    return;
                 }
 
                 var payloadSize = 188 - pointer;
@@ -107,6 +119,13 @@ namespace TSParser.TransportStream
                 Logger.Send(LogStatus.EXCEPTION, $"Exception while parsing packet: {PacketNumber}, pid: {pid}",ex);
                 throw new Exception($"Exception while parsing packet: {PacketNumber}, pid: {pid}, {ex}");
             }
+        }
+
+        private static byte[] CopyTrailingPayload(ReadOnlySpan<byte> bytes)
+        {
+            var payload = new byte[184];
+            bytes.Slice(4).CopyTo(payload);
+            return payload;
         }
         public string Print(int prefixLen)
         {

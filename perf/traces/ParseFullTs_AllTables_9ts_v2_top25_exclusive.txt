@@ -1,0 +1,26 @@
+﻿Top 25 Functions (Exclusive)                                                  Inclusive           Exclusive           
+1.  il!Interop+Globalization.GetSortHandle(class System.String,int&)          3.67%               3.67%               
+2.  MethodBaseInvoker.InvokeWithNoArgs(class System.Object,value class Sys    3.4%                3.4%                
+3.  __Canon].AddRange(class System.Collections.Generic.IEnumerable`1<!0>)     6.16%               2.89%               
+4.  GenericsHelpers.ClassWithSlotAndModule(int,value class GenericHandleAr    2.59%               2.59%               
+5.  ActivityTracker.Enable()                                                  2.5%                2.5%                
+6.  ConsolePal+WindowsConsoleStream.WriteFileNative(int,value class System    2.35%               2.35%               
+7.  TokenPartitioner.Partition(class System.Collections.Generic.IEnumerabl    2.28%               2.28%               
+8.  CustomAttribute.CreateCustomAttributeInstance(class System.Reflection.    3.39%               2.26%               
+9.  RuntimeType.GetCorElementType()                                           2.25%               2.25%               
+10. __Canon].MoveNext()                                                       15.16%              1.97%               
+11. SearchValues.Create(value class System.ReadOnlySpan`1<wchar>)             1.92%               1.92%               
+12. GenericsHelpers.MethodWithSlotAndModule(int,value class GenericHandleA    1.88%               1.88%               
+13. HelpText.ToString()                                                       1.46%               1.46%               
+14. HelpText.AddPreOptionsLines(class System.Collections.Generic.IEnumerab    16.57%              1.42%               
+15. .ctor(class System.IO.Stream,class System.Text.Encoding,int32,bool)       1.36%               1.36%               
+16. __Canon].<Build>b__5()                                                    16.36%              1.35%               
+17. BenchmarkSwitcher.RunWithDirtyAssemblyResolveHelper(class System.Strin    69.84%              1.25%               
+18. Console.add_CancelKeyPress(class System.ConsoleCancelEventHandler)        1.17%               1.17%               
+19. ManualConfig.Add(class BenchmarkDotNet.Configs.IConfig)                   7.37%               1.16%               
+20. DateTime.GetSystemSupportsLeapSeconds()                                   1.16%               1.16%               
+21. MaybeExtensions.MapValueOrDefault(class CSharpx.Maybe`1<!!0>,class Sys    2.25%               1.16%               
+22. Array.Copy(class System.Array,class System.Array,int32)                   1.16%               1.16%               
+23. RuntimeMethodInfo.InvokePropertySetter(class System.Object,value class    2.29%               1.15%               
+24. Parser.<ParseArguments>b__11_0(class System.Collections.Generic.IEnume    3.99%               1.15%               
+25. HelpText.AddOptions(class CommandLine.ParserResult`1<!!0>)                3.34%               1.15%               

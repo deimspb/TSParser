@@ -192,6 +192,7 @@ namespace TSParser
 
         private int? m_parserRunTimeIn_ms = null;
         private bool m_allowAnalyzer;
+        private bool m_t2miEnabled;
         private long? m_fileStreamByteOffset;
         private System.Timers.Timer? m_timer;
         private int? MaxParserRunTime
@@ -265,6 +266,7 @@ namespace TSParser
 
             m_bitrateMeasurement = options.BitrateMeasurement;
             m_allowAnalyzer = options.AllowAnalyzer || (m_bitrateMeasurement?.Enabled ?? false);
+            m_t2miEnabled = options.T2mi.Enabled;
             analyzer = new Lazy<Analyzer>(() => new Analyzer(m_bitrateMeasurement));
             m_tableRouter = new DvbTableRouter(options.CurrentTsMode, options.T2mi);
             m_inputSource = m_pushSource;
@@ -558,25 +560,125 @@ namespace TSParser
         }
         private void ParseBytesToTables(ReadOnlySpan<byte> bytes, int packetLength)
         {
-            var tsPackets = m_tsPacketFactory.GetTsPackets(bytes, packetLength);
+            var packetCount = bytes.Length / packetLength;
 
-            for (int i = 0; i < tsPackets.Length; i++)
+            for (var i = 0; i < packetCount; i++)
             {
-                if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
-                if (m_allowAnalyzer) PushPacketWithFileOffset(tsPackets[i], packetLength, i);
-                m_tableRouter.RouteTablePacket(tsPackets[i]);
+                var packetOffset = i * packetLength;
+                if (bytes[packetOffset] != TsPacket.SYNC_BYTE)
+                {
+                    m_tsPacketFactory.RecordSyncLoss();
+                    continue;
+                }
+
+                var transportSpan = TsPacketHeader.GetTransportPacketSpan(bytes.Slice(packetOffset, packetLength), packetLength);
+                if (!TsPacketHeader.TryReadPid(transportSpan, out var pid))
+                {
+                    continue;
+                }
+
+                if (pid == 0xFFFF)
+                {
+                    continue;
+                }
+
+                if (pid == (ushort)ReservedPids.NullPacket)
+                {
+                    if (!m_allowAnalyzer)
+                    {
+                        continue;
+                    }
+
+                    var nullPacket = m_tsPacketFactory.GetTsPacket(
+                        bytes.Slice(packetOffset, packetLength),
+                        packetLength,
+                        TsPacketBuildOptions.HeaderOnly);
+                    if (nullPacket.Pid != 0xFFFF)
+                    {
+                        PushPacketWithFileOffset(nullPacket, packetLength, i);
+                    }
+
+                    continue;
+                }
+
+                var routeSi = m_tableRouter.RequiresFullPacket(pid);
+                var routeT2miOnly = !routeSi && m_t2miEnabled && m_tableRouter.IsT2miPid(pid);
+                if (!routeSi && !routeT2miOnly && !m_allowAnalyzer)
+                {
+                    continue;
+                }
+
+                TsPacketBuildOptions options;
+                if (routeSi)
+                {
+                    options = TsPacketBuildOptions.SiTable(m_tableRouter.RequiresRawPacket(pid));
+                }
+                else if (routeT2miOnly)
+                {
+                    options = TsPacketBuildOptions.SiTable(captureRawPacket: true);
+                }
+                else
+                {
+                    options = TsPacketBuildOptions.HeaderOnly;
+                }
+
+                var packet = m_tsPacketFactory.GetTsPacket(bytes.Slice(packetOffset, packetLength), packetLength, options);
+                if (packet.Pid == 0xFFFF)
+                {
+                    continue;
+                }
+
+                if (m_allowAnalyzer)
+                {
+                    PushPacketWithFileOffset(packet, packetLength, i);
+                }
+
+                if (routeSi)
+                {
+                    m_tableRouter.RouteTablePacket(packet);
+                }
+                else if (routeT2miOnly)
+                {
+                    m_tableRouter.RouteT2mi(packet);
+                }
             }
         }
+
         private void ParseBytesToPackets(ReadOnlySpan<byte> bytes, int packetLength)
         {
-            var tsPackets = m_tsPacketFactory.GetTsPackets(bytes, packetLength);
+            var options = m_t2miEnabled
+                ? TsPacketBuildOptions.FullWithRaw
+                : new TsPacketBuildOptions
+                {
+                    CaptureRawPacket = false,
+                    IncludePayload = true,
+                    ParsePesHeader = true,
+                };
 
-            for (int i = 0; i < tsPackets.Length; i++)
+            var packetCount = bytes.Length / packetLength;
+
+            for (var i = 0; i < packetCount; i++)
             {
-                if (tsPackets[i].Pid == 0xFFFF) continue; // if here we catch tspacket with pid 0xFFFF drop it because this packet generate only when something goes wrong
-                if (m_allowAnalyzer) PushPacketWithFileOffset(tsPackets[i], packetLength, i);
-                OnTsPacketReady?.Invoke(tsPackets[i]);
-                m_tableRouter.RouteT2mi(tsPackets[i]);
+                var packetOffset = i * packetLength;
+                if (bytes[packetOffset] != TsPacket.SYNC_BYTE)
+                {
+                    m_tsPacketFactory.RecordSyncLoss();
+                    continue;
+                }
+
+                var packet = m_tsPacketFactory.GetTsPacket(bytes.Slice(packetOffset, packetLength), packetLength, options);
+                if (packet.Pid == 0xFFFF)
+                {
+                    continue;
+                }
+
+                if (m_allowAnalyzer)
+                {
+                    PushPacketWithFileOffset(packet, packetLength, i);
+                }
+
+                OnTsPacketReady?.Invoke(packet);
+                m_tableRouter.RouteT2mi(packet);
             }
         }
 

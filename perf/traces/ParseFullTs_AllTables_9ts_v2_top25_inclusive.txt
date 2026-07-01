@@ -1,0 +1,26 @@
+﻿Top 25 Functions (Inclusive)                                                  Inclusive           Exclusive           
+1.  (Non-Activities)                                                          100%                0%                  
+2.  Threads                                                                   100%                0%                  
+3.  Program.Main(class System.String[])                                       80.59%              0%                  
+4.  BenchmarkRunner.Run(class System.Reflection.Assembly,class BenchmarkDo    72.11%              0%                  
+5.  BenchmarkRunner.RunWithExceptionHandling(class System.Func`1<class Ben    72.11%              0%                  
+6.  BenchmarkRunner+<>c__DisplayClass4_0.<Run>b__0()                          72.11%              1.1%                
+7.  BenchmarkRunner.RunWithDirtyAssemblyResolveHelper(class System.Reflect    71%                 0%                  
+8.  BenchmarkSwitcher.RunWithDirtyAssemblyResolveHelper(class System.Strin    69.84%              1.25%               
+9.  ConfigParser.Parse(class System.String[],class BenchmarkDotNet.Loggers    68.59%              1.13%               
+10. Parser.ParseArguments(class System.Collections.Generic.IEnumerable`1<c    60.45%              1.11%               
+11. Parser.MakeParserResult(class CommandLine.ParserResult`1<!!0>,class Co    32.62%              0.86%               
+12. Parser.DisplayHelp(class CommandLine.ParserResult`1<!!0>,class System.    31.76%              0%                  
+13. ParserResultExtensions.WithNotParsed(class CommandLine.ParserResult`1<    31.76%              0%                  
+14. __Canon].<DisplayHelp>b__0(class System.Collections.Generic.IEnumerabl    31.76%              0%                  
+15. MaybeExtensions.Do(class CSharpx.Maybe`1<class System.Tuple`2<!!0,!!1>    31.76%              0%                  
+16. __Canon].<DisplayHelp>b__1(class System.Collections.Generic.IEnumerabl    31.76%              0%                  
+17. HelpText.AutoBuild(class CommandLine.ParserResult`1<!!0>,int32)           27.94%              1.1%                
+18. HelpText.AutoBuild(class CommandLine.ParserResult`1<!!0>,class System.    26.84%              0%                  
+19. HelpText.AutoBuild(class CommandLine.ParserResult`1<!!0>,class System.    26.84%              0%                  
+20. InstanceBuilder.Build(class CSharpx.Maybe`1<class System.Func`1<!!0>>,    25.62%              0%                  
+21. EnumerableExtensions.Memoize(class System.Collections.Generic.IEnumera    22.91%              1.13%               
+22. HelpText.AddPreOptionsLines(class System.Collections.Generic.IEnumerab    16.57%              1.42%               
+23. __Canon].<Build>b__5()                                                    16.36%              1.35%               
+24. EnumerableExtensions.ForEach(class System.Collections.Generic.IEnumera    16.23%              0%                  
+25. EventSource.InitializeDefaultEventSources()                               15.79%              0%                  

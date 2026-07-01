@@ -26,17 +26,16 @@ internal sealed class DynamicPidRegistry
     private readonly bool _t2miEnabled;
     private readonly bool _t2miAutoDetect;
     private readonly bool _t2miDeencapsulate;
-    private PmtFactory[] _pmtFactories = Array.Empty<PmtFactory>();
-    private ushort[] _pmtPids = Array.Empty<ushort>();
-    private readonly List<ushort> _aitPids = new();
-    private readonly List<ushort> _scte35Pids = new();
-    private List<ushort> _ewsPids = new();
-    private List<ushort> _eewsPids = new();
-    private readonly List<AitFactory> _aitFactories = new();
-    private readonly List<Scte35Factory> _scte35Factories = new();
-    private readonly List<EwsFactory> _ewsFactories = new();
-    private readonly List<EewsFactory> _eewsFactories = new();
-    private readonly List<T2miDemuxer> _t2miDemuxers = new();
+    private readonly Dictionary<ushort, PmtFactory> _pmtFactories = new();
+    private readonly HashSet<ushort> _aitPids = new();
+    private readonly HashSet<ushort> _scte35Pids = new();
+    private readonly HashSet<ushort> _ewsPids = new();
+    private readonly HashSet<ushort> _eewsPids = new();
+    private readonly Dictionary<ushort, AitFactory> _aitFactories = new();
+    private readonly Dictionary<ushort, Scte35Factory> _scte35Factories = new();
+    private readonly Dictionary<ushort, EwsFactory> _ewsFactories = new();
+    private readonly Dictionary<ushort, EewsFactory> _eewsFactories = new();
+    private readonly Dictionary<ushort, T2miDemuxer> _t2miDemuxers = new();
     private bool _ewsPidListEmptyWarningSent;
     private bool _eewsPidListEmptyWarningSent;
     private int _patProgramCount;
@@ -59,10 +58,16 @@ internal sealed class DynamicPidRegistry
 
     public List<ushort> EwsPidList
     {
-        get => _ewsPids;
+        get => _ewsPids.OrderBy(pid => pid).ToList();
         set
         {
-            _ewsPids = value ?? throw new ArgumentNullException(nameof(value));
+            ArgumentNullException.ThrowIfNull(value);
+            _ewsPids.Clear();
+            foreach (var pid in value)
+            {
+                _ewsPids.Add(pid);
+            }
+
             _ewsFactories.Clear();
             _ewsPidListEmptyWarningSent = false;
         }
@@ -70,10 +75,16 @@ internal sealed class DynamicPidRegistry
 
     public List<ushort> EewsPidList
     {
-        get => _eewsPids;
+        get => _eewsPids.OrderBy(pid => pid).ToList();
         set
         {
-            _eewsPids = value ?? throw new ArgumentNullException(nameof(value));
+            ArgumentNullException.ThrowIfNull(value);
+            _eewsPids.Clear();
+            foreach (var pid in value)
+            {
+                _eewsPids.Add(pid);
+            }
+
             _eewsFactories.Clear();
             _eewsPidListEmptyWarningSent = false;
         }
@@ -87,6 +98,15 @@ internal sealed class DynamicPidRegistry
         }
     }
 
+    public bool IsTrackedPid(ushort pid) =>
+        _pmtFactories.ContainsKey(pid)
+        || _aitPids.Contains(pid)
+        || _scte35Pids.Contains(pid)
+        || _ewsPids.Contains(pid)
+        || _eewsPids.Contains(pid);
+
+    public bool IsT2miPid(ushort pid) => _t2miDemuxers.ContainsKey(pid);
+
     public void UpdateFromPat(PAT pat)
     {
         if (_t2miEnabled && _t2miAutoDetect)
@@ -94,17 +114,20 @@ internal sealed class DynamicPidRegistry
             _patProgramCount = pat.PatRecords.Count(pr => pr.Pid != 0x16);
         }
 
-        _pmtPids = (from pr in pat.PatRecords where pr.Pid != 0x16 select pr.Pid).ToArray();
-        Array.Sort(_pmtPids);
-
-        _pmtFactories = new PmtFactory[_pmtPids.Length];
-        for (var i = 0; i < _pmtPids.Length; i++)
+        _pmtFactories.Clear();
+        foreach (var record in pat.PatRecords)
         {
-            _pmtFactories[i] = new PmtFactory
+            if (record.Pid == 0x16)
             {
-                CurrentPid = _pmtPids[i]
+                continue;
+            }
+
+            var factory = new PmtFactory
+            {
+                CurrentPid = record.Pid
             };
-            _pmtFactories[i].OnPmtReady += PmtFactory_OnPmtReady;
+            factory.OnPmtReady += PmtFactory_OnPmtReady;
+            _pmtFactories[record.Pid] = factory;
         }
     }
 
@@ -124,13 +147,9 @@ internal sealed class DynamicPidRegistry
             return;
         }
 
-        for (var i = 0; i < _t2miDemuxers.Count; i++)
+        if (_t2miDemuxers.TryGetValue(tsPacket.Pid, out var demuxer))
         {
-            if (_t2miDemuxers[i].Pid == tsPacket.Pid)
-            {
-                _t2miDemuxers[i].PushPacket(tsPacket);
-                return;
-            }
+            demuxer.PushPacket(tsPacket);
         }
     }
 
@@ -142,15 +161,14 @@ internal sealed class DynamicPidRegistry
         if (aitIdx >= 0 && pmt.EsInfoList[aitIdx].EsDescriptorList.Exists(desc => desc.DescriptorTag == 0x6F))
         {
             var aitPid = pmt.EsInfoList[aitIdx].ElementaryPid;
-            if (!_aitPids.Contains(aitPid))
+            if (_aitPids.Add(aitPid))
             {
-                _aitPids.Add(aitPid);
                 var aitFactory = new AitFactory
                 {
                     CurrentPid = aitPid
                 };
                 aitFactory.OnAitReady += AitFactory_OnAitReady;
-                _aitFactories.Add(aitFactory);
+                _aitFactories[aitPid] = aitFactory;
             }
         }
 
@@ -158,15 +176,14 @@ internal sealed class DynamicPidRegistry
         if (scte35Idx >= 0)
         {
             var scte35Pid = pmt.EsInfoList[scte35Idx].ElementaryPid;
-            if (!_scte35Pids.Contains(scte35Pid))
+            if (_scte35Pids.Add(scte35Pid))
             {
-                _scte35Pids.Add(scte35Pid);
                 var scte35Factory = new Scte35Factory
                 {
                     CurrentPid = scte35Pid
                 };
                 scte35Factory.OnScte35Ready += Scte35Factory_OnScte35Ready;
-                _scte35Factories.Add(scte35Factory);
+                _scte35Factories[scte35Pid] = scte35Factory;
             }
         }
 
@@ -182,33 +199,25 @@ internal sealed class DynamicPidRegistry
 
     private void RoutePmt(TsPacket tsPacket)
     {
-        if (_pmtPids.Length == 0)
+        if (_pmtFactories.TryGetValue(tsPacket.Pid, out var factory))
         {
-            return;
-        }
-
-        var idx = Array.IndexOf(_pmtPids, tsPacket.Pid);
-        if (idx >= 0)
-        {
-            _pmtFactories[idx].PushTable(tsPacket);
+            factory.PushTable(tsPacket);
         }
     }
 
     private void RouteAit(TsPacket tsPacket)
     {
-        var idx = _aitPids.IndexOf(tsPacket.Pid);
-        if (idx >= 0)
+        if (_aitFactories.TryGetValue(tsPacket.Pid, out var factory))
         {
-            _aitFactories[idx].PushTable(tsPacket);
+            factory.PushTable(tsPacket);
         }
     }
 
     private void RouteScte35(TsPacket tsPacket)
     {
-        var idx = _scte35Pids.IndexOf(tsPacket.Pid);
-        if (idx >= 0)
+        if (_scte35Factories.TryGetValue(tsPacket.Pid, out var factory))
         {
-            _scte35Factories[idx].PushTable(tsPacket);
+            factory.PushTable(tsPacket);
         }
     }
 
@@ -227,25 +236,22 @@ internal sealed class DynamicPidRegistry
 
         _ewsPidListEmptyWarningSent = false;
 
-        var idx = _ewsPids.IndexOf(tsPacket.Pid);
-        if (idx < 0)
+        if (!_ewsPids.Contains(tsPacket.Pid))
         {
             return;
         }
 
-        if (idx < _ewsFactories.Count)
+        if (!_ewsFactories.TryGetValue(tsPacket.Pid, out var factory))
         {
-            _ewsFactories[idx].PushTable(tsPacket);
-            return;
+            factory = new EwsFactory
+            {
+                CurrentPid = tsPacket.Pid
+            };
+            factory.OnEwsReady += EwsFactory_OnEwsReady;
+            _ewsFactories[tsPacket.Pid] = factory;
         }
 
-        var ewsFactory = new EwsFactory
-        {
-            CurrentPid = _ewsPids[idx]
-        };
-        ewsFactory.OnEwsReady += EwsFactory_OnEwsReady;
-        _ewsFactories.Add(ewsFactory);
-        ewsFactory.PushTable(tsPacket);
+        factory.PushTable(tsPacket);
     }
 
     private void RouteEews(TsPacket tsPacket)
@@ -263,30 +269,27 @@ internal sealed class DynamicPidRegistry
 
         _eewsPidListEmptyWarningSent = false;
 
-        var idx = _eewsPids.IndexOf(tsPacket.Pid);
-        if (idx < 0)
+        if (!_eewsPids.Contains(tsPacket.Pid))
         {
             return;
         }
 
-        if (idx < _eewsFactories.Count)
+        if (!_eewsFactories.TryGetValue(tsPacket.Pid, out var factory))
         {
-            _eewsFactories[idx].PushTable(tsPacket);
-            return;
+            factory = new EewsFactory
+            {
+                CurrentPid = tsPacket.Pid
+            };
+            factory.OnEewsReady += EewsFactory_OnEewsReady;
+            _eewsFactories[tsPacket.Pid] = factory;
         }
 
-        var eewsFactory = new EewsFactory
-        {
-            CurrentPid = _eewsPids[idx]
-        };
-        eewsFactory.OnEewsReady += EewsFactory_OnEewsReady;
-        _eewsFactories.Add(eewsFactory);
-        eewsFactory.PushTable(tsPacket);
+        factory.PushTable(tsPacket);
     }
 
     private void RegisterT2miPid(ushort pid)
     {
-        if (_t2miDemuxers.Exists(d => d.Pid == pid))
+        if (_t2miDemuxers.ContainsKey(pid))
         {
             return;
         }
@@ -295,7 +298,7 @@ internal sealed class DynamicPidRegistry
         demuxer.PacketReady += T2miDemuxer_OnPacketReady;
         demuxer.PlpDiscovered += T2miDemuxer_OnPlpDiscovered;
         demuxer.PlpTsReady += (plpId, tsData) => OnPlpTsReady?.Invoke(pid, plpId, tsData);
-        _t2miDemuxers.Add(demuxer);
+        _t2miDemuxers[pid] = demuxer;
         Logger.Send(LogStatus.INFO, $"T2-MI demuxer registered on PID 0x{pid:X4}");
     }
 

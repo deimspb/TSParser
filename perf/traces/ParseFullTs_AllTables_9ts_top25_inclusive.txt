@@ -1,0 +1,26 @@
+﻿Top 25 Functions (Inclusive)                                                  Inclusive           Exclusive           
+1.  (Non-Activities)                                                          100%                0%                  
+2.  Threads                                                                   100%                0%                  
+3.  Thread.StartCallback()                                                    74.16%              0.04%               
+4.  PortableThreadPool+WorkerThread.WorkerThreadStart()                       49.41%              0%                  
+5.  Program.Main(class System.String[])                                       25.27%              0.04%               
+6.  ProfileOnceHarness.Run(class System.String[])                             25.23%              0%                  
+7.  TsParser.RunParser()                                                      24.82%              0.04%               
+8.  TaskAwaiter.HandleNonSuccessAndDebuggerNotification(class System.Threa    24.74%              0%                  
+9.  Task.InternalWait(int32,value class System.Threading.CancellationToken    24.74%              0%                  
+10. Monitor.Wait(class System.Object,int32)                                   24.74%              24.74%              
+11. ManualResetEventSlim.Wait(int32,value class System.Threading.Cancellat    24.74%              0%                  
+12. Task.SpinThenBlockingWait(int32,value class System.Threading.Cancellat    24.74%              0%                  
+13. Task.InternalWaitCore(int32,value class System.Threading.CancellationT    24.74%              0%                  
+14. Task.ExecuteWithThreadLocal(class System.Threading.Tasks.Task&,class S    24.71%              0%                  
+15. ThreadPoolWorkQueue.Dispatch()                                            24.71%              0%                  
+16. PortableThreadPool+GateThread.GateThreadStart()                           24.71%              0%                  
+17. LowLevelLifoSemaphore.WaitForSignal(int32)                                24.71%              0%                  
+18. il!Interop+Kernel32.GetQueuedCompletionStatus(int,unsigned int32&,unsi    24.71%              24.71%              
+19. WaitHandle.WaitOneNoCheck(int32,bool,class System.Object,value class W    24.67%              24.67%              
+20. ExecutionContext.RunFromThreadPoolDispatchLoop(class System.Threading.    24.64%              0%                  
+21. TsParser+<>c__DisplayClass108_0.<RunParserAsync>b__0()                    24.64%              0.05%               
+22. FileTsSource.Run(class TSParser.Input.TsInputSourceContext)               24.59%              0.27%               
+23. BufferedFileStreamStrategy.ReadSpan(value class System.Span`1<unsigned    13.09%              0%                  
+24. TsParser.ParseBytesToTables(value class System.ReadOnlySpan`1<unsigned    11.23%              0.23%               
+25. Buffer.MemmoveInternal(unsigned int8&,unsigned int8&,unsigned int)        10.15%              10.15%              

@@ -1,0 +1,26 @@
+﻿Top 25 Functions (Exclusive)                                                  Inclusive           Exclusive           
+1.  Monitor.Wait(class System.Object,int32)                                   24.74%              24.74%              
+2.  il!Interop+Kernel32.GetQueuedCompletionStatus(int,unsigned int32&,unsi    24.71%              24.71%              
+3.  WaitHandle.WaitOneNoCheck(int32,bool,class System.Object,value class W    24.67%              24.67%              
+4.  Buffer.MemmoveInternal(unsigned int8&,unsigned int8&,unsigned int)        10.15%              10.15%              
+5.  Thread.<PollGC>g__PollGCWorker|70_0()                                     8.79%               8.79%               
+6.  OSFileStreamStrategy.Read(value class System.Span`1<unsigned int8>)       3.02%               1.84%               
+7.  il!Interop+Kernel32.ReadFile(class System.Runtime.InteropServices.Safe    1.18%               1.18%               
+8.  InitHelpers.InitClassSlow(value class System.Runtime.CompilerServices.    0.42%               0.34%               
+9.  FileTsSource.Run(class TSParser.Input.TsInputSourceContext)               24.59%              0.27%               
+10. TsParser.ParseBytesToTables(value class System.ReadOnlySpan`1<unsigned    11.23%              0.23%               
+11. Buffer.BulkMoveWithWriteBarrier(unsigned int8&,unsigned int8&,unsigned    7.86%               0.17%               
+12. CultureData.GetLocaleInfoCore(value class LocaleNumberData)               0.16%               0.16%               
+13. Monitor.Enter(class System.Object,bool&)                                  0.21%               0.13%               
+14. .ctor(value class System.ReadOnlySpan`1<unsigned int8>,unsigned int64)    0.12%               0.12%               
+15. Array.Copy(class System.Array,class System.Array,int32)                   1.26%               0.11%               
+16. DvbTableRouter.RouteDvb(value class TSParser.TransportStream.TsPacket)    5.63%               0.08%               
+17. Monitor.Enter_Slowpath(class System.Object)                               0.08%               0.08%               
+18. PsiSectionAssembler.PushPacket(value class TSParser.TransportStream.Ts    0.08%               0.08%               
+19. AssemblyLoadContext.StartAssemblyLoad(value class System.Guid&,value c    0.08%               0.08%               
+20. TsParser+<RunParserAsync>d__108].MoveNext()                               0.06%               0.06%               
+21. TransportStreamLoop].Grow(int32)                                          0.06%               0.06%               
+22. TsParser+<>c__DisplayClass108_0.<RunParserAsync>b__0()                    24.64%              0.05%               
+23. SearchValues.Create(value class System.ReadOnlySpan`1<wchar>)             0.05%               0.05%               
+24. EIT.GetEvents(value class System.ReadOnlySpan`1<unsigned int8>)           1.99%               0.05%               
+25. UInt16].ReturnArrays(int32)                                               0.05%               0.05%               

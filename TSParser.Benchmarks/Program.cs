@@ -28,6 +28,11 @@ internal static class Program
             return FullTsSmokeHarness.Run(GetSmokeArgs(args));
         }
 
+        if (IsProfileOnceMode(args))
+        {
+            return ProfileOnceHarness.Run(GetTrailingArgs(args));
+        }
+
         var config = DefaultConfig.Instance.AddExporter(new PerfBaselineExporter());
         BenchmarkRunner.Run(typeof(Program).Assembly, config, args);
         return 0;
@@ -39,5 +44,12 @@ internal static class Program
          args[0].Equals("--full-ts-smoke", StringComparison.OrdinalIgnoreCase));
 
     private static string[] GetSmokeArgs(string[] args) =>
+        GetTrailingArgs(args);
+
+    private static bool IsProfileOnceMode(string[] args) =>
+        args.Length > 0 &&
+        args[0].Equals("--profile-once", StringComparison.OrdinalIgnoreCase);
+
+    private static string[] GetTrailingArgs(string[] args) =>
         args.Length > 1 ? args[1..] : [];
 }

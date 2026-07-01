@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using TSParser.Service;
+using TSParser.TransportStream;
 
 namespace TSParser.Input;
 
@@ -67,15 +68,35 @@ internal sealed class FileTsSource : ITsInputSource
             Logger.Send(LogStatus.INFO, $"Start ts file {_fileName} parsing, ts packet length: {packetLength}");
 
             long globalOffset = 0;
+            var inSync = true;
             int bytesRead;
             while ((bytesRead = fileStream.Read(buffer)) > 0 && !context.CancellationToken.IsCancellationRequested)
             {
-                var offset = 0;
-                _ = TsPacketLengthDetector.GetPacketLength(buffer, out offset);
-
-                if (offset > 0)
+                if (!inSync || buffer[0] != TsPacket.SYNC_BYTE)
                 {
-                    fileStream.Seek(offset + globalOffset, SeekOrigin.Begin);
+                    _ = TsPacketLengthDetector.GetPacketLength(buffer[..bytesRead], out var offset);
+
+                    if (offset > 0)
+                    {
+                        globalOffset += offset;
+                        fileStream.Seek(globalOffset, SeekOrigin.Begin);
+                        inSync = false;
+                        continue;
+                    }
+
+                    inSync = buffer[0] == TsPacket.SYNC_BYTE;
+                }
+                else if (bytesRead >= packetLength && buffer[bytesRead - packetLength] != TsPacket.SYNC_BYTE)
+                {
+                    _ = TsPacketLengthDetector.GetPacketLength(buffer[..bytesRead], out var offset);
+
+                    if (offset > 0)
+                    {
+                        globalOffset += offset;
+                        fileStream.Seek(globalOffset, SeekOrigin.Begin);
+                        inSync = false;
+                        continue;
+                    }
                 }
 
                 context.SetStreamByteOffset(globalOffset);

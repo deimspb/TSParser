@@ -95,6 +95,42 @@ internal sealed class DvbTableRouter
         _dynamicPidRegistry.RegisterT2miPids(pids);
     }
 
+    public bool RequiresFullPacket(ushort pid)
+    {
+        if (pid == (ushort)ReservedPids.NullPacket)
+        {
+            return false;
+        }
+
+        if (IsFixedSiTablePid(pid))
+        {
+            return true;
+        }
+
+        if (_dynamicPidRegistry.IsTrackedPid(pid))
+        {
+            return true;
+        }
+
+        return _dynamicPidRegistry.IsT2miPid(pid);
+    }
+
+    public bool RequiresRawPacket(ushort pid) => _dynamicPidRegistry.IsT2miPid(pid);
+
+    public bool IsT2miPid(ushort pid) => _dynamicPidRegistry.IsT2miPid(pid);
+
+    private static bool IsFixedSiTablePid(ushort pid) => pid switch
+    {
+        (ushort)ReservedPids.PAT => true,
+        (ushort)ReservedPids.CAT => true,
+        (ushort)ReservedPids.NIT => true,
+        (ushort)ReservedPids.SDT => true,
+        (ushort)ReservedPids.EIT => true,
+        (ushort)ReservedPids.TDT => true,
+        (ushort)ReservedPids.NetworkSync => true,
+        _ => false,
+    };
+
     public void RouteTablePacket(TsPacket tsPacket)
     {
         switch (_tsMode)

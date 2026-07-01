@@ -1,0 +1,101 @@
+Top 100 Functions (Inclusive)                                                  Inclusive           Exclusive           
+1.   (Non-Activities)                                                          100%                0%                  
+2.   Threads                                                                   100%                0%                  
+3.   Thread.StartCallback()                                                    74.16%              0.04%               
+4.   PortableThreadPool+WorkerThread.WorkerThreadStart()                       49.41%              0%                  
+5.   Program.Main(class System.String[])                                       25.27%              0.04%               
+6.   ProfileOnceHarness.Run(class System.String[])                             25.23%              0%                  
+7.   TsParser.RunParser()                                                      24.82%              0.04%               
+8.   TaskAwaiter.HandleNonSuccessAndDebuggerNotification(class System.Threa    24.74%              0%                  
+9.   Task.InternalWait(int32,value class System.Threading.CancellationToken    24.74%              0%                  
+10.  Monitor.Wait(class System.Object,int32)                                   24.74%              24.74%              
+11.  ManualResetEventSlim.Wait(int32,value class System.Threading.Cancellat    24.74%              0%                  
+12.  Task.SpinThenBlockingWait(int32,value class System.Threading.Cancellat    24.74%              0%                  
+13.  Task.InternalWaitCore(int32,value class System.Threading.CancellationT    24.74%              0%                  
+14.  Task.ExecuteWithThreadLocal(class System.Threading.Tasks.Task&,class S    24.71%              0%                  
+15.  ThreadPoolWorkQueue.Dispatch()                                            24.71%              0%                  
+16.  PortableThreadPool+GateThread.GateThreadStart()                           24.71%              0%                  
+17.  LowLevelLifoSemaphore.WaitForSignal(int32)                                24.71%              0%                  
+18.  il!Interop+Kernel32.GetQueuedCompletionStatus(int,unsigned int32&,unsi    24.71%              24.71%              
+19.  WaitHandle.WaitOneNoCheck(int32,bool,class System.Object,value class W    24.67%              24.67%              
+20.  ExecutionContext.RunFromThreadPoolDispatchLoop(class System.Threading.    24.64%              0%                  
+21.  TsParser+<>c__DisplayClass108_0.<RunParserAsync>b__0()                    24.64%              0.05%               
+22.  FileTsSource.Run(class TSParser.Input.TsInputSourceContext)               24.59%              0.27%               
+23.  BufferedFileStreamStrategy.ReadSpan(value class System.Span`1<unsigned    13.09%              0%                  
+24.  TsParser.ParseBytesToTables(value class System.ReadOnlySpan`1<unsigned    11.23%              0.23%               
+25.  Buffer.MemmoveInternal(unsigned int8&,unsigned int8&,unsigned int)        10.15%              10.15%              
+26.  Thread.<PollGC>g__PollGCWorker|70_0()                                     8.79%               8.79%               
+27.  Buffer.BulkMoveWithWriteBarrier(unsigned int8&,unsigned int8&,unsigned    7.86%               0.17%               
+28.  DvbTableRouter.RouteDvb(value class TSParser.TransportStream.TsPacket)    5.63%               0.08%               
+29.  TsPacketFactory.GetTsPacket(value class System.ReadOnlySpan`1<unsigned    3.82%               0%                  
+30.  OSFileStreamStrategy.Read(value class System.Span`1<unsigned int8>)       3.02%               1.84%               
+31.  BufferedFileStreamStrategy.Read(value class System.Span`1<unsigned int    2.93%               0%                  
+32.  DvbTableRouter.RouteTablePacket(value class TSParser.TransportStream.T    2.92%               0%                  
+33.  TableFactory.TryParseAssembledTable(class System.Action,class System.S    2.72%               0%                  
+34.  Byte]].PushTable(value class TSParser.TransportStream.TsPacket)           2.17%               0%                  
+35.  Byte]].ParseAndPublish(unsigned int32)                                    2.13%               0%                  
+36.  .ctor(value class System.ReadOnlySpan`1<unsigned int8>)                   2.1%                0%                  
+37.  EitFactory.ParseTable(value class System.ReadOnlySpan`1<unsigned int8>    2.1%                0%                  
+38.  EIT.GetEvents(value class System.ReadOnlySpan`1<unsigned int8>)           1.99%               0.05%               
+39.  DescriptorFactory.GetDescriptorList(value class System.ReadOnlySpan`1<    1.98%               0%                  
+40.  DescriptorFactory.GetDescList(value class System.ReadOnlySpan`1<unsign    1.98%               0.03%               
+41.  TsInputSourceContext.Publish(value class System.ReadOnlySpan`1<unsigne    1.88%               0%                  
+42.  .ctor(value class System.ReadOnlySpan`1<unsigned int8>,unsigned int16)    1.86%               0%                  
+43.  Array.Copy(class System.Array,class System.Array,int32)                   1.26%               0.11%               
+44.  __Canon].set_Capacity(int32)                                              1.19%               0%                  
+45.  __Canon].AddWithResize(!0)                                                1.19%               0%                  
+46.  RandomAccess.ReadAtOffset(class Microsoft.Win32.SafeHandles.SafeFileHa    1.18%               0%                  
+47.  il!Interop+Kernel32.ReadFile(class System.Runtime.InteropServices.Safe    1.18%               1.18%               
+48.  DescriptorFactory.GetDescriptor(value class System.ReadOnlySpan`1<unsi    0.76%               0.04%               
+49.  EventSource.Initialize(value class System.Guid,class System.String,cla    0.45%               0%                  
+50.  .cctor()                                                                  0.45%               0%                  
+51.  EventSource.InitializeDefaultEventSources()                               0.45%               0%                  
+52.  .ctor()                                                                   0.45%               0%                  
+53.  InitHelpers.InitClassSlow(value class System.Runtime.CompilerServices.    0.42%               0.34%               
+54.  StaticsHelpers.GetGCStaticBaseSlow(value class System.Runtime.Compiler    0.42%               0%                  
+55.  Dictionaries.BytesToString(value class System.ReadOnlySpan`1<unsigned     0.41%               0%                  
+56.  EventSource.DoCommand(class System.Diagnostics.Tracing.EventCommandEve    0.41%               0%                  
+57.  EventSource.CreateManifestAndDescriptors(class System.Type,class Syste    0.41%               0.04%               
+58.  EventSource.EnsureDescriptorsInitialized()                                0.41%               0%                  
+59.  Byte].PushTable(value class TSParser.TransportStream.TsPacket)            0.4%                0%                  
+60.  .ctor(value class System.ReadOnlySpan`1<unsigned int8>)                   0.38%               0%                  
+61.  TsPacketFactory.GetTsPackets(value class System.ReadOnlySpan`1<unsigne    0.37%               0%                  
+62.  Byte].ParseAndPublish(unsigned int32)                                     0.35%               0%                  
+63.  OSFileStreamStrategy.Read(unsigned int8[],int32,int32)                    0.34%               0.04%               
+64.  Attribute.GetCustomAttribute(class System.Reflection.MemberInfo,class     0.24%               0%                  
+65.  EventSource.GetCustomAttributeHelper(class System.Reflection.MemberInf    0.24%               0%                  
+66.  Attribute.GetCustomAttributes(class System.Reflection.MemberInfo,class    0.24%               0%                  
+67.  Byte].TryAddInternal(class Tables<!0,!1>,!0,value class System.Nullabl    0.24%               0.02%               
+68.  Byte].TryAdd(!0,!1)                                                       0.24%               0%                  
+69.  DescriptorFactory.LogUnknownTagOnce(class System.Collections.Concurren    0.24%               0%                  
+70.  DynamicPidRegistry.RouteDynamicTables(value class TSParser.TransportSt    0.22%               0.03%               
+71.  Monitor.Enter(class System.Object,bool&)                                  0.21%               0.13%               
+72.  CustomAttribute.AddCustomAttributes(value class ListBuilder`1<class Sy    0.2%                0%                  
+73.  CustomAttribute.GetCustomAttributes(class System.Reflection.RuntimeMod    0.2%                0%                  
+74.  DynamicPidRegistry.RoutePmt(value class TSParser.TransportStream.TsPac    0.19%               0%                  
+75.  .ctor(class TSParser.ParserConfig)                                        0.17%               0%                  
+76.  CustomAttribute.GetCustomAttributes(class System.Reflection.RuntimeMet    0.17%               0%                  
+77.  CultureData.GetLocaleInfoCore(value class LocaleNumberData)               0.16%               0.16%               
+78.  CultureData.GetNFIValues(class System.Globalization.NumberFormatInfo)     0.16%               0%                  
+79.  .ctor(class System.Globalization.CultureData)                             0.16%               0%                  
+80.  DefaultInterpolatedStringHandler.AppendFormatted(!!0,class System.Stri    0.16%               0%                  
+81.  Number.<TryFormatInt64>g__TryFormatInt64Slow|26_0(int64,value class Sy    0.16%               0%                  
+82.  CultureInfo.get_NumberFormat()                                            0.16%               0%                  
+83.  NumberFormatInfo.get_CurrentInfo()                                        0.16%               0%                  
+84.  SdtBatFactory.PushTable(value class TSParser.TransportStream.TsPacket)    0.16%               0%                  
+85.  PatFactory.Publish(class TSParser.Tables.DvbTables.PAT)                   0.14%               0%                  
+86.  DvbTableRouter.PatFactory_OnPatReady(class TSParser.Tables.DvbTables.P    0.14%               0.04%               
+87.  .ctor(class TSParser.ParserOptions)                                       0.13%               0.02%               
+88.  .ctor(value class System.ReadOnlySpan`1<unsigned int8>,unsigned int64)    0.12%               0.12%               
+89.  .ctor(value class System.ReadOnlySpan`1<unsigned int8>)                   0.12%               0.04%               
+90.  PmtFactory.ParseTable(value class System.ReadOnlySpan`1<unsigned int8>    0.12%               0%                  
+91.  .ctor(value class System.ReadOnlySpan`1<unsigned int8>,unsigned int16)    0.12%               0%                  
+92.  SdtBatFactory.ParseBat()                                                  0.12%               0%                  
+93.  SdtBatFactory.<ParseBat>b__19_0()                                         0.12%               0.03%               
+94.  Table.set_TableBytes(value class System.ReadOnlySpan`1<unsigned int8>)    0.11%               0%                  
+95.  .ctor(value class System.ReadOnlySpan`1<unsigned int8>)                   0.11%               0%                  
+96.  TsParser.PushPacketWithFileOffset(value class TSParser.TransportStream    0.11%               0%                  
+97.  Analyzer.PushPacketLegacy(value class TSParser.TransportStream.TsPacke    0.11%               0%                  
+98.  Analyzer.AddPacketToPidMetric(value class TSParser.TransportStream.TsP    0.11%               0.04%               
+99.  Analyzer.PushPacket(value class TSParser.TransportStream.TsPacket,int3    0.11%               0%                  
+100. TypeNameParserHelpers.GetFullTypeNameLength(value class System.ReadOnl    0.1%                0%                  
