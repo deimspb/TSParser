@@ -276,9 +276,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
                 {
 
-                    case TsParserUiUpdate.TableParsed(var kind, var table):
+                    case TsParserUiUpdate.TableParsed(var kind, var table, var pcr):
 
-                        EnqueueTreeMutation(() => TreeStore.ApplyTable(kind, table));
+                        EnqueueTreeMutation(() => TreeStore.ApplyTable(kind, table, pcr));
 
                         statusText = $"Parsed {kind}";
 

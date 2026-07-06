@@ -25,6 +25,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
     private TsParser? _parser;
     private Task? _runTask;
     private bool _loggerSubscribed;
+    private ulong? _latestPcrValue;
     private TsParserSessionInputMode _inputMode = TsParserSessionInputMode.None;
     private string? _currentFilePath;
     private string? _currentFileDisplayName;
@@ -287,8 +288,11 @@ public sealed class TsParserSessionService : IAsyncDisposable
             : new List<ushort>();
     }
 
-    private void StartParserRunInBackground(TsParser parser, CancellationToken cancellationToken) =>
+    private void StartParserRunInBackground(TsParser parser, CancellationToken cancellationToken)
+    {
+        _latestPcrValue = null;
         _ = RunParserAsync(parser, cancellationToken);
+    }
 
     private async Task RunParserAsync(TsParser parser, CancellationToken cancellationToken)
     {
@@ -364,6 +368,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
         parser.OnEewsReady += OnEewsReady;
         parser.OnBitrateMeasured += OnBitrateMeasured;
         parser.OnParserComplete += OnParserComplete;
+        parser.OnPcrTimestampChange += OnPcrTimestamp;
     }
 
     private void UnsubscribeParser(TsParser parser)
@@ -384,6 +389,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
         parser.OnEewsReady -= OnEewsReady;
         parser.OnBitrateMeasured -= OnBitrateMeasured;
         parser.OnParserComplete -= OnParserComplete;
+        parser.OnPcrTimestampChange -= OnPcrTimestamp;
     }
 
     private void EnsureLoggerSubscribed()
@@ -458,14 +464,19 @@ public sealed class TsParserSessionService : IAsyncDisposable
     private void OnEwsReady(EWS ews) => PostTable(TsTableKind.Ews, ews);
     private void OnEewsReady(EEWS eews) => PostTable(TsTableKind.Eews, eews);
 
+    private void OnPcrTimestamp(ulong pcr) => _latestPcrValue = pcr;
+
     private void OnBitrateMeasured(BitrateSample sample) =>
         Post(new TsParserUiUpdate.BitrateMeasured(sample));
 
     private void OnParserComplete() =>
         Post(new TsParserUiUpdate.ParserCompleted());
 
-    private void PostTable(TsTableKind kind, Table table) =>
-        Post(new TsParserUiUpdate.TableParsed(kind, table));
+    private void PostTable(TsTableKind kind, Table table)
+    {
+        var pcr = _latestPcrValue;
+        Post(new TsParserUiUpdate.TableParsed(kind, table, pcr));
+    }
 
     private void Post(TsParserUiUpdate update) =>
         _channel.Writer.TryWrite(update);

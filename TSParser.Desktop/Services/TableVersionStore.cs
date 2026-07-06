@@ -1,3 +1,4 @@
+using TSParser.Analysis;
 using TSParser.Tables;
 using TSParser.Desktop.Models;
 
@@ -92,7 +93,7 @@ public sealed class TableVersionStore
         }
     }
 
-    public void ApplyTable(TsTableKind kind, Table table)
+    public void ApplyTable(TsTableKind kind, Table table, ulong? pcrValue = null)
     {
         lock (_sync)
         {
@@ -103,7 +104,7 @@ public sealed class TableVersionStore
             var category = GetOrCreateCategory(kind, table);
             var streamKey = $"{kind}|{TableVersionKeyBuilder.GetStreamKey(kind, table)}";
             var versionContainer = GetVersionContainer(category, kind, table, streamKey);
-            AddVersion(versionContainer, kind, table);
+            AddVersion(versionContainer, kind, table, pcrValue);
             BumpRevision();
         }
     }
@@ -184,11 +185,18 @@ public sealed class TableVersionStore
         return stream;
     }
 
-    private static void AddVersion(TableTreeNode stream, TsTableKind kind, Table table)
+    private static void AddVersion(TableTreeNode stream, TsTableKind kind, Table table, ulong? pcrValue = null)
     {
         var versions = stream.Children;
         if (versions.Count > 0 && versions[^1].Payload is Table last && last.CRC32 == table.CRC32)
             return;
+
+        // Capture the previously active version before marking it stale.
+        TableTreeNode? superseded = null;
+        if (pcrValue.HasValue && versions.Count > 0)
+        {
+            superseded = versions[^1];
+        }
 
         foreach (var v in versions)
             v.IsActive = false;
@@ -205,12 +213,18 @@ public sealed class TableVersionStore
 
         versions.Add(versionNode);
 
+        if (superseded is not null)
+            superseded.Label = $"{superseded.Label} ({FormatPcrTime(pcrValue!.Value)})";
+
         if (versions.Count > MaxVersionsPerGroup)
         {
             versions.RemoveAt(0);
             RenumberVersionLabels(versions, prefix);
         }
     }
+
+    private static string FormatPcrTime(ulong pcr) =>
+        TimestampMath.PcrToTimeSpan(pcr).ToString(@"hh\:mm\:ss\.fff");
 
     private static void RenumberVersionLabels(List<TableTreeNode> versions, string prefix)
     {

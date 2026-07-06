@@ -43,7 +43,7 @@ public enum TsParserSessionInputMode
 /// <summary>Messages from <see cref="TsParserSessionService"/> to UI consumers.</summary>
 public abstract record TsParserUiUpdate
 {
-    public sealed record TableParsed(TsTableKind Kind, Table Table) : TsParserUiUpdate;
+    public sealed record TableParsed(TsTableKind Kind, Table Table, ulong? PcrValue = null) : TsParserUiUpdate;
 
     public sealed record BitrateMeasured(BitrateSample Sample) : TsParserUiUpdate;
 

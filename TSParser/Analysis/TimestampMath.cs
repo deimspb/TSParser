@@ -83,5 +83,9 @@ namespace TSParser.Analysis
 
             return packetSize * 8.0 * tickRate / assumedBitsPerSecond;
         }
+
+        /// <summary>Converts a PCR tick value to a <see cref="TimeSpan"/>.</summary>
+        public static TimeSpan PcrToTimeSpan(ulong pcr) =>
+            TimeSpan.FromTicks((long)(pcr * 10_000_000.0 / PcrTickRate));
     }
 }

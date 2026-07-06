@@ -99,6 +99,7 @@ namespace TSParser
     public delegate void T2miPacketReady(T2miPacket packet);
     public delegate void T2miPlpDiscovered(byte plpId);
     public delegate void PlpTsReady(ushort t2miSourcePid, byte plpId, ReadOnlyMemory<byte> tsData);
+    public delegate void PcrTimestampChange(ulong pcrValue);
 
     public class TsParser : IDisposable
     {
@@ -168,6 +169,8 @@ namespace TSParser
         public event T2miPacketReady? OnT2miPacketReady;
         public event T2miPlpDiscovered? OnT2miPlpDiscovered;
         public event PlpTsReady? OnPlpTsReady;
+        /// <summary>Raised on each PCR timestamp change (same PCR-PID used for bitrate).</summary>
+        public event PcrTimestampChange? OnPcrTimestampChange;
 
         private readonly Lazy<TsPacketFactory> packetFactory = new();
         private readonly Lazy<Analyzer> analyzer;
@@ -323,6 +326,13 @@ namespace TSParser
             WaitForParserTasks();
 
             m_inputSource.Dispose();
+
+            if (analyzer.IsValueCreated)
+            {
+                m_analyzer.OnRate -= Analyzer_OnRate;
+                m_analyzer.OnBitrateMeasured -= Analyzer_OnBitrateMeasured;
+                m_analyzer.OnTimeStampChange -= Analyzer_OnPcrTimestampChange;
+            }
 
             if (m_timer != null)
             {
@@ -545,6 +555,7 @@ namespace TSParser
             m_tableRouter.OnPlpTsReady += (pid, plpId, data) => OnPlpTsReady?.Invoke(pid, plpId, data);
             m_analyzer.OnRate += Analyzer_OnRate;
             m_analyzer.OnBitrateMeasured += Analyzer_OnBitrateMeasured;
+            m_analyzer.OnTimeStampChange += Analyzer_OnPcrTimestampChange;
         }
         private void Analyzer_OnRate(ushort pid, ulong deltaPackets, ulong deltaTime)
         {
@@ -553,6 +564,10 @@ namespace TSParser
         private void Analyzer_OnBitrateMeasured(BitrateSample sample)
         {
             OnBitrateMeasured?.Invoke(sample);
+        }
+        private void Analyzer_OnPcrTimestampChange(ulong timestamp)
+        {
+            OnPcrTimestampChange?.Invoke(timestamp);
         }
         private void Timer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
