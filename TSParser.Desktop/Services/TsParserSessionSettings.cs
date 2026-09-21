@@ -29,6 +29,10 @@ public sealed class TsParserSessionSettings
 
     public IReadOnlyList<ushort> EewsPids { get; private set; } = [];
 
+    public bool T2miEnabled { get; set; }
+
+    public IReadOnlyList<ushort> T2miPids { get; private set; } = [];
+
     public void SetChartPids(IEnumerable<ushort> pids) =>
         ChartPids = pids?.Distinct().OrderBy(p => p).ToList() ?? [];
 
@@ -37,6 +41,9 @@ public sealed class TsParserSessionSettings
 
     public void SetEewsPids(IEnumerable<ushort> pids) =>
         EewsPids = pids?.ToList() ?? [];
+
+    public void SetT2miPids(IEnumerable<ushort> pids) =>
+        T2miPids = pids?.ToList() ?? [];
 
     internal BitrateMeasurementOptions CreateBitrateOptions() => new()
     {

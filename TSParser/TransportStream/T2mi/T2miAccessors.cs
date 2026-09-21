@@ -82,7 +82,7 @@ internal static class T2miAccessors
     public static uint T2miCrc32(ReadOnlySpan<byte> packet)
     {
         var payloadBytes = (T2miPayloadLengthBits(packet) + 7) / 8;
-        return BinaryPrimitives.ReadUInt32LittleEndian(packet.Slice(T2miPacketHeaderSize + payloadBytes));
+        return BinaryPrimitives.ReadUInt32BigEndian(packet.Slice(T2miPacketHeaderSize + payloadBytes));
     }
 
     public static byte T2miType00PlpId(ReadOnlySpan<byte> packet) => packet[7];

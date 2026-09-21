@@ -35,6 +35,13 @@ public sealed class TableVersionStore
     private readonly StreamPidCatalog _pidCatalog = new();
     private readonly Dictionary<string, TableTreeNode> _categories = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TableTreeNode> _streamByKey = new(StringComparer.Ordinal);
+    private readonly TableTreeNode _plpSectionSeparator = new()
+    {
+        Kind = TableTreeNodeKind.Category,
+        Label = "── PLP Services ──",
+        IsExpanded = true
+    };
+    private readonly Dictionary<string, TableTreeNode> _plpNodes = new(StringComparer.Ordinal);
     private readonly TableTreeNode _pidsCategory = new()
     {
         Kind = TableTreeNodeKind.Category,
@@ -60,6 +67,13 @@ public sealed class TableVersionStore
                     .Where(_categories.ContainsKey)
                     .Select(title => _categories[title]));
 
+                if (_plpNodes.Count > 0)
+                {
+                    list.Add(_plpSectionSeparator);
+                    list.AddRange(_plpNodes.Values
+                        .OrderBy(n => PlpSortKey(n)));
+                }
+
                 return list;
             }
         }
@@ -75,6 +89,10 @@ public sealed class TableVersionStore
             foreach (var category in _categories.Values)
                 if (TryFindNode(category, nodeId, out var found))
                     return found;
+
+            foreach (var plpNode in _plpNodes.Values)
+                if (TryFindNode(plpNode, nodeId, out var plpFound))
+                    return plpFound;
         }
 
         return null;
@@ -88,6 +106,7 @@ public sealed class TableVersionStore
             _streamByKey.Clear();
             _pidCatalog.Clear();
             _pidsCategory.Children.Clear();
+            _plpNodes.Clear();
             SelectedNodeId = null;
             BumpRevision();
         }
@@ -140,6 +159,94 @@ public sealed class TableVersionStore
                 TableDescriptorChildrenBuilder.LoadDescriptorChildren(node);
         }
     }
+
+    public void ApplyPlpServices(ushort t2miPid, byte plpId, IReadOnlyList<PlpServiceInfo> services)
+    {
+        lock (_sync)
+        {
+            var plpKey = PlpNodeKey(t2miPid, plpId);
+
+            if (!_plpNodes.TryGetValue(plpKey, out var plpNode))
+            {
+                plpNode = new TableTreeNode
+                {
+                    Kind = TableTreeNodeKind.Category,
+                    Label = $"PLP {plpId} [T2-MI: 0x{t2miPid:X4}]",
+                    IsExpanded = true,
+                    Payload = (t2miPid, plpId)
+                };
+                _plpNodes[plpKey] = plpNode;
+            }
+
+            plpNode.Children.Clear();
+
+            if (services.Count == 0)
+            {
+                plpNode.Children.Add(new TableTreeNode
+                {
+                    Kind = TableTreeNodeKind.Stream,
+                    Label = "(no services — waiting for PAT)",
+                    Payload = null
+                });
+            }
+            else
+            {
+                foreach (var svc in services)
+                {
+                    var svcLabel = !string.IsNullOrWhiteSpace(svc.ServiceName)
+                        ? $"Program {svc.ProgramNumber}: \"{svc.ServiceName}\""
+                        : $"Program {svc.ProgramNumber} (service_id {svc.ServiceId})";
+
+                    var svcNode = new TableTreeNode
+                    {
+                        Kind = TableTreeNodeKind.Stream,
+                        Label = svcLabel,
+                        IsExpanded = true,
+                        Payload = svc
+                    };
+
+                    // Service metadata as child nodes
+                    if (svc.PmtPid.HasValue)
+                        svcNode.Children.Add(InfoNode($"PMT PID: 0x{svc.PmtPid.Value:X4}"));
+                    if (svc.PcrPid.HasValue)
+                        svcNode.Children.Add(InfoNode($"PCR PID: 0x{svc.PcrPid.Value:X4}"));
+                    if (svc.ServiceType.HasValue)
+                        svcNode.Children.Add(InfoNode($"Type: {svc.ServiceTypeName ?? svc.ServiceType.Value.ToString()}"));
+
+                    // Elementary streams
+                    if (svc.ElementaryStreams is { Count: > 0 })
+                    {
+                        foreach (var es in svc.ElementaryStreams)
+                        {
+                            svcNode.Children.Add(InfoNode(
+                                $"ES PID 0x{es.ElementaryPid:X4} ({es.StreamTypeName ?? $"0x{es.StreamType:X2}"})"));
+                        }
+                    }
+
+                    plpNode.Children.Add(svcNode);
+                }
+            }
+
+            BumpRevision();
+        }
+    }
+
+    private static string PlpNodeKey(ushort t2miPid, byte plpId) =>
+        $"{t2miPid:X4}:{plpId}";
+
+    private static (ushort, byte) PlpSortKey(TableTreeNode plpNode)
+    {
+        if (plpNode.Payload is ValueTuple<ushort, byte> key)
+            return (key.Item1, key.Item2);
+
+        return (0, 0);
+    }
+
+    private static TableTreeNode InfoNode(string label) => new()
+    {
+        Kind = TableTreeNodeKind.Descriptor,
+        Label = label
+    };
 
     private TableTreeNode GetOrCreateCategory(TsTableKind kind, Table table)
     {

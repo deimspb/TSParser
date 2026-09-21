@@ -140,6 +140,25 @@ public partial class ParserToolbarControl : UserControl
             await RunSessionAsync(() => Shell.Session.RestartCurrentSessionAsync()).ConfigureAwait(true);
     }
 
+    private async void OnPlpClick(object? sender, RoutedEventArgs e)
+    {
+        if (Shell is null)
+            return;
+
+        var owner = GetOwnerWindow();
+        if (owner is null)
+            return;
+
+        var vm = new PlpSettingsViewModel(Shell.Session);
+        var dialog = new PlpSettingsWindow { DataContext = vm };
+        var accepted = await dialog.ShowDialog<bool>(owner).ConfigureAwait(true);
+        if (!accepted)
+            return;
+
+        if (vm.NeedsRestart)
+            await RunSessionAsync(() => Shell.Session.RestartCurrentSessionAsync()).ConfigureAwait(true);
+    }
+
     private void OnPlayUdpClick(object? sender, RoutedEventArgs e)
     {
         if (Shell is null || !CanPlayUdp)
@@ -211,6 +230,7 @@ public partial class ParserToolbarControl : UserControl
         OpenFileButton.IsEnabled = !busy;
         BitrateButton.IsEnabled = !busy;
         EwsButton.IsEnabled = !busy;
+        PlpButton.IsEnabled = !busy;
         EndpointBox.IsEnabled = !udpRunning;
         BindCombo.IsEnabled = !udpRunning;
         PlayButton.IsEnabled = canPlay;

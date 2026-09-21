@@ -32,6 +32,10 @@ public sealed class TsParserSessionService : IAsyncDisposable
     private string? _currentMulticastEndpoint;
     private string? _currentBindAddress;
 
+    private readonly object _plpLock = new();
+    private PlpServiceAggregator? _plpAggregator;
+    private Dictionary<(ushort T2miPid, byte PlpId), TsParser>? _plpInnerParsers;
+
     public TsParserSessionSettings Settings { get; } = new();
 
     public ChannelReader<TsParserUiUpdate> Updates => _channel.Reader;
@@ -257,16 +261,32 @@ public sealed class TsParserSessionService : IAsyncDisposable
         string? filePath = null,
         string? multicastGroup = null,
         int? multicastPort = null,
-        string? bindAddress = null) => new()
+        string? bindAddress = null)
     {
-        CurrentTsMode = TsMode.DVB,
-        CurrentDecodeMode = DecodeMode.Table,
-        BitrateMeasurement = Settings.CreateBitrateOptions(),
-        TsFileName = filePath,
-        MulticastGroup = multicastGroup,
-        MulticastPort = multicastPort,
-        MulticastIncomingIp = bindAddress
-    };
+        var t2miEnabled = Settings.T2miEnabled && Settings.T2miPids.Count > 0;
+        var t2miPids = t2miEnabled ? Settings.T2miPids.ToArray() : null;
+
+        if (t2miEnabled)
+        {
+            Post(new TsParserUiUpdate.LogMessage(
+                $"T2-MI: enabled, PIDs=[{string.Join(", ", t2miPids!.Select(p => $"0x{p:X4}"))}], deencapsulate=true",
+                false));
+        }
+
+        return new()
+        {
+            CurrentTsMode = TsMode.DVB,
+            CurrentDecodeMode = DecodeMode.Table,
+            BitrateMeasurement = Settings.CreateBitrateOptions(),
+            TsFileName = filePath,
+            MulticastGroup = multicastGroup,
+            MulticastPort = multicastPort,
+            MulticastIncomingIp = bindAddress,
+            T2miEnabled = t2miEnabled,
+            T2miPids = t2miPids,
+            T2miDeencapsulate = t2miEnabled,
+        };
+    }
 
     private TsParser CreateParser(ParserConfig config)
     {
@@ -291,7 +311,33 @@ public sealed class TsParserSessionService : IAsyncDisposable
     private void StartParserRunInBackground(TsParser parser, CancellationToken cancellationToken)
     {
         _latestPcrValue = null;
+        InitPlpState();
         _ = RunParserAsync(parser, cancellationToken);
+    }
+
+    private void InitPlpState()
+    {
+        lock (_plpLock)
+        {
+            _plpAggregator = new PlpServiceAggregator();
+            _plpInnerParsers = new Dictionary<(ushort, byte), TsParser>();
+        }
+    }
+
+    private void DisposePlpState()
+    {
+        lock (_plpLock)
+        {
+            if (_plpInnerParsers is not null)
+            {
+                foreach (var parser in _plpInnerParsers.Values)
+                    parser.Dispose();
+                _plpInnerParsers.Clear();
+                _plpInnerParsers = null;
+            }
+
+            _plpAggregator = null;
+        }
     }
 
     private async Task RunParserAsync(TsParser parser, CancellationToken cancellationToken)
@@ -348,6 +394,8 @@ public sealed class TsParserSessionService : IAsyncDisposable
 
         UnsubscribeParser(parser);
         parser.Dispose();
+
+        DisposePlpState();
     }
 
     private void SubscribeParser(TsParser parser)
@@ -369,6 +417,8 @@ public sealed class TsParserSessionService : IAsyncDisposable
         parser.OnBitrateMeasured += OnBitrateMeasured;
         parser.OnParserComplete += OnParserComplete;
         parser.OnPcrTimestampChange += OnPcrTimestamp;
+        parser.OnT2miPlpDiscovered += OnT2miPlpDiscovered;
+        parser.OnPlpTsReady += OnPlpTsReady;
     }
 
     private void UnsubscribeParser(TsParser parser)
@@ -390,6 +440,8 @@ public sealed class TsParserSessionService : IAsyncDisposable
         parser.OnBitrateMeasured -= OnBitrateMeasured;
         parser.OnParserComplete -= OnParserComplete;
         parser.OnPcrTimestampChange -= OnPcrTimestamp;
+        parser.OnT2miPlpDiscovered -= OnT2miPlpDiscovered;
+        parser.OnPlpTsReady -= OnPlpTsReady;
     }
 
     private void EnsureLoggerSubscribed()
@@ -463,6 +515,86 @@ public sealed class TsParserSessionService : IAsyncDisposable
     private void OnScte35Ready(SCTE35 scte35) => PostTable(TsTableKind.Scte35, scte35);
     private void OnEwsReady(EWS ews) => PostTable(TsTableKind.Ews, ews);
     private void OnEewsReady(EEWS eews) => PostTable(TsTableKind.Eews, eews);
+
+    private void OnT2miPlpDiscovered(byte plpId)
+    {
+        Post(new TsParserUiUpdate.LogMessage($"T2-MI: PLP {plpId} discovered", false));
+        Post(new TsParserUiUpdate.PlpDiscovered(plpId));
+    }
+
+    private void OnPlpTsReady(ushort t2miSourcePid, byte plpId, ReadOnlyMemory<byte> tsData)
+    {
+        if (tsData.IsEmpty)
+            return;
+
+        Post(new TsParserUiUpdate.LogMessage(
+            $"T2-MI: inner TS — t2miPid=0x{t2miSourcePid:X4}, plpId={plpId}, {tsData.Length}B", false));
+
+        // Buffer valid only during callback — must copy (AGENTS.md §3.1)
+        var copy = tsData.ToArray();
+
+        PlpServiceAggregator? aggregator;
+        Dictionary<(ushort, byte), TsParser>? parsers;
+
+        lock (_plpLock)
+        {
+            aggregator = _plpAggregator;
+            parsers = _plpInnerParsers;
+        }
+
+        if (aggregator is null || parsers is null)
+            return;
+
+        aggregator.MarkPlpTsReceived(t2miSourcePid, plpId);
+
+        var innerParser = GetOrCreateInnerParser(parsers, aggregator, t2miSourcePid, plpId);
+        innerParser.PushBytes(copy, 188); // T2-MI deencapsulated TS is always 188-byte packets
+    }
+
+    private TsParser GetOrCreateInnerParser(
+        Dictionary<(ushort, byte), TsParser> parsers,
+        PlpServiceAggregator aggregator,
+        ushort t2miPid,
+        byte plpId)
+    {
+        var key = (t2miPid, plpId);
+
+        lock (_plpLock)
+        {
+            if (parsers.TryGetValue(key, out var existing))
+                return existing;
+
+            var innerParser = new TsParser(new ParserConfig
+            {
+                CurrentDecodeMode = DecodeMode.Table,
+            });
+
+            innerParser.OnPatReady += pat =>
+            {
+                aggregator.ApplyPat(t2miPid, plpId, pat);
+                PostPlpUpdate(t2miPid, plpId, aggregator);
+            };
+            innerParser.OnSdtReady += sdt =>
+            {
+                aggregator.ApplySdt(t2miPid, plpId, sdt);
+                PostPlpUpdate(t2miPid, plpId, aggregator);
+            };
+            innerParser.OnPmtReady += pmt =>
+            {
+                aggregator.ApplyPmt(t2miPid, plpId, pmt);
+                PostPlpUpdate(t2miPid, plpId, aggregator);
+            };
+
+            parsers[key] = innerParser;
+            return innerParser;
+        }
+    }
+
+    private void PostPlpUpdate(ushort t2miPid, byte plpId, PlpServiceAggregator aggregator)
+    {
+        var services = aggregator.GetServices(t2miPid, plpId);
+        Post(new TsParserUiUpdate.PlpServicesUpdated(t2miPid, plpId, services));
+    }
 
     private void OnPcrTimestamp(ulong pcr) => _latestPcrValue = pcr;
 

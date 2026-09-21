@@ -52,7 +52,7 @@ internal static class T2miTestPacketFactory
         }
 
         var crc = Utils.GetCRC32(packet.AsSpan(0, 6 + payloadBytes));
-        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(6 + payloadBytes), crc);
+        BinaryPrimitives.WriteUInt32BigEndian(packet.AsSpan(6 + payloadBytes), crc);
         return packet;
     }
 
@@ -122,7 +122,7 @@ internal static class T2miTestPacketFactory
         bbFramePayload.CopyTo(packet.AsSpan(9));
 
         var crc = Utils.GetCRC32(packet.AsSpan(0, 6 + payloadBytes));
-        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(6 + payloadBytes), crc);
+        BinaryPrimitives.WriteUInt32BigEndian(packet.AsSpan(6 + payloadBytes), crc);
         return packet;
     }
 

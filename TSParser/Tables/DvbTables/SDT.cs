@@ -30,7 +30,18 @@ namespace TSParser.Tables.DvbTables
             TransportStreamId = BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]);
             OriginalNetworkId = BinaryPrimitives.ReadUInt16BigEndian(bytes[8..]);
             //byte 10 reserved
-            SdtItemsList = GetSdtItemList(bytes[11..^4]);
+            var sectionBytes = SectionParseValidation.GetDeclaredSectionByteCount(SectionLength);
+            const int serviceLoopStart = 11;
+            var serviceLoopLength = sectionBytes - serviceLoopStart - 4;
+            if (serviceLoopLength < 0)
+            {
+                throw new SectionParseException(
+                    ParseFailureReason.SectionLengthMismatch,
+                    $"SDT section length {SectionLength} is too short for the service loop.");
+            }
+
+            SectionParseValidation.ValidateSpanBounds(bytes, serviceLoopStart, serviceLoopLength);
+            SdtItemsList = GetSdtItemList(bytes.Slice(serviceLoopStart, serviceLoopLength));
         }
         private List<ServiceDescriptionItem> GetSdtItemList(ReadOnlySpan<byte> bytes)
         {
@@ -38,9 +49,21 @@ namespace TSParser.Tables.DvbTables
             List<ServiceDescriptionItem> items = new();
             while (pointer < bytes.Length)
             {
-                ServiceDescriptionItem item = new(bytes[pointer..],TransportStreamId);
-                pointer += item.DescriptorLoopLength + 5;
-                items.Add(item);
+                var remaining = bytes.Length - pointer;
+                if (remaining < 5)
+                {
+                    break;
+                }
+
+                var descriptorLoopLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(pointer + 3, 2)) & 0x0FFF);
+                var entryLength = descriptorLoopLength + 5;
+                if (pointer + entryLength > bytes.Length)
+                {
+                    break;
+                }
+
+                items.Add(new ServiceDescriptionItem(bytes.Slice(pointer, entryLength), TransportStreamId));
+                pointer += entryLength;
             }
             return items;
         }
@@ -102,6 +125,7 @@ namespace TSParser.Tables.DvbTables
             FreeCAMode = (bytes[3] & 0x10) != 0;
             DescriptorLoopLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]) & 0x0FFF);
             var pointer = 5;
+            SectionParseValidation.ValidateSpanBounds(bytes, pointer, DescriptorLoopLength);
             var descAllocation = $"Table: SDT, Ts id: {tsId}, Service id: {ServiceId}";
             SdtItemDescriptorList = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, DescriptorLoopLength), descAllocation);
         }        

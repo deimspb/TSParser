@@ -85,6 +85,38 @@ public sealed class SectionParseValidationTests
     }
 
     [Test]
+    public void Sdt_parses_service_with_empty_descriptor_loop()
+    {
+        var bytes = BuildSdtSection(descriptorLoopLength: 0);
+
+        var sdt = new SDT(bytes);
+
+        Assert.That(sdt.SdtItemsList, Has.Count.EqualTo(1));
+        Assert.That(sdt.SdtItemsList[0].ServiceId, Is.EqualTo(1));
+        Assert.That(sdt.SdtItemsList[0].DescriptorLoopLength, Is.Zero);
+    }
+
+    [Test]
+    public void Sdt_stops_service_loop_when_descriptors_loop_length_exceeds_remaining_bytes()
+    {
+        var bytes = BuildSdtSection(descriptorLoopLength: 100);
+
+        var sdt = new SDT(bytes);
+
+        Assert.That(sdt.SdtItemsList, Is.Empty);
+    }
+
+    [Test]
+    public void Mjd_utc_rejects_unrepresentable_calendar_value()
+    {
+        var bytes = new byte[] { 0x00, 0x00, 0x99, 0x99, 0x99 };
+
+        Assert.That(Utils.TryGetDateTimeFromMJD_UTC(bytes, out _), Is.False);
+        var ex = Assert.Throws<SectionParseException>(() => _ = Utils.GetDateTimeFromMJD_UTC(bytes));
+        Assert.That(ex!.Reason, Is.EqualTo(ParseFailureReason.InvalidRecordLoop));
+    }
+
+    [Test]
     public void T2_delivery_descriptor_malformed_frequency_loop_does_not_hang()
     {
         var bytes = new byte[]
@@ -98,5 +130,31 @@ public sealed class SectionParseValidationTests
 
         Assert.That(parseTask.Wait(TimeSpan.FromSeconds(2)), Is.True, "Malformed T2 descriptor parse should finish promptly");
         Assert.DoesNotThrow(() => _ = parseTask.Result);
+    }
+
+    private static byte[] BuildSdtSection(ushort descriptorLoopLength)
+    {
+        var serviceLoopBytes = 5;
+        var totalLength = 11 + serviceLoopBytes + 4;
+        var bytes = new byte[totalLength];
+        var sectionLength = totalLength - 3;
+
+        bytes[0] = 0x42;
+        bytes[1] = (byte)(0x80 | (sectionLength >> 8));
+        bytes[2] = (byte)sectionLength;
+        bytes[3] = 0x00;
+        bytes[4] = 0x01;
+        bytes[5] = 0x01;
+        bytes[6] = 0x00;
+        bytes[7] = 0x00;
+        bytes[8] = 0x00;
+        bytes[9] = 0x01;
+        bytes[10] = 0xFF;
+        bytes[11] = 0x00;
+        bytes[12] = 0x01;
+        bytes[13] = 0xFC;
+        bytes[14] = (byte)(0x80 | ((descriptorLoopLength >> 8) & 0x0F));
+        bytes[15] = (byte)descriptorLoopLength;
+        return bytes;
     }
 }

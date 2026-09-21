@@ -55,7 +55,7 @@ namespace TSParser.Tables
                 parseAction();
                 return true;
             }
-            catch (SectionParseException ex)
+            catch (Exception ex) when (ex is SectionParseException or ArgumentOutOfRangeException)
             {
                 Logger.Send(
                     LogStatus.EXCEPTION,

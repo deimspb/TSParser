@@ -61,4 +61,11 @@ public abstract record TsParserUiUpdate
     public sealed record ParserStopped(TsParserSessionInputMode PreviousMode) : TsParserUiUpdate;
 
     public sealed record LogMessage(string Text, bool IsError) : TsParserUiUpdate;
+
+    public sealed record PlpDiscovered(byte PlpId) : TsParserUiUpdate;
+
+    public sealed record PlpServicesUpdated(
+        ushort T2miPid,
+        byte PlpId,
+        IReadOnlyList<PlpServiceInfo> Services) : TsParserUiUpdate;
 }

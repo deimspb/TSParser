@@ -132,6 +132,24 @@ namespace TSParser.Service
         }
         internal static DateTime GetDateTimeFromMJD_UTC(ReadOnlySpan<byte> bytes)
         {
+            if (!TryGetDateTimeFromMJD_UTC(bytes, out var dateTime))
+            {
+                throw new SectionParseException(
+                    ParseFailureReason.InvalidRecordLoop,
+                    "MJD/UTC date-time is not a valid calendar value.");
+            }
+
+            return dateTime;
+        }
+
+        internal static bool TryGetDateTimeFromMJD_UTC(ReadOnlySpan<byte> bytes, out DateTime dateTime)
+        {
+            dateTime = default;
+            if (bytes.Length < 5)
+            {
+                return false;
+            }
+
             ushort mjd = (ushort)((bytes[0] << 8) + bytes[1]);
             byte hour = (byte)(((bytes[2] >> 4) * 10) + (bytes[2] & 0xF));
             byte minutes = (byte)(((bytes[3] >> 4) * 10) + (bytes[3] & 0xF));
@@ -144,16 +162,51 @@ namespace TSParser.Service
             y = (ushort)(y + k + 1900);
             m = (ushort)(m - 1 - (k * 12));
 
-            return new DateTime(y, m, d, hour, minutes, seconds);
+            if (y is < 1 or > 9999 || m is < 1 or > 12 || d < 1 || hour > 23 || minutes > 59 || seconds > 59)
+            {
+                return false;
+            }
 
+            if (d > DateTime.DaysInMonth(y, m))
+            {
+                return false;
+            }
+
+            dateTime = new DateTime(y, m, d, hour, minutes, seconds);
+            return true;
         }
+
         internal static TimeSpan GetDuration(ReadOnlySpan<byte> bytes)
         {
+            if (!TryGetDuration(bytes, out var duration))
+            {
+                throw new SectionParseException(
+                    ParseFailureReason.InvalidRecordLoop,
+                    "BCD duration is not a valid time value.");
+            }
+
+            return duration;
+        }
+
+        internal static bool TryGetDuration(ReadOnlySpan<byte> bytes, out TimeSpan duration)
+        {
+            duration = default;
+            if (bytes.Length < 3)
+            {
+                return false;
+            }
+
             byte hour = (byte)(((bytes[0] >> 4) * 10) + (bytes[0] & 0xF));
             byte minutes = (byte)(((bytes[1] >> 4) * 10) + (bytes[1] & 0xF));
             byte seconds = (byte)(((bytes[2] >> 4) * 10) + (bytes[2] & 0xF));
 
-            return new TimeSpan(hour, minutes, seconds);
+            if (minutes > 59 || seconds > 59)
+            {
+                return false;
+            }
+
+            duration = new TimeSpan(hour, minutes, seconds);
+            return true;
         }
         internal static uint BcdToUint(ReadOnlySpan<byte> bytes)
         {

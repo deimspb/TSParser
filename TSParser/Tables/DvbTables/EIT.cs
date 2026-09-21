@@ -46,9 +46,29 @@ namespace TSParser.Tables.DvbTables
             var pointer = 0;
             while (pointer < bytes.Length)
             {
-                Event evt = new(bytes[pointer..],ServiceId);
-                pointer += evt.DescriptorLoopLength + 12;
-                events.Add(evt);
+                var remaining = bytes.Length - pointer;
+                if (remaining < 12)
+                {
+                    break;
+                }
+
+                var descriptorLoopLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes.Slice(pointer + 10, 2)) & 0x0FFF);
+                var entryLength = descriptorLoopLength + 12;
+                if (pointer + entryLength > bytes.Length)
+                {
+                    break;
+                }
+
+                try
+                {
+                    events.Add(new Event(bytes.Slice(pointer, entryLength), ServiceId));
+                }
+                catch (SectionParseException)
+                {
+                    break;
+                }
+
+                pointer += entryLength;
             }
 
             return events;
@@ -110,14 +130,29 @@ namespace TSParser.Tables.DvbTables
             var pointer = 0;
             EventId = BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]);
             pointer += 2;
-            StartDateTime = Utils.GetDateTimeFromMJD_UTC(bytes.Slice(pointer, 5));
+            if (!Utils.TryGetDateTimeFromMJD_UTC(bytes.Slice(pointer, 5), out var startDateTime))
+            {
+                throw new SectionParseException(
+                    ParseFailureReason.InvalidRecordLoop,
+                    "EIT event has an invalid MJD/UTC start time.");
+            }
+
+            StartDateTime = startDateTime;
             pointer += 5;
-            DurationTimeSpan = Utils.GetDuration(bytes.Slice(pointer, 3));
+            if (!Utils.TryGetDuration(bytes.Slice(pointer, 3), out var duration))
+            {
+                throw new SectionParseException(
+                    ParseFailureReason.InvalidRecordLoop,
+                    "EIT event has an invalid duration.");
+            }
+
+            DurationTimeSpan = duration;
             pointer += 3;
             RunningStatus = (byte)(bytes[pointer] >> 5);
             FreeCAmode = (bytes[pointer] & 0x10) != 0;
             DescriptorLoopLength = (ushort)(BinaryPrimitives.ReadUInt16BigEndian(bytes[pointer..]) & 0x0FFF);
             pointer += 2;
+            SectionParseValidation.ValidateSpanBounds(bytes, pointer, DescriptorLoopLength);
             var allocation = $"Table: EIT, Service id: {serviceId}, Event id: {EventId}";
             EventDescriptors = DescriptorFactory.GetDescriptorList(bytes.Slice(pointer, DescriptorLoopLength), allocation);
 

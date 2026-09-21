@@ -416,17 +416,23 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
 
 
+                    case TsParserUiUpdate.PlpDiscovered(var plpId):
+                        statusText = $"PLP {plpId} discovered";
+                        needsRefresh = true;
+                        break;
+
+                    case TsParserUiUpdate.PlpServicesUpdated(var t2miPid, var plpId, var services):
+                        EnqueueTreeMutation(() => TreeStore.ApplyPlpServices(t2miPid, plpId, services));
+                        statusText = $"PLP {plpId} services";
+                        if (ShouldRefreshTableUi())
+                            needsRefresh = true;
+                        break;
+
                     case TsParserUiUpdate.LogMessage(var text, var isError):
 
-                        if (isError)
+                        statusText = text;
 
-                        {
-
-                            statusText = text;
-
-                            needsRefresh = true;
-
-                        }
+                        needsRefresh = true;
 
                         break;
 
