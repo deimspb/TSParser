@@ -42,7 +42,6 @@
 
 @code {
     private static readonly TimeSpan UdpChartThrottle = TimeSpan.FromMilliseconds(300);
-    private static readonly TimeSpan PidTreeThrottle = TimeSpan.FromMilliseconds(400);
 
     private readonly CancellationTokenSource _cts = new();
     private Task? _pumpTask;
@@ -53,7 +52,7 @@
     private int _chartConfigRevision;
     private int _chartFitRevision;
     private DateTime _lastChartUiUtc = DateTime.MinValue;
-    private DateTime _lastPidTreeSyncUtc = DateTime.MinValue;
+    private int _syncedObservedPidCount;
 
     protected override void OnInitialized()
     {
@@ -93,7 +92,7 @@
                         _selectedNode = null;
                         _bitrateRevision = BitrateStore.Revision;
                         _chartFitRevision++;
-                        _lastPidTreeSyncUtc = DateTime.MinValue;
+                        _syncedObservedPidCount = 0;
                         _statusText = "Session reset";
                         needsRefresh = true;
                         break;
@@ -139,6 +138,9 @@
                             needsRefresh = true;
                         }
                         break;
+
+                    case TsParserUiUpdate.PidCatalogPoll:
+                        break;
                 }
 
                 if (TrySyncPidTree())
@@ -155,18 +157,13 @@
 
     private bool TrySyncPidTree(bool force = false)
     {
-        if (!force)
-        {
-            var now = DateTime.UtcNow;
-            if (now - _lastPidTreeSyncUtc < PidTreeThrottle)
-                return false;
-
-            _lastPidTreeSyncUtc = now;
-        }
-
         if (!Session.TryGetObservedPids(out var pids) || pids.Count == 0)
             return false;
 
+        if (!force && pids.Count == _syncedObservedPidCount)
+            return false;
+
+        _syncedObservedPidCount = pids.Count;
         TreeStore.SyncObservedPids(pids);
         return true;
     }

@@ -61,4 +61,7 @@ public abstract record TsParserUiUpdate
     public sealed record ParserStopped(TsParserSessionInputMode PreviousMode) : TsParserUiUpdate;
 
     public sealed record LogMessage(string Text, bool IsError) : TsParserUiUpdate;
+
+    /// <summary>Wakes the UI pump so observed PIDs can be merged after PAT/PMT when no further SI or bitrate events arrive.</summary>
+    public sealed record PidCatalogPoll : TsParserUiUpdate;
 }

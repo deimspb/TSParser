@@ -330,8 +330,12 @@ public sealed class TableVersionStore
         }
     }
 
-    private static string FormatPcrTime(ulong pcr) =>
-        TimestampMath.PcrToTimeSpan(pcr).ToString(@"hh\:mm\:ss\.fff");
+    private static string FormatPcrTime(ulong pcr)
+    {
+        var ts = TimestampMath.PcrToTimeSpan(pcr);
+        var hours = (int)Math.Min(ts.TotalHours, 99);
+        return $"{hours:D2}:{ts.Minutes:D2}:{ts.Seconds:D2}.{ts.Milliseconds:D3}";
+    }
 
     private static void RenumberVersionLabels(List<TableTreeNode> versions, string prefix)
     {

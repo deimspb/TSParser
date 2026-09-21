@@ -24,8 +24,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
     private static readonly TimeSpan TableUiThrottle = TimeSpan.FromMilliseconds(200);
 
-    private static readonly TimeSpan PidTreeThrottle = TimeSpan.FromMilliseconds(400);
-
 
 
     private readonly CancellationTokenSource _cts = new();
@@ -44,7 +42,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
     private DateTime _lastTableUiUtc = DateTime.MinValue;
 
-    private DateTime _lastPidTreeSyncUtc = DateTime.MinValue;
+    private int _syncedObservedPidCount;
 
     private string? _pendingStatusText;
 
@@ -318,11 +316,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
                         chartFitRevision++;
 
-                        _lastPidTreeSyncUtc = DateTime.MinValue;
-
                         _lastTableUiUtc = DateTime.MinValue;
 
                         _lastChartUiUtc = DateTime.MinValue;
+
+                        _syncedObservedPidCount = 0;
 
                         statusText = "Session reset";
 
@@ -436,6 +434,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
                         break;
 
+                    case TsParserUiUpdate.PidCatalogPoll:
+
+                        break;
+
                 }
 
 
@@ -468,29 +470,25 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
     {
 
-        if (!force)
-
-        {
-
-            var now = DateTime.UtcNow;
-
-            if (now - _lastPidTreeSyncUtc < PidTreeThrottle)
-
-                return false;
-
-
-
-            _lastPidTreeSyncUtc = now;
-
-        }
-
-
-
         if (!Session.TryGetObservedPids(out var pids) || pids.Count == 0)
 
             return false;
 
 
+
+        if (!force)
+
+        {
+
+            if (pids.Count == _syncedObservedPidCount)
+
+                return false;
+
+        }
+
+
+
+        _syncedObservedPidCount = pids.Count;
 
         var snapshot = pids.ToArray();
 
@@ -683,8 +681,17 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
 
         foreach (var mutation in treeMutations)
-
-            mutation();
+        {
+            try
+            {
+                mutation();
+            }
+            catch (Exception ex)
+            {
+                statusText = ex.Message;
+                applyUi = true;
+            }
+        }
 
 
 

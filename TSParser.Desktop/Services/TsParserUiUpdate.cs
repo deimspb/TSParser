@@ -68,4 +68,7 @@ public abstract record TsParserUiUpdate
         ushort T2miPid,
         byte PlpId,
         IReadOnlyList<PlpServiceInfo> Services) : TsParserUiUpdate;
+
+    /// <summary>Wakes the UI pump so observed PIDs can be merged after PAT/PMT when no further SI or bitrate events arrive.</summary>
+    public sealed record PidCatalogPoll : TsParserUiUpdate;
 }

@@ -20,12 +20,15 @@ public sealed class TsParserSessionService : IAsyncDisposable
     private const int MinimumFileBytes = 2040;
     private const long MaxUploadBytes = 8L * 1024 * 1024 * 1024;
 
+    private static readonly TimeSpan PidCatalogPollInterval = TimeSpan.FromMilliseconds(400);
+
     private readonly Channel<TsParserUiUpdate> _channel = Channel.CreateUnbounded<TsParserUiUpdate>(
-        new UnboundedChannelOptions { SingleReader = false, SingleWriter = true });
+        new UnboundedChannelOptions { SingleReader = false, SingleWriter = false });
 
     private readonly object _parserLock = new();
     private TsParser? _parser;
     private Task? _runTask;
+    private CancellationTokenSource? _pidPollCts;
     private bool _loggerSubscribed;
     private TsParserSessionInputMode _inputMode = TsParserSessionInputMode.None;
     private string? _currentFilePath;
@@ -339,8 +342,42 @@ public sealed class TsParserSessionService : IAsyncDisposable
             : new List<ushort>();
     }
 
-    private void StartParserRunInBackground(TsParser parser, CancellationToken cancellationToken) =>
+    private void StartParserRunInBackground(TsParser parser, CancellationToken cancellationToken)
+    {
+        StartPidCatalogPoll();
         _ = RunParserAsync(parser, cancellationToken);
+    }
+
+    private void StartPidCatalogPoll()
+    {
+        StopPidCatalogPoll();
+        var cts = new CancellationTokenSource();
+        _pidPollCts = cts;
+        _ = RunPidCatalogPollAsync(cts.Token);
+    }
+
+    private void StopPidCatalogPoll()
+    {
+        var cts = Interlocked.Exchange(ref _pidPollCts, null);
+        if (cts is null)
+            return;
+
+        cts.Cancel();
+        cts.Dispose();
+    }
+
+    private async Task RunPidCatalogPollAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(PidCatalogPollInterval);
+            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
+                Post(new TsParserUiUpdate.PidCatalogPoll());
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
 
     private async Task RunParserAsync(TsParser parser, CancellationToken cancellationToken)
     {
@@ -362,10 +399,16 @@ public sealed class TsParserSessionService : IAsyncDisposable
         {
             Post(new TsParserUiUpdate.LogMessage(ex.Message, true));
         }
+        finally
+        {
+            StopPidCatalogPoll();
+        }
     }
 
     private async Task StopAndDisposeParserAsync()
     {
+        StopPidCatalogPoll();
+
         TsParser? parser;
         Task? runTask;
 
