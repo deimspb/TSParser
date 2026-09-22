@@ -38,7 +38,7 @@ public sealed class TableVersionStore
     {
         Kind = TableTreeNodeKind.Category,
         Label = "PIDs",
-        IsExpanded = true
+        IsExpanded = false
     };
 
     public long Revision { get; private set; }
@@ -52,12 +52,12 @@ public sealed class TableVersionStore
             lock (_sync)
             {
                 var list = new List<TableTreeNode>();
-                if (_pidsCategory.Children.Count > 0)
-                    list.Add(_pidsCategory);
-
                 list.AddRange(CategoryTitleOrder
                     .Where(_categories.ContainsKey)
                     .Select(title => _categories[title]));
+
+                if (_pidsCategory.Children.Count > 0)
+                    list.Add(_pidsCategory);
 
                 return list;
             }
@@ -183,7 +183,7 @@ public sealed class TableVersionStore
         {
             Kind = TableTreeNodeKind.Stream,
             Label = TableVersionKeyBuilder.GetStreamLabel(kind, table),
-            IsExpanded = true,
+            IsExpanded = false,
             Payload = streamKey
         };
 
@@ -195,8 +195,14 @@ public sealed class TableVersionStore
     private static void AddVersion(TableTreeNode stream, TsTableKind kind, Table table)
     {
         var versions = stream.Children;
-        if (versions.Count > 0 && versions[^1].Payload is Table last && last.CRC32 == table.CRC32)
+        if (kind is TsTableKind.Tdt or TsTableKind.Tot)
+        {
+            versions.Clear();
+        }
+        else if (versions.Count > 0 && versions[^1].Payload is Table last && last.CRC32 == table.CRC32)
+        {
             return;
+        }
 
         foreach (var v in versions)
             v.IsActive = false;

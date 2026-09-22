@@ -258,6 +258,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
             {
 
+                try
+
+                {
+
                 var needsRefresh = false;
 
                 var statusText = _uiStatusText;
@@ -451,6 +455,16 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
                 if (needsRefresh)
 
                     RequestUiRefresh(statusText, selectedNodeId, bitrateRevision, chartFitRevision);
+
+                }
+
+                catch (Exception ex) when (ex is not OperationCanceledException)
+
+                {
+
+                    RequestUiRefresh(ex.Message, _uiSelectedNodeId, BitrateRevision, ChartFitRevision);
+
+                }
 
             }
 
@@ -695,31 +709,41 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
 
 
-        if (applyUi)
+        try
 
-            ApplyUiRefresh(statusText, selectedNodeId, bitrateRevision, chartFitRevision, windowTitle);
+        {
 
-        else if (treeMutations.Count > 0)
+            if (applyUi)
 
-            TreeRevision = TreeStore.Revision;
+                ApplyUiRefresh(statusText, selectedNodeId, bitrateRevision, chartFitRevision, windowTitle);
+
+            else if (treeMutations.Count > 0)
+
+                TreeRevision = TreeStore.Revision;
+
+        }
+
+        finally
+
+        {
+
+            var reschedule = false;
+
+            lock (_uiPendingLock)
+
+                reschedule = _hasPendingUi || _pendingTreeMutations.Count > 0;
 
 
 
-        var reschedule = false;
-
-        lock (_uiPendingLock)
-
-            reschedule = _hasPendingUi || _pendingTreeMutations.Count > 0;
+            Interlocked.Exchange(ref _uiRefreshScheduled, 0);
 
 
 
-        Interlocked.Exchange(ref _uiRefreshScheduled, 0);
+            if (reschedule && Interlocked.CompareExchange(ref _uiRefreshScheduled, 1, 0) == 0)
 
+                _ = Dispatcher.UIThread.InvokeAsync(FlushPendingUiRefreshAsync, DispatcherPriority.Background);
 
-
-        if (reschedule && Interlocked.CompareExchange(ref _uiRefreshScheduled, 1, 0) == 0)
-
-            _ = Dispatcher.UIThread.InvokeAsync(FlushPendingUiRefreshAsync, DispatcherPriority.Background);
+        }
 
     }
 

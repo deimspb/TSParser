@@ -44,6 +44,7 @@ namespace TSParser.Analysis
         private readonly bool m_measureUsefulAndTotalBitrate;
         private readonly Dictionary<ushort, BitrateWindowMeasurer> m_pidMeasurers = new();
 
+        private readonly object _pidMetricsLock = new();
         private readonly Dictionary<ushort, PidMetric> m_pidMetricsByPid = new(50);
 
         private int m_lastPacketSize = 188;
@@ -71,9 +72,12 @@ namespace TSParser.Analysis
         {
             get
             {
-                var pids = m_pidMetricsByPid.Keys.ToList();
-                pids.Sort();
-                return pids;
+                lock (_pidMetricsLock)
+                {
+                    var pids = m_pidMetricsByPid.Keys.ToList();
+                    pids.Sort();
+                    return pids;
+                }
             }
         }
 
@@ -360,16 +364,20 @@ namespace TSParser.Analysis
 
         private void AddPacketToPidMetric(TsPacket packet)
         {
-            if (!m_pidMetricsByPid.TryGetValue(packet.Pid, out var pm))
+            PidMetric? pm;
+            lock (_pidMetricsLock)
             {
-                pm = new PidMetric(packet.Pid);
-                if (!m_bitrateEnabled)
+                if (!m_pidMetricsByPid.TryGetValue(packet.Pid, out pm))
                 {
-                    pm.OnRate += Pm_OnRate;
-                    OnTimeStampChange += pm.TimeStampChanged;
-                }
+                    pm = new PidMetric(packet.Pid);
+                    if (!m_bitrateEnabled)
+                    {
+                        pm.OnRate += Pm_OnRate;
+                        OnTimeStampChange += pm.TimeStampChanged;
+                    }
 
-                m_pidMetricsByPid[packet.Pid] = pm;
+                    m_pidMetricsByPid[packet.Pid] = pm;
+                }
             }
 
             pm.AddPacket(packet);

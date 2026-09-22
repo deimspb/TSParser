@@ -36,8 +36,10 @@ namespace TSParser.Analysis.Metric
             get => m_ccErrorCount;
             set
             {
+                var first = m_ccErrorCount == 0 && value > 0;
                 m_ccErrorCount = value;
-                Logger.Send(LogStatus.ETSI, $"CC detect on pid: {Pid}, Total CC for this pid: {m_ccErrorCount}");
+                if (first)
+                    Logger.Send(LogStatus.ETSI, $"CC detect on pid: {Pid}, Total CC for this pid: {m_ccErrorCount}");
             }
         }
         public PidMetric(ushort pid)
