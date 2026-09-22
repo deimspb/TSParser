@@ -107,6 +107,17 @@ internal sealed class DvbTableRouter
         _dynamicPidRegistry.ResetStreamState();
     }
 
+    public void SetSectionCrcFailedHandler(Action<ushort, byte>? handler)
+    {
+        _patFactory.SectionCrcFailed = handler;
+        _catFactory.SectionCrcFailed = handler;
+        _nitFactory.SectionCrcFailed = handler;
+        _eitFactory.SectionCrcFailed = handler;
+        _sdtBatFactory.SectionCrcFailed = handler;
+        _tdtTotFactory.SectionCrcFailed = handler;
+        _dynamicPidRegistry.SetSectionCrcFailedHandler(handler);
+    }
+
     public bool RequiresFullPacket(ushort pid)
     {
         if (pid == (ushort)ReservedPids.NullPacket)

@@ -52,6 +52,9 @@ public sealed record ParserOptions
     /// <summary>T2-MI parsing options.</summary>
     public T2miOptions T2mi { get; init; } = T2miOptions.Disabled;
 
+    /// <summary>TR 101 290 monitoring. Disabled unless <see cref="Tr101290Options.Enabled"/> is set.</summary>
+    public Tr101290Options Tr101290 { get; init; } = Tr101290Options.Disabled;
+
     internal static ParserOptions FromParserConfig(ParserConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
@@ -82,6 +85,7 @@ public sealed record ParserOptions
                 AutoDetect = config.T2miAutoDetect,
                 Deencapsulate = config.T2miDeencapsulate,
             },
+            Tr101290 = config.Tr101290 ?? Tr101290Options.Disabled,
         };
     }
 }

@@ -78,6 +78,9 @@ namespace TSParser
         /// <summary>When true with <see cref="T2miEnabled"/>, de-encapsulate baseband frames to MPEG-TS per PLP.</summary>
         public bool T2miDeencapsulate;
 
+        /// <summary>TR 101 290 monitoring options. Null leaves monitoring disabled.</summary>
+        public Tr101290Options? Tr101290;
+
     }
 
     public delegate void TsPacketReady(TsPacket tsPacket);
@@ -171,6 +174,8 @@ namespace TSParser
         public event PlpTsReady? OnPlpTsReady;
         /// <summary>Raised on each PCR timestamp change (same PCR-PID used for bitrate).</summary>
         public event PcrTimestampChange? OnPcrTimestampChange;
+        /// <summary>Raised when a TR 101 290 indicator changes state. Requires <see cref="ParserOptions.Tr101290"/>.</summary>
+        public event Action<Tr101290Event>? OnTr101290Event;
 
         private Lazy<TsPacketFactory> packetFactory = new();
         private Lazy<Analyzer> analyzer;
@@ -199,6 +204,7 @@ namespace TSParser
         private int? m_parserRunTimeIn_ms = null;
         private bool m_allowAnalyzer;
         private bool m_t2miEnabled;
+        private readonly Tr101290Monitor? m_monitor;
         private long? m_fileStreamByteOffset;
         private System.Timers.Timer? m_timer;
         private int? MaxParserRunTime
@@ -273,6 +279,7 @@ namespace TSParser
             m_bitrateMeasurement = options.BitrateMeasurement;
             m_allowAnalyzer = options.AllowAnalyzer || (m_bitrateMeasurement?.Enabled ?? false);
             m_t2miEnabled = options.T2mi.Enabled;
+            m_monitor = options.Tr101290.Enabled ? new Tr101290Monitor(options.Tr101290) : null;
             analyzer = new Lazy<Analyzer>(() => new Analyzer(m_bitrateMeasurement));
             m_tableRouter = new DvbTableRouter(options.CurrentTsMode, options.T2mi);
             m_inputSource = m_pushSource;
@@ -595,10 +602,28 @@ namespace TSParser
             m_analyzer.OnRate += Analyzer_OnRate;
             m_analyzer.OnBitrateMeasured += Analyzer_OnBitrateMeasured;
             m_analyzer.OnTimeStampChange += Analyzer_OnPcrTimestampChange;
+            if (m_monitor != null)
+                AttachMonitor();
+        }
+
+        private void AttachMonitor()
+        {
+            m_monitor!.OnEvent += measurement => OnTr101290Event?.Invoke(measurement);
+            m_tableRouter.SetSectionCrcFailedHandler((pid, tableId) => m_monitor.ObserveCrcError(pid, tableId));
+            m_tableRouter.OnPatReady += m_monitor.ObservePat;
+            m_tableRouter.OnPmtReady += m_monitor.ObservePmt;
+            m_tableRouter.OnCatReady += m_monitor.ObserveCat;
+            m_tableRouter.OnNitReady += m_monitor.ObserveNit;
+            m_tableRouter.OnSdtReady += m_monitor.ObserveSdt;
+            m_tableRouter.OnBatReady += m_monitor.ObserveBat;
+            m_tableRouter.OnEitReady += m_monitor.ObserveEit;
+            m_tableRouter.OnTdtReady += m_monitor.ObserveTdt;
+            m_tableRouter.OnTotReady += m_monitor.ObserveTot;
         }
 
         private void ResetStreamStateForRun()
         {
+            m_monitor?.Reset();
             m_tableRouter.ResetStreamState();
             packetFactory = new Lazy<TsPacketFactory>();
 
@@ -665,6 +690,7 @@ namespace TSParser
                 if (bytes[packetOffset] != TsPacket.SYNC_BYTE)
                 {
                     m_tsPacketFactory.RecordSyncLoss();
+                    m_monitor?.ObserveMissingSync();
                     continue;
                 }
 
@@ -681,18 +707,21 @@ namespace TSParser
 
                 if (pid == (ushort)ReservedPids.NullPacket)
                 {
-                    if (!m_allowAnalyzer)
+                    if (m_allowAnalyzer)
                     {
-                        continue;
+                        var nullPacket = m_tsPacketFactory.GetTsPacket(
+                            bytes.Slice(packetOffset, packetLength),
+                            packetLength,
+                            TsPacketBuildOptions.HeaderOnly);
+                        if (nullPacket.Pid != 0xFFFF)
+                        {
+                            m_monitor?.ObservePacket(nullPacket);
+                            PushPacketWithFileOffset(nullPacket, packetLength, i);
+                        }
                     }
-
-                    var nullPacket = m_tsPacketFactory.GetTsPacket(
-                        bytes.Slice(packetOffset, packetLength),
-                        packetLength,
-                        TsPacketBuildOptions.HeaderOnly);
-                    if (nullPacket.Pid != 0xFFFF)
+                    else
                     {
-                        PushPacketWithFileOffset(nullPacket, packetLength, i);
+                        m_monitor?.ObserveGoodSync();
                     }
 
                     continue;
@@ -700,19 +729,19 @@ namespace TSParser
 
                 var routeSi = m_tableRouter.RequiresFullPacket(pid);
                 var routeT2miOnly = !routeSi && m_t2miEnabled && m_tableRouter.IsT2miPid(pid);
-                if (!routeSi && !routeT2miOnly && !m_allowAnalyzer)
+                if (!routeSi && !routeT2miOnly && !m_allowAnalyzer && m_monitor == null)
                 {
                     continue;
                 }
 
                 TsPacketBuildOptions options;
-                if (routeSi)
+                if (routeSi || routeT2miOnly)
                 {
                     options = TsPacketBuildOptions.SiTable(captureRawPacket: true);
                 }
-                else if (routeT2miOnly)
+                else if (m_monitor != null && pid == (ushort)ReservedPids.RST)
                 {
-                    options = TsPacketBuildOptions.SiTable(captureRawPacket: true);
+                    options = new TsPacketBuildOptions { IncludePayload = true };
                 }
                 else
                 {
@@ -722,8 +751,11 @@ namespace TSParser
                 var packet = m_tsPacketFactory.GetTsPacket(bytes.Slice(packetOffset, packetLength), packetLength, options);
                 if (packet.Pid == 0xFFFF)
                 {
+                    m_monitor?.ObserveGoodSync();
                     continue;
                 }
+
+                m_monitor?.ObservePacket(packet);
 
                 if (m_allowAnalyzer)
                 {
@@ -760,14 +792,18 @@ namespace TSParser
                 if (bytes[packetOffset] != TsPacket.SYNC_BYTE)
                 {
                     m_tsPacketFactory.RecordSyncLoss();
+                    m_monitor?.ObserveMissingSync();
                     continue;
                 }
 
                 var packet = m_tsPacketFactory.GetTsPacket(bytes.Slice(packetOffset, packetLength), packetLength, options);
                 if (packet.Pid == 0xFFFF)
                 {
+                    m_monitor?.ObserveGoodSync();
                     continue;
                 }
+
+                m_monitor?.ObservePacket(packet);
 
                 if (m_allowAnalyzer)
                 {

@@ -79,6 +79,11 @@
         <Setter Property="Foreground" Value="#b02a37"/>
     </Style>
 
+    <Style Selector="TextBlock.tr-cell.error">
+        <Setter Property="Foreground" Value="#b02a37"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
     <Style Selector="Border.parser-chart-panel">
         <Setter Property="Background" Value="White"/>
         <Setter Property="BorderBrush" Value="#dee2e6"/>
@@ -155,6 +160,32 @@
     </Style>
     <Style Selector="ScrollBar:pressed /template/ Thumb">
         <Setter Property="Background" Value="#868e96"/>
+    </Style>
+    <Style Selector="Border.tr-panel">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="Padding" Value="8,6,8,4"/>
+    </Style>
+
+    <Style Selector="TextBlock.tr-summary">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="TextBlock.tr-header">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="#6c757d"/>
+    </Style>
+
+    <Style Selector="TextBlock.tr-cell">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <Style Selector="ListBox.tr-list">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontSize" Value="12"/>
     </Style>
 </Styles>
 

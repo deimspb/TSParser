@@ -54,6 +54,13 @@ namespace TSParser.Tables
             OnResetStreamState();
         }
 
+        internal Action<ushort, byte>? SectionCrcFailed { get; set; }
+
+        protected void ReportSectionCrcFailed(byte tableId)
+        {
+            SectionCrcFailed?.Invoke(CurrentPid, tableId);
+        }
+
         protected virtual void OnResetStreamState()
         {
         }

@@ -28,6 +28,7 @@ internal sealed class DynamicPidRegistry
     private readonly bool _t2miDeencapsulate;
     private readonly HashSet<ushort> _explicitT2miPids;
     private readonly Dictionary<ushort, PmtFactory> _pmtFactories = new();
+    private Action<ushort, byte>? _sectionCrcFailed;
     private readonly Dictionary<ushort, ushort> _programPmtPids = new();
     private readonly Dictionary<ushort, HashSet<ushort>> _programAitPids = new();
     private readonly Dictionary<ushort, HashSet<ushort>> _programScte35Pids = new();
@@ -99,6 +100,13 @@ internal sealed class DynamicPidRegistry
             _eewsFactories.Clear();
             _eewsPidListEmptyWarningSent = false;
         }
+    }
+
+    public void SetSectionCrcFailedHandler(Action<ushort, byte>? handler)
+    {
+        _sectionCrcFailed = handler;
+        foreach (var factory in _pmtFactories.Values)
+            factory.SectionCrcFailed = handler;
     }
 
     public void RegisterT2miPids(IEnumerable<ushort> pids)
@@ -181,7 +189,8 @@ internal sealed class DynamicPidRegistry
 
             var factory = new PmtFactory
             {
-                CurrentPid = pid
+                CurrentPid = pid,
+                SectionCrcFailed = _sectionCrcFailed,
             };
             factory.OnPmtReady += PmtFactory_OnPmtReady;
             _pmtFactories[pid] = factory;

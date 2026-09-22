@@ -47,6 +47,8 @@ public abstract record TsParserUiUpdate
 
     public sealed record BitrateMeasured(BitrateSample Sample) : TsParserUiUpdate;
 
+    public sealed record Tr101290Measured(Tr101290Event Measurement) : TsParserUiUpdate;
+
     public sealed record ParserCompleted : TsParserUiUpdate;
 
     public sealed record SessionStarted(

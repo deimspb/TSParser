@@ -91,6 +91,7 @@ bytes → `TsPacketFactory.GetTsPackets` → (`DecodeMode`) → per-PID `TableFa
 | `T2miPids` | `ushort[]?` | `null` | Explicit T2-MI PIDs (e.g. `0x1000`); registered at ctor when non-empty |
 | `T2miAutoDetect` | `bool` | `false` | After PMT: one PAT program, one ES, `stream_type == 0x06` → register ES PID |
 | `T2miDeencapsulate` | `bool` | `false` | With `T2miEnabled`, run `BbFrameStripper` per PLP → `OnPlpTsReady` |
+| `Tr101290` | `Tr101290Options` | disabled | ETSI TR 101 290 V1.4.1 monitor. `Enabled` feeds `OnTr101290Event`. `PidErrorTimeout` default 5 s. Desktop turns this on. PCR accuracy, PTS, and T-STD buffer checks are not implemented. |
 
 Constructor `TsParser(ParserOptions)` configures file, UDP, or push parsing. Legacy `TsParser(ParserConfig)` remains supported. File/UDP sources still require `RunParser()` or `RunParserAsync()` after event subscription; push mode uses `PushBytes`.
 
@@ -143,6 +144,7 @@ Constructor `TsParser(ParserOptions)` configures file, UDP, or push parsing. Leg
 | `OnTsPacketReady` | `TsPacketReady` | `TsPacket` | `DecodeMode.Packet` only |
 | `OnRate` | `RateDelegate` | `ushort pid, ulong deltaPackets, ulong deltaTime` | Legacy analyzer |
 | `OnBitrateMeasured` | `BitrateMeasuredDelegate` | `BitrateSample` | Needs `ParserOptions.BitrateMeasurement` or legacy `ParserConfig.BitrateMeasurement` |
+| `OnTr101290Event` | `Action<Tr101290Event>` | `Tr101290Event` | Needs `ParserOptions.Tr101290.Enabled` (legacy `ParserConfig.Tr101290`). Indicator raised or cleared. Desktop shows this on the TR 101 290 tab |
 | `OnT2miPacketReady` | `T2miPacketReady` | `T2miPacket` | Needs `T2miEnabled`; each reassembled T2-MI packet |
 | `OnT2miPlpDiscovered` | `T2miPlpDiscovered` | `byte plpId` | First `PlpId` seen per demuxer (type `0x00` baseband) |
 | `OnPlpTsReady` | `PlpTsReady` | `ushort t2miSourcePid`, `byte plpId`, `ReadOnlyMemory<byte> tsData` | Needs `T2miDeencapsulate`; 188-byte TS multiples; **`t2miSourcePid`** disambiguates PLP IDs across multiple T2-MI PIDs; **buffer valid only for callback** — copy before async work or `PushBytes` |

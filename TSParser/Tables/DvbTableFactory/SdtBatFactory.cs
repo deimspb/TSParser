@@ -82,6 +82,7 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
             {
+                ReportSectionCrcFailed(bytes[0]);
                 Logger.Send(LogStatus.ETSI, $"SDT CRC incorrect!");
                 ResetFactory();
                 return;
@@ -122,6 +123,7 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
             {
+                ReportSectionCrcFailed(bytes[0]);
                 Logger.Send(LogStatus.ETSI, $"BAT CRC incorrect!");
                 ResetFactory();
                 return;

@@ -288,6 +288,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
             T2miEnabled = t2miEnabled,
             T2miPids = t2miPids,
             T2miDeencapsulate = t2miEnabled,
+            Tr101290 = Tr101290Options.Enable,
         };
     }
 
@@ -456,6 +457,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
         parser.OnEwsReady += OnEwsReady;
         parser.OnEewsReady += OnEewsReady;
         parser.OnBitrateMeasured += OnBitrateMeasured;
+        parser.OnTr101290Event += OnTr101290Event;
         parser.OnParserComplete += OnParserComplete;
         parser.OnPcrTimestampChange += OnPcrTimestamp;
         parser.OnT2miPlpDiscovered += OnT2miPlpDiscovered;
@@ -479,6 +481,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
         parser.OnEwsReady -= OnEwsReady;
         parser.OnEewsReady -= OnEewsReady;
         parser.OnBitrateMeasured -= OnBitrateMeasured;
+        parser.OnTr101290Event -= OnTr101290Event;
         parser.OnParserComplete -= OnParserComplete;
         parser.OnPcrTimestampChange -= OnPcrTimestamp;
         parser.OnT2miPlpDiscovered -= OnT2miPlpDiscovered;
@@ -641,6 +644,9 @@ public sealed class TsParserSessionService : IAsyncDisposable
 
     private void OnBitrateMeasured(BitrateSample sample) =>
         Post(new TsParserUiUpdate.BitrateMeasured(sample));
+
+    private void OnTr101290Event(Tr101290Event measurement) =>
+        Post(new TsParserUiUpdate.Tr101290Measured(measurement));
 
     private void OnParserComplete() =>
         Post(new TsParserUiUpdate.ParserCompleted());

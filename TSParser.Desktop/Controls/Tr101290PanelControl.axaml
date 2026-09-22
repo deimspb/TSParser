@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:services="using:TSParser.Desktop.Services"
+             x:Class="TSParser.Desktop.Controls.Tr101290PanelControl"
+             x:Name="Root">
+    <Border Classes="tr-panel">
+        <Grid RowDefinitions="Auto,Auto,*,Auto,160">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock x:Name="SummaryText" Classes="tr-summary" Text="P1 0    P2 0    P3 0" VerticalAlignment="Center"/>
+                <ComboBox x:Name="FilterBox" MinWidth="140" SelectedIndex="0" SelectionChanged="OnFilterChanged">
+                    <ComboBoxItem Content="All"/>
+                    <ComboBoxItem Content="Errors only"/>
+                    <ComboBoxItem Content="Priority 1"/>
+                    <ComboBoxItem Content="Priority 2"/>
+                    <ComboBoxItem Content="Priority 3"/>
+                </ComboBox>
+            </StackPanel>
+
+            <Grid Grid.Row="1" ColumnDefinitions="36,210,70,70,70,90,*" Margin="0,8,0,4">
+                <TextBlock Classes="tr-header" Text="P"/>
+                <TextBlock Grid.Column="1" Classes="tr-header" Text="Indicator"/>
+                <TextBlock Grid.Column="2" Classes="tr-header" Text="State"/>
+                <TextBlock Grid.Column="3" Classes="tr-header" Text="Count"/>
+                <TextBlock Grid.Column="4" Classes="tr-header" Text="PID"/>
+                <TextBlock Grid.Column="5" Classes="tr-header" Text="Packet"/>
+                <TextBlock Grid.Column="6" Classes="tr-header" Text="Detail"/>
+            </Grid>
+
+            <ListBox Grid.Row="2" x:Name="IndicatorList" Classes="tr-list">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="services:Tr101290ErrorRow">
+                        <Grid ColumnDefinitions="36,210,70,70,70,90,*">
+                            <TextBlock Text="{Binding PriorityText}" Classes="tr-cell"/>
+                            <TextBlock Grid.Column="1" Text="{Binding IndicatorName}" Classes="tr-cell"/>
+                            <TextBlock Grid.Column="2" Text="{Binding State}" Classes="tr-cell" Classes.error="{Binding IsError}"/>
+                            <TextBlock Grid.Column="3" Text="{Binding Count}" Classes="tr-cell"/>
+                            <TextBlock Grid.Column="4" Text="{Binding PidText}" Classes="tr-cell"/>
+                            <TextBlock Grid.Column="5" Text="{Binding PacketNumber}" Classes="tr-cell"/>
+                            <TextBlock Grid.Column="6" Text="{Binding Detail}" Classes="tr-cell" TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <TextBlock Grid.Row="3" Classes="tr-header" Text="Recent events" Margin="0,8,0,4"/>
+            <ListBox Grid.Row="4" x:Name="JournalList" Classes="tr-list"/>
+        </Grid>
+    </Border>
+</UserControl>

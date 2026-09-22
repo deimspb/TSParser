@@ -72,6 +72,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
     private int _bitrateRevision;
 
+    private int _tr101290Revision;
+
     private int _chartConfigRevision;
 
     private int _chartFitRevision;
@@ -89,6 +91,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
 
     public BitrateHistoryStore BitrateStore { get; }
+
+    public Tr101290ErrorStore Tr101290Store { get; }
 
 
 
@@ -156,6 +160,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
 
 
+    public int Tr101290Revision
+
+    {
+
+        get => _tr101290Revision;
+
+        private set => SetProperty(ref _tr101290Revision, value);
+
+    }
+
+
+
     public int ChartConfigRevision
 
     {
@@ -201,6 +217,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
         TreeStore = new TableVersionStore();
 
         BitrateStore = new BitrateHistoryStore();
+
+        Tr101290Store = new Tr101290ErrorStore();
 
         NetworkInterfaces = new NetworkInterfaceService();
 
@@ -308,11 +326,23 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
 
 
+                    case TsParserUiUpdate.Tr101290Measured(var measurement):
+
+                        Tr101290Store.Apply(measurement);
+
+                        needsRefresh = true;
+
+                        break;
+
+
+
                     case TsParserUiUpdate.SessionReset:
 
                         EnqueueTreeMutation(() => TreeStore.Clear());
 
                         BitrateStore.Clear();
+
+                        Tr101290Store.Clear();
 
                         selectedNodeId = null;
 
@@ -792,6 +822,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
         SelectedNode = selectedNodeId is Guid id ? TreeStore.FindNode(id) : null;
 
         BitrateRevision = bitrateRevision;
+
+        Tr101290Revision = Tr101290Store.Revision;
 
         ChartFitRevision = chartFitRevision;
 

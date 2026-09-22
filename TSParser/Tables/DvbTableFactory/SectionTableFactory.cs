@@ -68,6 +68,7 @@ internal abstract class SectionTableFactory<TTable, TKey> : TableFactory
 
         if (Utils.GetCRC32(bytes[..^4]) != crc32)
         {
+            ReportSectionCrcFailed(bytes[0]);
             Logger.Send(LogStatus.ETSI, GetCrcErrorMessage());
             ResetFactory();
             return;

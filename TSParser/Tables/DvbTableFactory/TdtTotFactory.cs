@@ -126,6 +126,7 @@ namespace TSParser.Tables.DvbTableFactory
 
             if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
             {
+                ReportSectionCrcFailed(bytes[0]);
                 Logger.Send(LogStatus.ETSI, $"TOT CRC incorrect!");
                 ResetFactory();
                 return;

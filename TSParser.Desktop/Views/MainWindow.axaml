@@ -24,22 +24,26 @@
         <controls:ParserToolbarControl Grid.Row="0"
                                          DataContext="{Binding}"/>
 
-        <Grid Grid.Row="1"
-              ColumnDefinitions="320,*"
-              MinHeight="0">
-            <Border Grid.Column="0"
-                    Classes="parser-tree-panel">
-                <controls:TableTreeControl x:Name="TableTree"
-                                           Store="{Binding TreeStore}"
-                                           TreeRevision="{Binding TreeRevision}"
-                                           SelectedNodeId="{Binding SelectedNodeId}"/>
-            </Border>
+        <TabControl Grid.Row="1" Classes="parser-tabs">
+            <TabItem Header="Tables">
+                <Grid ColumnDefinitions="320,*" MinHeight="0">
+                    <Border Grid.Column="0" Classes="parser-tree-panel">
+                        <controls:TableTreeControl x:Name="TableTree"
+                                                   Store="{Binding TreeStore}"
+                                                   TreeRevision="{Binding TreeRevision}"
+                                                   SelectedNodeId="{Binding SelectedNodeId}"/>
+                    </Border>
 
-            <Border Grid.Column="1"
-                    Classes="parser-detail-panel">
-                <controls:DetailPanelControl SelectedNode="{Binding SelectedNode}"/>
-            </Border>
-        </Grid>
+                    <Border Grid.Column="1" Classes="parser-detail-panel">
+                        <controls:DetailPanelControl SelectedNode="{Binding SelectedNode}"/>
+                    </Border>
+                </Grid>
+            </TabItem>
+            <TabItem Header="TR 101 290">
+                <controls:Tr101290PanelControl Store="{Binding Tr101290Store}"
+                                               DataRevision="{Binding Tr101290Revision}"/>
+            </TabItem>
+        </TabControl>
 
         <Border Grid.Row="2"
                 Classes="parser-chart-panel"
