@@ -12,6 +12,9 @@ internal sealed class PsiSectionAssembler
     private int headerBytes;
     private int sectionBytes;
     private byte? lastContinuityCounter;
+    private byte[]? lastPayload;
+    private byte[]? lastRawPacket;
+    private bool lastPayloadUnitStartIndicator;
 
     internal PsiSectionAssembler(ushort pid)
     {
@@ -32,7 +35,10 @@ internal sealed class PsiSectionAssembler
         }
 
         List<ReadOnlyMemory<byte>>? readySections = null;
-        HandleContinuity(packet);
+        if (!HandleContinuity(packet))
+        {
+            return Array.Empty<ReadOnlyMemory<byte>>();
+        }
 
         var payload = packet.Payload.AsSpan();
         var offset = 0;
@@ -90,13 +96,15 @@ internal sealed class PsiSectionAssembler
     {
         ResetCurrentSection();
         lastContinuityCounter = null;
+        lastPayload = null;
+        lastRawPacket = null;
     }
 
-    private void HandleContinuity(TsPacket packet)
+    private bool HandleContinuity(TsPacket packet)
     {
         if (!packet.HasPayload)
         {
-            return;
+            return false;
         }
 
         var hasDiscontinuityFlag = packet.HasAdaptationField && packet.Adaptation_field.DiscontinuityIndicator;
@@ -119,7 +127,21 @@ internal sealed class PsiSectionAssembler
         else if (lastContinuityCounter.HasValue)
         {
             var expectedCc = (lastContinuityCounter.Value + 1) & 0x0F;
-            if (packet.ContinuityCounter != expectedCc)
+            if (packet.ContinuityCounter == lastContinuityCounter.Value)
+            {
+                if (lastPayloadUnitStartIndicator == packet.PayloadUnitStartIndicator
+                    && ((lastRawPacket != null && packet.RawPacket != null && packet.RawPacket.AsSpan().SequenceEqual(lastRawPacket))
+                        || (lastRawPacket == null && lastPayload != null && packet.Payload.AsSpan().SequenceEqual(lastPayload))))
+                {
+                    return false;
+                }
+
+                Logger.Send(
+                    LogStatus.WARNING,
+                    $"Different payload repeated continuity counter {packet.ContinuityCounter} for pid 0x{packet.Pid:X4}; pending PSI section dropped.");
+                ResetCurrentSection();
+            }
+            else if (packet.ContinuityCounter != expectedCc)
             {
                 if (HasPendingSectionState())
                 {
@@ -138,6 +160,10 @@ internal sealed class PsiSectionAssembler
         }
 
         lastContinuityCounter = packet.ContinuityCounter;
+        lastPayloadUnitStartIndicator = packet.PayloadUnitStartIndicator;
+        lastPayload = packet.Payload.ToArray();
+        lastRawPacket = packet.RawPacket?.ToArray();
+        return true;
     }
 
     private void AppendPayload(

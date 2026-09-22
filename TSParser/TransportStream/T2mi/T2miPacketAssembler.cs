@@ -31,6 +31,8 @@ public sealed class T2miPacketAssembler
     private bool _t2miL1CurrentData = true;
     private ushort _sourcePid;
     private ulong _packetNumber;
+    private byte[]? _lastPayloadPacket;
+    private byte? _lastPayloadCc;
 
     internal bool HasDvbt2Timestamp => _dvbt2Timestamp;
     internal bool HasL1CurrentData => _t2miL1CurrentData;
@@ -45,6 +47,8 @@ public sealed class T2miPacketAssembler
         _t2miFrameIndex = 0xFF;
         _dvbt2Timestamp = true;
         _t2miL1CurrentData = true;
+        _lastPayloadPacket = null;
+        _lastPayloadCc = null;
     }
 
     public void PushPacket(ReadOnlySpan<byte> tsPacket, ushort sourcePid = 0, ulong packetNumber = 0)
@@ -62,29 +66,49 @@ public sealed class T2miPacketAssembler
         _sourcePid = sourcePid != 0 ? sourcePid : T2miAccessors.TsPid(tsPacket);
         _packetNumber = packetNumber;
 
-        var actualCc = T2miAccessors.TsContinuityCounter(tsPacket);
-        if (_writtenSoFar != 0)
+        if (!T2miAccessors.TsHasPayload(tsPacket))
         {
-            var expectedCc = (byte)((_tsPacketCc + 1) & 0x0F);
-            if (expectedCc != actualCc)
-            {
-                if (actualCc != _tsPacketCc || T2miAccessors.TsHasPayload(tsPacket))
-                {
-                    SignalDiscontinuityIfPossible();
-                    _writtenSoFar = 0;
-                }
-            }
-            else if (!T2miAccessors.TsPayloadUnitStartIndicator(tsPacket))
-            {
-                AppendTsPayload(tsPacket);
-            }
-
-            _tsPacketCc = actualCc;
+            return;
         }
+
+        var actualCc = T2miAccessors.TsContinuityCounter(tsPacket);
+        if (T2miAccessors.TsDiscontinuityIndicator(tsPacket))
+        {
+            SignalDiscontinuityIfPossible();
+            _writtenSoFar = 0;
+            _lastPayloadPacket = null;
+            _lastPayloadCc = null;
+        }
+        else if (_lastPayloadCc.HasValue)
+        {
+            if (actualCc == _lastPayloadCc.Value)
+            {
+                if (_lastPayloadPacket != null && tsPacket.SequenceEqual(_lastPayloadPacket))
+                {
+                    return;
+                }
+
+                SignalDiscontinuityIfPossible();
+                _writtenSoFar = 0;
+            }
+            else if (actualCc != (byte)((_lastPayloadCc.Value + 1) & 0x0F))
+            {
+                SignalDiscontinuityIfPossible();
+                _writtenSoFar = 0;
+            }
+        }
+
+        _lastPayloadCc = actualCc;
+        _lastPayloadPacket = tsPacket.ToArray();
+        _tsPacketCc = actualCc;
 
         if (T2miAccessors.TsPayloadUnitStartIndicator(tsPacket))
         {
             StartNewT2miFromTs(tsPacket, actualCc);
+        }
+        else if (_writtenSoFar != 0)
+        {
+            AppendData(T2miAccessors.TsPayload(tsPacket), allowNewPackets: true);
         }
     }
 
@@ -100,7 +124,7 @@ public sealed class T2miPacketAssembler
 
         var pointer = payload[0];
         var dataStart = pointer + 1;
-        if (dataStart >= payload.Length)
+        if (dataStart > payload.Length)
         {
             SignalDiscontinuityIfPossible();
             _writtenSoFar = 0;
@@ -109,8 +133,7 @@ public sealed class T2miPacketAssembler
 
         if (_writtenSoFar > 0 && pointer > 0)
         {
-            CopyToBuffer(payload.Slice(1, pointer), _writtenSoFar);
-            DeliverIfPacketIsCompleted();
+            AppendData(payload.Slice(1, pointer), allowNewPackets: false);
         }
         else if (_writtenSoFar > 0)
         {
@@ -124,68 +147,44 @@ public sealed class T2miPacketAssembler
             _writtenSoFar = 0;
         }
 
-        var t2miChunk = payload.Slice(dataStart);
-        CopyToBuffer(t2miChunk, atOffset: 0);
-        _tsPacketCc = actualCc;
-        DeliverIfPacketIsCompleted();
-    }
-
-    private void AppendTsPayload(ReadOnlySpan<byte> tsPacket)
-    {
-        var payload = T2miAccessors.TsPayload(tsPacket);
-        if (payload.IsEmpty)
+        if (dataStart == payload.Length)
         {
+            _tsPacketCc = actualCc;
             return;
         }
 
-        ReadOnlySpan<byte> t2miChunk;
-        if (!T2miAccessors.TsPayloadUnitStartIndicator(tsPacket))
+        var t2miChunk = payload.Slice(dataStart);
+        _tsPacketCc = actualCc;
+        AppendData(t2miChunk, allowNewPackets: true);
+    }
+
+    private void AppendData(ReadOnlySpan<byte> data, bool allowNewPackets)
+    {
+        var srcOffset = 0;
+        while (srcOffset < data.Length)
         {
-            t2miChunk = payload;
-        }
-        else
-        {
-            var pointer = payload[0];
-            if (pointer >= payload.Length)
+            if (_writtenSoFar == 0)
+            {
+                if (!allowNewPackets || data[srcOffset] == 0xFF)
+                {
+                    return;
+                }
+            }
+
+            var remainingInPacket = GetRemainingT2miBytes(_writtenSoFar);
+            var toWrite = Math.Min(Math.Min(data.Length - srcOffset, BufferSize - _writtenSoFar), remainingInPacket);
+            if (toWrite <= 0)
             {
                 SignalDiscontinuityIfPossible();
                 _writtenSoFar = 0;
-                return;
-            }
-
-            t2miChunk = payload.Slice(pointer + 1);
-        }
-
-        if (t2miChunk.IsEmpty || t2miChunk.Length >= 185)
-        {
-            SignalDiscontinuityIfPossible();
-            _writtenSoFar = 0;
-            return;
-        }
-
-        CopyToBuffer(t2miChunk, _writtenSoFar);
-        DeliverIfPacketIsCompleted();
-    }
-
-    private void CopyToBuffer(ReadOnlySpan<byte> data, int atOffset)
-    {
-        var offset = atOffset;
-        var srcOffset = 0;
-        while (srcOffset < data.Length && offset < BufferSize)
-        {
-            var remainingInPacket = GetRemainingT2miBytes(offset);
-            var toWrite = Math.Min(Math.Min(data.Length - srcOffset, BufferSize - offset), remainingInPacket);
-            if (toWrite <= 0)
-            {
                 break;
             }
 
-            data.Slice(srcOffset, toWrite).CopyTo(_building.AsSpan(offset));
-            offset += toWrite;
+            data.Slice(srcOffset, toWrite).CopyTo(_building.AsSpan(_writtenSoFar));
+            _writtenSoFar += toWrite;
             srcOffset += toWrite;
+            DeliverIfPacketIsCompleted();
         }
-
-        _writtenSoFar = offset;
     }
 
     private int GetRemainingT2miBytes(int atOffset)
@@ -217,28 +216,16 @@ public sealed class T2miPacketAssembler
 
             var packetType = (T2miPacketType)T2miAccessors.T2miType(building);
             var buildingPacketCount = T2miAccessors.T2miCount(building);
-            _t2miPacketCount = buildingPacketCount;
-
-            var superframeIndex = T2miAccessors.T2miSuperframeIndex(building);
-            if (superframeIndex != _t2miFrameIndex)
-            {
-                _t2miFrameIndex = superframeIndex;
-                _dvbt2Timestamp = false;
-                _t2miL1CurrentData = false;
-            }
+            var computedCrc = Utils.GetCRC32(building.Slice(0, t2miPacketSize - 4));
+            var packetCrc = T2miAccessors.T2miCrc32(building);
+            var crcValid = computedCrc == packetCrc;
+            if (!crcValid)
+                Logger.Send(LogStatus.ETSI,
+                    $"T2-MI packet CRC mismatch: expected {computedCrc:X8}, got {packetCrc:X8}");
 
             T2miPacket? completed = null;
             if (packetType == T2miPacketType.BasebandFrame)
             {
-                var computedCrc = Utils.GetCRC32(building.Slice(0, t2miPacketSize - 4));
-                var packetCrc = T2miAccessors.T2miCrc32(building);
-                var crcValid = computedCrc == packetCrc;
-                if (!crcValid)
-                {
-                    Logger.Send(LogStatus.ETSI,
-                        $"T2-MI baseband frame CRC mismatch: expected {computedCrc:X8}, got {packetCrc:X8}");
-                }
-
                 var payloadBits = T2miAccessors.T2miType00PayloadLengthBits(building);
                 var payloadSize = (payloadBits + 7) / 8;
                 if (payloadSize >= 10)
@@ -248,22 +235,29 @@ public sealed class T2miPacketAssembler
             }
             else
             {
-                if (packetType == T2miPacketType.L1Current)
-                {
-                    _t2miL1CurrentData = true;
-                }
-
-                if (packetType == T2miPacketType.DvbT2Timestamp)
-                {
-                    _dvbt2Timestamp = true;
-                }
-
                 var payloadBytes = (T2miAccessors.T2miPayloadLengthBits(building) + 7) / 8;
-                completed = BuildPacket(building, packetType, crcValid: true, payloadBytes);
+                completed = BuildPacket(building, packetType, crcValid, payloadBytes);
             }
 
             if (completed != null)
             {
+                if (crcValid)
+                {
+                    _t2miPacketCount = buildingPacketCount;
+                    var superframeIndex = T2miAccessors.T2miSuperframeIndex(building);
+                    if (superframeIndex != _t2miFrameIndex)
+                    {
+                        _t2miFrameIndex = superframeIndex;
+                        _dvbt2Timestamp = false;
+                        _t2miL1CurrentData = false;
+                    }
+
+                    if (packetType == T2miPacketType.L1Current)
+                        _t2miL1CurrentData = true;
+                    if (packetType == T2miPacketType.DvbT2Timestamp)
+                        _dvbt2Timestamp = true;
+                }
+
                 PacketReady?.Invoke(completed);
             }
 

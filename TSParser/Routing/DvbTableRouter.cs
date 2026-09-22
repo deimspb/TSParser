@@ -95,6 +95,18 @@ internal sealed class DvbTableRouter
         _dynamicPidRegistry.RegisterT2miPids(pids);
     }
 
+    public void ResetStreamState()
+    {
+        _tdtTotFactory.ResetStreamState();
+        _sdtBatFactory.ResetStreamState();
+        _catFactory.ResetStreamState();
+        _nitFactory.ResetStreamState();
+        _patFactory.ResetStreamState();
+        _eitFactory.ResetStreamState();
+        _mipFactory.ResetStreamState();
+        _dynamicPidRegistry.ResetStreamState();
+    }
+
     public bool RequiresFullPacket(ushort pid)
     {
         if (pid == (ushort)ReservedPids.NullPacket)
@@ -216,6 +228,9 @@ internal sealed class DvbTableRouter
     private void PatFactory_OnPatReady(PAT pat)
     {
         OnPatReady?.Invoke(pat);
-        _dynamicPidRegistry.UpdateFromPat(pat);
+        if (pat.CurrentNextIndicator)
+        {
+            _dynamicPidRegistry.UpdateFromPat(pat);
+        }
     }
 }

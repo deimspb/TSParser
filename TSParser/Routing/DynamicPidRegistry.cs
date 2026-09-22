@@ -26,7 +26,13 @@ internal sealed class DynamicPidRegistry
     private readonly bool _t2miEnabled;
     private readonly bool _t2miAutoDetect;
     private readonly bool _t2miDeencapsulate;
+    private readonly HashSet<ushort> _explicitT2miPids;
     private readonly Dictionary<ushort, PmtFactory> _pmtFactories = new();
+    private readonly Dictionary<ushort, ushort> _programPmtPids = new();
+    private readonly Dictionary<ushort, HashSet<ushort>> _programAitPids = new();
+    private readonly Dictionary<ushort, HashSet<ushort>> _programScte35Pids = new();
+    private readonly Dictionary<ushort, HashSet<ushort>> _programAutoT2miPids = new();
+    private readonly Dictionary<ushort, PmtRouteState> _pmtRouteStates = new();
     private readonly HashSet<ushort> _aitPids = new();
     private readonly HashSet<ushort> _scte35Pids = new();
     private readonly HashSet<ushort> _ewsPids = new();
@@ -39,12 +45,17 @@ internal sealed class DynamicPidRegistry
     private bool _ewsPidListEmptyWarningSent;
     private bool _eewsPidListEmptyWarningSent;
     private int _patProgramCount;
+    private byte? _patVersion;
+    private ushort? _patTransportStreamId;
+    private byte _patLastSectionNumber;
+    private readonly Dictionary<byte, PatRecord[]> _patSections = new();
 
     public DynamicPidRegistry(T2miOptions t2miOptions)
     {
         _t2miEnabled = t2miOptions.Enabled;
         _t2miAutoDetect = t2miOptions.AutoDetect;
         _t2miDeencapsulate = t2miOptions.Deencapsulate;
+        _explicitT2miPids = t2miOptions.Pids.ToHashSet();
     }
 
     public event PmtReady? OnPmtReady;
@@ -109,26 +120,104 @@ internal sealed class DynamicPidRegistry
 
     public void UpdateFromPat(PAT pat)
     {
-        if (_t2miEnabled && _t2miAutoDetect)
+        if (!pat.CurrentNextIndicator)
         {
-            _patProgramCount = pat.PatRecords.Count(pr => pr.Pid != 0x16);
+            return;
         }
 
-        _pmtFactories.Clear();
-        foreach (var record in pat.PatRecords)
+        if (_patVersion != pat.VersionNumber || _patTransportStreamId != pat.TransportStreamId
+            || _patLastSectionNumber != pat.LastSectionNumber)
         {
-            if (record.Pid == 0x16)
+            _patSections.Clear();
+            _patVersion = pat.VersionNumber;
+            _patTransportStreamId = pat.TransportStreamId;
+            _patLastSectionNumber = pat.LastSectionNumber;
+        }
+
+        _patSections[pat.SectionNumber] = pat.PatRecords;
+        if (_patSections.Count < _patLastSectionNumber + 1
+            || Enumerable.Range(0, _patLastSectionNumber + 1).Any(section => !_patSections.ContainsKey((byte)section)))
+        {
+            return;
+        }
+
+        var desiredPrograms = _patSections.Values
+            .SelectMany(records => records)
+            .Where(record => record.ProgramNumber != 0)
+            .ToDictionary(record => record.ProgramNumber, record => record.Pid);
+
+        _patProgramCount = desiredPrograms.Count;
+
+        foreach (var removedProgram in _programPmtPids.Keys.Except(desiredPrograms.Keys).ToArray())
+        {
+            _programPmtPids.Remove(removedProgram);
+            _programAitPids.Remove(removedProgram);
+            _programScte35Pids.Remove(removedProgram);
+            _programAutoT2miPids.Remove(removedProgram);
+            _pmtRouteStates.Remove(removedProgram);
+        }
+
+        foreach (var pair in desiredPrograms)
+        {
+            if (_programPmtPids.TryGetValue(pair.Key, out var oldPid) && oldPid != pair.Value)
             {
-                continue;
+                _programAitPids.Remove(pair.Key);
+                _programScte35Pids.Remove(pair.Key);
+                _programAutoT2miPids.Remove(pair.Key);
+                _pmtRouteStates.Remove(pair.Key);
             }
+
+            _programPmtPids[pair.Key] = pair.Value;
+        }
+
+        var desiredPmtPids = desiredPrograms.Values.ToHashSet();
+        foreach (var stalePid in _pmtFactories.Keys.Except(desiredPmtPids).ToArray())
+            _pmtFactories.Remove(stalePid);
+
+        foreach (var pid in desiredPmtPids)
+        {
+            if (_pmtFactories.ContainsKey(pid))
+                continue;
 
             var factory = new PmtFactory
             {
-                CurrentPid = record.Pid
+                CurrentPid = pid
             };
             factory.OnPmtReady += PmtFactory_OnPmtReady;
-            _pmtFactories[record.Pid] = factory;
+            _pmtFactories[pid] = factory;
         }
+
+        ReconcileDynamicTablePids();
+        if (_patProgramCount != 1)
+        {
+            _programAutoT2miPids.Clear();
+        }
+        ReconcileT2miPids();
+    }
+
+    public void ResetStreamState()
+    {
+        _pmtFactories.Clear();
+        _programPmtPids.Clear();
+        _programAitPids.Clear();
+        _programScte35Pids.Clear();
+        _programAutoT2miPids.Clear();
+        _pmtRouteStates.Clear();
+        _aitPids.Clear();
+        _scte35Pids.Clear();
+        _aitFactories.Clear();
+        _scte35Factories.Clear();
+        _ewsFactories.Clear();
+        _eewsFactories.Clear();
+        _patSections.Clear();
+        _patVersion = null;
+        _patTransportStreamId = null;
+        _patProgramCount = 0;
+        _ewsPidListEmptyWarningSent = false;
+        _eewsPidListEmptyWarningSent = false;
+
+        _t2miDemuxers.Clear();
+        RegisterT2miPids(_explicitT2miPids);
     }
 
     public void RouteDynamicTables(TsPacket tsPacket)
@@ -157,44 +246,99 @@ internal sealed class DynamicPidRegistry
     {
         OnPmtReady?.Invoke(pmt);
 
-        var aitIdx = pmt.EsInfoList.FindIndex(es => es.StreamType == 0x05);
-        if (aitIdx >= 0 && pmt.EsInfoList[aitIdx].EsDescriptorList.Exists(desc => desc.DescriptorTag == 0x6F))
+        if (!pmt.CurrentNextIndicator
+            || !_programPmtPids.TryGetValue(pmt.ProgramNumber, out var expectedPid)
+            || expectedPid != pmt.TablePid)
         {
-            var aitPid = pmt.EsInfoList[aitIdx].ElementaryPid;
-            if (_aitPids.Add(aitPid))
-            {
-                var aitFactory = new AitFactory
-                {
-                    CurrentPid = aitPid
-                };
-                aitFactory.OnAitReady += AitFactory_OnAitReady;
-                _aitFactories[aitPid] = aitFactory;
-            }
+            return;
         }
 
-        var scte35Idx = pmt.EsInfoList.FindIndex(es => es.StreamType == 0x86);
-        if (scte35Idx >= 0)
+        if (!_pmtRouteStates.TryGetValue(pmt.ProgramNumber, out var routeState)
+            || routeState.Version != pmt.VersionNumber
+            || routeState.LastSectionNumber != pmt.LastSectionNumber)
         {
-            var scte35Pid = pmt.EsInfoList[scte35Idx].ElementaryPid;
-            if (_scte35Pids.Add(scte35Pid))
-            {
-                var scte35Factory = new Scte35Factory
-                {
-                    CurrentPid = scte35Pid
-                };
-                scte35Factory.OnScte35Ready += Scte35Factory_OnScte35Ready;
-                _scte35Factories[scte35Pid] = scte35Factory;
-            }
+            routeState = new PmtRouteState(pmt.VersionNumber, pmt.LastSectionNumber);
+            _pmtRouteStates[pmt.ProgramNumber] = routeState;
         }
 
-        if (_t2miEnabled && _t2miAutoDetect && _patProgramCount == 1 && pmt.EsInfoList.Count == 1)
+        routeState.Sections[pmt.SectionNumber] = pmt.EsInfoList.ToArray();
+        if (routeState.Sections.Count < pmt.LastSectionNumber + 1
+            || Enumerable.Range(0, pmt.LastSectionNumber + 1).Any(section => !routeState.Sections.ContainsKey((byte)section)))
         {
-            var es = pmt.EsInfoList[0];
-            if (es.StreamType == 0x06)
-            {
-                RegisterT2miPid(es.ElementaryPid);
-            }
+            return;
         }
+
+        var allEs = routeState.Sections.OrderBy(pair => pair.Key).SelectMany(pair => pair.Value).ToArray();
+        _programAitPids[pmt.ProgramNumber] = allEs
+            .Where(es => es.StreamType == 0x05 && es.EsDescriptorList.Exists(desc => desc.DescriptorTag == 0x6F))
+            .Select(es => es.ElementaryPid)
+            .ToHashSet();
+        _programScte35Pids[pmt.ProgramNumber] = allEs
+            .Where(es => es.StreamType == 0x86)
+            .Select(es => es.ElementaryPid)
+            .ToHashSet();
+        ReconcileDynamicTablePids();
+
+        if (_t2miEnabled && _t2miAutoDetect && _patProgramCount == 1 && allEs.Length == 1
+            && allEs[0].StreamType == 0x06)
+        {
+            _programAutoT2miPids[pmt.ProgramNumber] = [allEs[0].ElementaryPid];
+        }
+        else
+        {
+            _programAutoT2miPids.Remove(pmt.ProgramNumber);
+        }
+        ReconcileT2miPids();
+    }
+
+    private void ReconcileDynamicTablePids()
+    {
+        var desiredAit = _programAitPids.Values.SelectMany(pids => pids).ToHashSet();
+        var desiredScte35 = _programScte35Pids.Values.SelectMany(pids => pids).ToHashSet();
+
+        foreach (var pid in _aitPids.Except(desiredAit).ToArray())
+        {
+            _aitPids.Remove(pid);
+            _aitFactories.Remove(pid);
+        }
+        foreach (var pid in desiredAit.Where(pid => _aitPids.Add(pid)))
+        {
+            var factory = new AitFactory { CurrentPid = pid };
+            factory.OnAitReady += AitFactory_OnAitReady;
+            _aitFactories[pid] = factory;
+        }
+
+        foreach (var pid in _scte35Pids.Except(desiredScte35).ToArray())
+        {
+            _scte35Pids.Remove(pid);
+            _scte35Factories.Remove(pid);
+        }
+        foreach (var pid in desiredScte35.Where(pid => _scte35Pids.Add(pid)))
+        {
+            var factory = new Scte35Factory { CurrentPid = pid };
+            factory.OnScte35Ready += Scte35Factory_OnScte35Ready;
+            _scte35Factories[pid] = factory;
+        }
+    }
+
+    private void ReconcileT2miPids()
+    {
+        if (!_t2miEnabled)
+            return;
+
+        var desired = _explicitT2miPids
+            .Concat(_programAutoT2miPids.Values.SelectMany(pids => pids))
+            .ToHashSet();
+        foreach (var stalePid in _t2miDemuxers.Keys.Except(desired).ToArray())
+            _t2miDemuxers.Remove(stalePid);
+        RegisterT2miPids(desired);
+    }
+
+    private sealed class PmtRouteState(byte version, byte lastSectionNumber)
+    {
+        public byte Version { get; } = version;
+        public byte LastSectionNumber { get; } = lastSectionNumber;
+        public Dictionary<byte, EsInfo[]> Sections { get; } = new();
     }
 
     private void RoutePmt(TsPacket tsPacket)

@@ -172,8 +172,8 @@ namespace TSParser
         /// <summary>Raised on each PCR timestamp change (same PCR-PID used for bitrate).</summary>
         public event PcrTimestampChange? OnPcrTimestampChange;
 
-        private readonly Lazy<TsPacketFactory> packetFactory = new();
-        private readonly Lazy<Analyzer> analyzer;
+        private Lazy<TsPacketFactory> packetFactory = new();
+        private Lazy<Analyzer> analyzer;
         private readonly BitrateMeasurementOptions? m_bitrateMeasurement;
         private readonly Lazy<Compare> compare = new();
         private readonly DvbTableRouter m_tableRouter;
@@ -192,6 +192,9 @@ namespace TSParser
         private bool m_disposed;
 
         private Task? m_parserTask;
+        private readonly SemaphoreSlim m_operationGate = new(1, 1);
+        private readonly AsyncLocal<bool> m_insideOperation = new();
+        private int m_resourcesDisposed;
 
         private int? m_parserRunTimeIn_ms = null;
         private bool m_allowAnalyzer;
@@ -323,25 +326,20 @@ namespace TSParser
 
             m_inputSource.Stop();
 
+            if (m_insideOperation.Value)
+                return;
+
             WaitForParserTasks();
 
-            m_inputSource.Dispose();
-
-            if (analyzer.IsValueCreated)
+            m_operationGate.Wait();
+            try
             {
-                m_analyzer.OnRate -= Analyzer_OnRate;
-                m_analyzer.OnBitrateMeasured -= Analyzer_OnBitrateMeasured;
-                m_analyzer.OnTimeStampChange -= Analyzer_OnPcrTimestampChange;
+                DisposeResources();
             }
-
-            if (m_timer != null)
+            finally
             {
-                m_timer.Elapsed -= Timer_Elapsed;
-                m_timer.Dispose();
-                m_timer = null;
+                m_operationGate.Release();
             }
-
-            m_cts.Dispose();
         }
 
         public void RunParser()
@@ -355,15 +353,20 @@ namespace TSParser
         public async Task RunParserAsync()
         {
             ObjectDisposedException.ThrowIf(m_disposed, this);
-            EnsureCancellationTokenReady();
-
-            var inputContext = CreateInputSourceContext();
-            var parserTask = Task.Run(() => m_inputSource.Run(inputContext), m_ct);
-            m_parserTask = parserTask;
+            if (!m_operationGate.Wait(0))
+                throw new InvalidOperationException("Another parser operation is already in progress.");
 
             Exception? parserException = null;
             try
             {
+                ObjectDisposedException.ThrowIf(m_disposed, this);
+                m_insideOperation.Value = true;
+                EnsureCancellationTokenReady();
+                ResetStreamStateForRun();
+
+                var inputContext = CreateInputSourceContext();
+                var parserTask = Task.Run(() => m_inputSource.Run(inputContext), m_ct);
+                m_parserTask = parserTask;
                 await parserTask.ConfigureAwait(false);
             }
             catch (Exception ex) when (IsExpectedParserShutdown(ex))
@@ -376,7 +379,23 @@ namespace TSParser
             }
             finally
             {
-                CompleteParserRun(parserException);
+                try
+                {
+                    CompleteParserRun(parserException);
+                }
+                finally
+                {
+                    try
+                    {
+                        if (m_disposed)
+                            DisposeResources();
+                    }
+                    finally
+                    {
+                        m_insideOperation.Value = false;
+                        m_operationGate.Release();
+                    }
+                }
             }
         }
         /// <summary>
@@ -400,8 +419,28 @@ namespace TSParser
         public void PushBytes(byte[] bytes, int packetLength)
         {
             ObjectDisposedException.ThrowIf(m_disposed, this);
+            if (!m_operationGate.Wait(0))
+                throw new InvalidOperationException("Another parser operation is already in progress.");
 
-            m_pushSource.Push(bytes, packetLength, CreateInputSourceContext());
+            try
+            {
+                ObjectDisposedException.ThrowIf(m_disposed, this);
+                m_insideOperation.Value = true;
+                m_pushSource.Push(bytes, packetLength, CreateInputSourceContext());
+            }
+            finally
+            {
+                try
+                {
+                    if (m_disposed)
+                        DisposeResources();
+                }
+                finally
+                {
+                    m_insideOperation.Value = false;
+                    m_operationGate.Release();
+                }
+            }
         }
         /// <summary>
         /// Return ts packet array parsed from bytes.
@@ -557,6 +596,49 @@ namespace TSParser
             m_analyzer.OnBitrateMeasured += Analyzer_OnBitrateMeasured;
             m_analyzer.OnTimeStampChange += Analyzer_OnPcrTimestampChange;
         }
+
+        private void ResetStreamStateForRun()
+        {
+            m_tableRouter.ResetStreamState();
+            packetFactory = new Lazy<TsPacketFactory>();
+
+            if (analyzer.IsValueCreated)
+            {
+                m_analyzer.OnRate -= Analyzer_OnRate;
+                m_analyzer.OnBitrateMeasured -= Analyzer_OnBitrateMeasured;
+                m_analyzer.OnTimeStampChange -= Analyzer_OnPcrTimestampChange;
+            }
+
+            analyzer = new Lazy<Analyzer>(() => new Analyzer(m_bitrateMeasurement));
+            m_analyzer.OnRate += Analyzer_OnRate;
+            m_analyzer.OnBitrateMeasured += Analyzer_OnBitrateMeasured;
+            m_analyzer.OnTimeStampChange += Analyzer_OnPcrTimestampChange;
+            m_fileStreamByteOffset = null;
+        }
+
+        private void DisposeResources()
+        {
+            if (Interlocked.Exchange(ref m_resourcesDisposed, 1) != 0)
+                return;
+
+            m_inputSource.Dispose();
+
+            if (analyzer.IsValueCreated)
+            {
+                m_analyzer.OnRate -= Analyzer_OnRate;
+                m_analyzer.OnBitrateMeasured -= Analyzer_OnBitrateMeasured;
+                m_analyzer.OnTimeStampChange -= Analyzer_OnPcrTimestampChange;
+            }
+
+            if (m_timer != null)
+            {
+                m_timer.Elapsed -= Timer_Elapsed;
+                m_timer.Dispose();
+                m_timer = null;
+            }
+
+            m_cts.Dispose();
+        }
         private void Analyzer_OnRate(ushort pid, ulong deltaPackets, ulong deltaTime)
         {
             OnRate?.Invoke(pid, deltaPackets, deltaTime);
@@ -626,7 +708,7 @@ namespace TSParser
                 TsPacketBuildOptions options;
                 if (routeSi)
                 {
-                    options = TsPacketBuildOptions.SiTable(m_tableRouter.RequiresRawPacket(pid));
+                    options = TsPacketBuildOptions.SiTable(captureRawPacket: true);
                 }
                 else if (routeT2miOnly)
                 {

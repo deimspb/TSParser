@@ -36,6 +36,12 @@ internal abstract class SectionTableFactory<TTable, TKey> : TableFactory
 
     protected virtual bool DropSameVersionForSameKey => false;
 
+    protected override void OnResetStreamState()
+    {
+        _sectionCache.Clear();
+        CurrentTable = null;
+    }
+
     internal override void PushTable(TsPacket tsPacket)
     {
         ProcessAssembledSections(tsPacket);

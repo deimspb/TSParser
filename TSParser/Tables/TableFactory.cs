@@ -48,6 +48,16 @@ namespace TSParser.Tables
             TableData = null!;
         }
 
+        internal void ResetStreamState()
+        {
+            ResetFactory();
+            OnResetStreamState();
+        }
+
+        protected virtual void OnResetStreamState()
+        {
+        }
+
         internal bool TryParseAssembledTable(Action parseAction, string tableName)
         {
             try

@@ -235,6 +235,41 @@ public sealed class PsiSectionAssemblerTests
         Assert.That(factory.Sections[1], Is.EqualTo(sectionB));
     }
 
+    [Test]
+    public void PushPacket_identical_same_cc_duplicate_does_not_corrupt_pending_section()
+    {
+        var section = PsiTsPacketFactory.BuildSection(0x42, Enumerable.Range(0, 220).Select(i => (byte)i).ToArray());
+        var assembler = new PsiSectionAssembler(Pid);
+        var firstBytes = PsiTsPacketFactory.BuildTsPacket(Pid, true, 5,
+            PsiTsPacketFactory.BuildPusiPayload(0, section.AsSpan(0, 120)));
+        var first = ParsePacket(firstBytes);
+        Assert.That(PushAndCollect(assembler, first), Is.Empty);
+        Assert.That(PushAndCollect(assembler, ParsePacket(firstBytes)), Is.Empty);
+
+        var continuation = ParsePacket(PsiTsPacketFactory.BuildTsPacket(Pid, false, 6, section.AsSpan(120)));
+        var ready = PushAndCollect(assembler, continuation);
+
+        Assert.That(ready, Has.Count.EqualTo(1));
+        Assert.That(ready[0], Is.EqualTo(section));
+    }
+
+    [Test]
+    public void PushPacket_different_same_cc_drops_pending_and_resyncs_at_pusi()
+    {
+        var sectionA = PsiTsPacketFactory.BuildSection(0x42, Enumerable.Range(0, 220).Select(i => (byte)i).ToArray());
+        var sectionB = PsiTsPacketFactory.BuildSection(0x4A, 1, 2, 3, 4);
+        var assembler = new PsiSectionAssembler(Pid);
+        var first = ParsePacket(PsiTsPacketFactory.BuildTsPacket(Pid, true, 2,
+            PsiTsPacketFactory.BuildPusiPayload(0, sectionA.AsSpan(0, 100))));
+        Assert.That(PushAndCollect(assembler, first), Is.Empty);
+
+        var replacement = ParsePacket(PsiTsPacketFactory.BuildPsiTsPacket(Pid, sectionB, continuityCounter: 2));
+        var ready = PushAndCollect(assembler, replacement);
+
+        Assert.That(ready, Has.Count.EqualTo(1));
+        Assert.That(ready[0], Is.EqualTo(sectionB));
+    }
+
     private static List<byte[]> PushAndCollect(PsiSectionAssembler assembler, TsPacket packet)
     {
         return assembler.PushPacket(packet).Select(section => section.ToArray()).ToList();

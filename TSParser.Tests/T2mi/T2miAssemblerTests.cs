@@ -78,11 +78,11 @@ public sealed class T2miAssemblerTests
     {
         var t2mi = T2miTestPacketFactory.DvbT2TimestampPacket.ToArray();
         var splitAt = 10;
-        var first = T2miTestPacketFactory.WrapInSingleTsPacket(t2mi.AsSpan(0, splitAt), FixtureLoader.T2miSamplePid, continuityCounter: 0);
-        var second = T2miTestPacketFactory.WrapInContinuationTsPacket(
-            t2mi.AsSpan(splitAt),
-            FixtureLoader.T2miSamplePid,
-            continuityCounter: 1);
+        var first = PsiTsPacketFactory.BuildTsPacket(
+            FixtureLoader.T2miSamplePid, true, 0,
+            PsiTsPacketFactory.BuildPusiPayload(0, t2mi.AsSpan(0, splitAt)));
+        var second = PsiTsPacketFactory.BuildTsPacket(
+            FixtureLoader.T2miSamplePid, false, 1, t2mi.AsSpan(splitAt));
 
         var assembler = new T2miPacketAssembler();
         var packets = new List<T2miPacket>();
@@ -114,5 +114,124 @@ public sealed class T2miAssemblerTests
         Assert.That(
             packets.Any(p => p.PacketType is T2miPacketType.L1Current or T2miPacketType.DvbT2Timestamp or T2miPacketType.FefPartNull),
             Is.True);
+    }
+
+    [Test]
+    public void Assembler_emits_multiple_packets_from_one_payload_and_ignores_stuffing()
+    {
+        var first = T2miTestPacketFactory.DvbT2TimestampPacket.ToArray();
+        var second = T2miTestPacketFactory.DvbT2TimestampPacket.ToArray();
+        second[1]++;
+        var crc = TSParser.Service.Utils.GetCRC32(second.AsSpan(0, second.Length - 4));
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(second.AsSpan(second.Length - 4), crc);
+        var payload = new byte[1 + first.Length + second.Length];
+        first.CopyTo(payload, 1);
+        second.CopyTo(payload, 1 + first.Length);
+        var ts = PsiTsPacketFactory.BuildTsPacket(FixtureLoader.T2miSamplePid, true, 0, payload);
+
+        var packets = new List<T2miPacket>();
+        var assembler = new T2miPacketAssembler();
+        assembler.PacketReady += packets.Add;
+        assembler.PushPacket(ts);
+
+        Assert.That(packets.Select(p => p.PacketCount), Is.EqualTo(new byte[] { first[1], second[1] }));
+        Assert.That(packets.All(p => p.Crc32Valid), Is.True);
+    }
+
+    [Test]
+    public void Assembler_pointer_prefix_finishes_pending_then_emits_next_packet()
+    {
+        var first = T2miTestPacketFactory.DvbT2TimestampPacket.ToArray();
+        var second = T2miTestPacketFactory.BuildMinimalBasebandPacket();
+        const int split = 9;
+        var start = PsiTsPacketFactory.BuildTsPacket(
+            FixtureLoader.T2miSamplePid, true, 0,
+            PsiTsPacketFactory.BuildPusiPayload(0, first.AsSpan(0, split)));
+        var remainder = first.AsSpan(split).ToArray();
+        var next = PsiTsPacketFactory.BuildTsPacket(
+            FixtureLoader.T2miSamplePid, true, 1,
+            PsiTsPacketFactory.BuildPusiPayload((byte)remainder.Length, remainder, second));
+
+        var packets = new List<T2miPacket>();
+        var assembler = new T2miPacketAssembler();
+        assembler.PacketReady += packets.Add;
+        assembler.PushPacket(start);
+        assembler.PushPacket(next);
+
+        Assert.That(packets.Select(p => p.PacketType), Is.EqualTo(new[] { T2miPacketType.DvbT2Timestamp, T2miPacketType.BasebandFrame }));
+    }
+
+    [Test]
+    public void Assembler_non_pusi_continuation_can_finish_one_and_start_another_packet()
+    {
+        var first = T2miTestPacketFactory.DvbT2TimestampPacket.ToArray();
+        var second = T2miTestPacketFactory.BuildMinimalBasebandPacket();
+        const int split = 8;
+        var start = PsiTsPacketFactory.BuildTsPacket(FixtureLoader.T2miSamplePid, true, 0,
+            PsiTsPacketFactory.BuildPusiPayload(0, first.AsSpan(0, split)));
+        var continuationPayload = first.AsSpan(split).ToArray().Concat(second).ToArray();
+        var continuation = PsiTsPacketFactory.BuildTsPacket(
+            FixtureLoader.T2miSamplePid, false, 1, continuationPayload);
+        var packets = new List<T2miPacket>();
+        var assembler = new T2miPacketAssembler();
+        assembler.PacketReady += packets.Add;
+
+        assembler.PushPacket(start);
+        assembler.PushPacket(continuation);
+
+        Assert.That(packets.Select(p => p.PacketType), Is.EqualTo(new[] { T2miPacketType.DvbT2Timestamp, T2miPacketType.BasebandFrame }));
+    }
+
+    [Test]
+    public void Assembler_identical_same_cc_duplicate_is_ignored()
+    {
+        var packet = T2miTestPacketFactory.DvbT2TimestampPacket.ToArray();
+        var ts = T2miTestPacketFactory.WrapInSingleTsPacket(packet, FixtureLoader.T2miSamplePid, 4);
+        var packets = new List<T2miPacket>();
+        var assembler = new T2miPacketAssembler();
+        assembler.PacketReady += packets.Add;
+
+        assembler.PushPacket(ts);
+        assembler.PushPacket(ts);
+
+        Assert.That(packets, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void Demuxer_invalid_baseband_crc_only_raises_packet_ready()
+    {
+        var packet = T2miTestPacketFactory.BuildMinimalBasebandPacket();
+        packet[^1] ^= 0x01;
+        var ts = T2miTestPacketFactory.WrapInSingleTsPacket(packet, FixtureLoader.T2miSamplePid);
+        var demuxer = new T2miDemuxer(FixtureLoader.T2miSamplePid, deencapsulate: true);
+        var packets = new List<T2miPacket>();
+        var plps = new List<byte>();
+        var inner = new List<byte[]>();
+        demuxer.PacketReady += packets.Add;
+        demuxer.PlpDiscovered += plps.Add;
+        demuxer.PlpTsReady += (_, data) => inner.Add(data.ToArray());
+
+        demuxer.PushPacket(ts);
+
+        Assert.That(packets, Has.Count.EqualTo(1));
+        Assert.That(packets[0].Crc32Valid, Is.False);
+        Assert.That(plps, Is.Empty);
+        Assert.That(inner, Is.Empty);
+    }
+
+    [Test]
+    public void Assembler_invalid_non_baseband_crc_is_reported()
+    {
+        var packet = T2miTestPacketFactory.DvbT2TimestampPacket.ToArray();
+        packet[^1] ^= 0x01;
+        var ts = T2miTestPacketFactory.WrapInSingleTsPacket(packet, FixtureLoader.T2miSamplePid);
+        T2miPacket? received = null;
+        var assembler = new T2miPacketAssembler();
+        assembler.PacketReady += value => received = value;
+
+        assembler.PushPacket(ts);
+
+        Assert.That(received, Is.Not.Null);
+        Assert.That(received!.Crc32Valid, Is.False);
     }
 }

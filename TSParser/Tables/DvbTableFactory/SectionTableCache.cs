@@ -26,6 +26,12 @@ internal sealed class SectionTableCache<TTable, TKey>
 
     public bool HasCrc(uint crc32) => _seenCrc.Contains(crc32);
 
+    public void Clear()
+    {
+        _sectionCache.Clear();
+        _seenCrc.Clear();
+    }
+
     public bool TryAccept(
         TTable table,
         TKey key,

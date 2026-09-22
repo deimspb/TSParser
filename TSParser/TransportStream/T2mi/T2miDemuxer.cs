@@ -80,6 +80,12 @@ public sealed class T2miDemuxer
 
     private void OnAssemblerPacketReady(T2miPacket packet)
     {
+        if (!packet.Crc32Valid)
+        {
+            PacketReady?.Invoke(packet);
+            return;
+        }
+
         if (packet.PlpId is byte plpId && _discoveredPlps.Add(plpId))
         {
             PlpDiscovered?.Invoke(plpId);

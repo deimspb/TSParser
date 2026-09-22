@@ -245,6 +245,107 @@ public sealed class TsParserLifecycleTests
         }
     }
 
+    [Test]
+    public void Concurrent_push_is_rejected_atomically_and_dispose_from_callback_does_not_deadlock()
+    {
+        var parser = new TsParser();
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        parser.OnTsPacketReady += _ =>
+        {
+            entered.Set();
+            release.Wait(TimeSpan.FromSeconds(5));
+        };
+
+        var firstPush = Task.Run(() => parser.PushBytes(BuildNullPackets(1), 188));
+        Assert.That(entered.Wait(TimeSpan.FromSeconds(5)), Is.True);
+        Assert.Throws<InvalidOperationException>(() => parser.PushBytes(BuildNullPackets(1), 188));
+        release.Set();
+        Assert.That(firstPush.Wait(TimeSpan.FromSeconds(5)), Is.True);
+
+        var callbackParser = new TsParser();
+        callbackParser.OnTsPacketReady += _ => callbackParser.Dispose();
+        Assert.DoesNotThrow(() => callbackParser.PushBytes(BuildNullPackets(1), 188));
+        Assert.Throws<ObjectDisposedException>(() => callbackParser.PushBytes(BuildNullPackets(1), 188));
+    }
+
+    [Test]
+    public void Sequential_file_runs_reset_packet_numbers()
+    {
+        var path = WriteTempTs(packetCount: 12);
+        try
+        {
+            using var parser = new TsParser(new ParserOptions { TsFileName = path });
+            var packetNumbers = new List<ulong>();
+            parser.OnTsPacketReady += packet => packetNumbers.Add(packet.PacketNumber);
+
+            parser.RunParser();
+            parser.RunParser();
+
+            Assert.That(packetNumbers.Take(12), Is.EqualTo(Enumerable.Range(0, 12).Select(i => (ulong)i)));
+            Assert.That(packetNumbers.Skip(12), Is.EqualTo(Enumerable.Range(0, 12).Select(i => (ulong)i)));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Test]
+    public async Task Concurrent_run_and_push_are_rejected()
+    {
+        var path = WriteTempTs(packetCount: 12_000);
+        try
+        {
+            using var parser = new TsParser(new ParserOptions { TsFileName = path });
+            using var entered = new ManualResetEventSlim();
+            using var release = new ManualResetEventSlim();
+            parser.OnTsPacketReady += _ =>
+            {
+                entered.Set();
+                release.Wait(TimeSpan.FromSeconds(5));
+            };
+
+            var run = parser.RunParserAsync();
+            Assert.That(entered.Wait(TimeSpan.FromSeconds(5)), Is.True);
+            Assert.Throws<InvalidOperationException>(() => parser.PushBytes(BuildNullPackets(1), 188));
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await parser.RunParserAsync());
+            release.Set();
+            await run;
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Test]
+    public void Sequential_table_runs_publish_same_pat_again_after_reset()
+    {
+        var pat = FixtureLoader.LoadBytes("Tables/PAT/PAT_S.tbl");
+        var patPacket = PsiTsPacketFactory.BuildPsiTsPacket((ushort)ReservedPids.PAT, pat);
+        var bytes = new byte[12 * 188];
+        patPacket.CopyTo(bytes, 0);
+        BuildNullPackets(11).CopyTo(bytes, 188);
+        var path = Path.Combine(Path.GetTempPath(), $"tsparser-lifecycle-{Guid.NewGuid():N}.ts");
+        File.WriteAllBytes(path, bytes);
+        try
+        {
+            using var parser = new TsParser(new ParserOptions { TsFileName = path, CurrentDecodeMode = DecodeMode.Table });
+            var count = 0;
+            parser.OnPatReady += _ => count++;
+
+            parser.RunParser();
+            parser.RunParser();
+
+            Assert.That(count, Is.EqualTo(2));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static string WriteTempTs(int packetCount, int packetSize = 188)
     {
         var bytes = BuildNullPackets(packetCount, packetSize);
