@@ -75,13 +75,13 @@ public partial class ParserToolbarControl : UserControl
 
     private void OnShellPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainWindowViewModel.StatusText))
+        if (e.PropertyName is nameof(MainWindowViewModel.StatusText) or nameof(MainWindowViewModel.IsRecording))
             RefreshToolbarState();
     }
 
     private async void OnOpenFileClick(object? sender, RoutedEventArgs e)
     {
-        if (Shell is null || SessionBusy)
+        if (Shell is null || SessionBusy || Shell.Session.IsRecording)
             return;
 
         var topLevel = TopLevel.GetTopLevel(this);
@@ -116,7 +116,7 @@ public partial class ParserToolbarControl : UserControl
 
     private async void OnBitrateClick(object? sender, RoutedEventArgs e)
     {
-        if (Shell is null)
+        if (Shell is null || Shell.Session.IsRecording)
             return;
 
         var owner = GetOwnerWindow();
@@ -140,7 +140,7 @@ public partial class ParserToolbarControl : UserControl
 
     private async void OnEwsClick(object? sender, RoutedEventArgs e)
     {
-        if (Shell is null)
+        if (Shell is null || Shell.Session.IsRecording)
             return;
 
         var owner = GetOwnerWindow();
@@ -162,7 +162,7 @@ public partial class ParserToolbarControl : UserControl
 
     private async void OnPlpClick(object? sender, RoutedEventArgs e)
     {
-        if (Shell is null)
+        if (Shell is null || Shell.Session.IsRecording)
             return;
 
         var owner = GetOwnerWindow();
@@ -184,7 +184,7 @@ public partial class ParserToolbarControl : UserControl
 
     private void OnPlayUdpClick(object? sender, RoutedEventArgs e)
     {
-        if (Shell is null || !CanPlayUdp)
+        if (Shell is null || Shell.Session.IsRecording || !CanPlayUdp)
             return;
 
         _sessionError = null;
@@ -195,8 +195,42 @@ public partial class ParserToolbarControl : UserControl
 
     private void OnStopUdpClick(object? sender, RoutedEventArgs e)
     {
+        if (Shell?.Session.IsRecording == true)
+            return;
+
         _sessionError = null;
         Shell?.Session.Stop();
+        RefreshToolbarState();
+    }
+
+    private async void OnRecordClick(object? sender, RoutedEventArgs e)
+    {
+        if (Shell is null)
+            return;
+
+        if (Shell.Session.IsRecording)
+        {
+            Shell.Session.StopUdpRecording();
+            return;
+        }
+
+        var owner = GetOwnerWindow();
+        if (owner is null)
+            return;
+
+        var dialog = new UdpRecordingWindow();
+        if (!await dialog.ShowDialog<bool>(owner).ConfigureAwait(true) || dialog.Result is null)
+            return;
+
+        try
+        {
+            Shell.Session.StartUdpRecording(dialog.Result);
+        }
+        catch (Exception ex)
+        {
+            _sessionError = ex.Message;
+            Shell.ShowStatus(ex.Message);
+        }
         RefreshToolbarState();
     }
 
@@ -248,14 +282,18 @@ public partial class ParserToolbarControl : UserControl
         var udpRunning = IsUdpRunning;
         var busy = SessionBusy;
         var canPlay = CanPlayUdp;
+        var recording = Shell?.Session.IsRecording == true;
 
-        OpenFileButton.IsEnabled = !busy;
-        BitrateButton.IsEnabled = !busy;
-        EwsButton.IsEnabled = !busy;
-        PlpButton.IsEnabled = !busy;
-        EndpointBox.IsEnabled = !udpRunning;
-        BindCombo.IsEnabled = !udpRunning;
-        PlayButton.IsEnabled = canPlay;
-        StopButton.IsEnabled = Shell?.Session.IsRunning == true;
+        OpenFileButton.IsEnabled = !busy && !recording;
+        BitrateButton.IsEnabled = !busy && !recording;
+        EwsButton.IsEnabled = !busy && !recording;
+        PlpButton.IsEnabled = !busy && !recording;
+        EndpointBox.IsEnabled = !udpRunning && !recording;
+        BindCombo.IsEnabled = !udpRunning && !recording;
+        PlayButton.IsEnabled = canPlay && !recording;
+        StopButton.IsEnabled = Shell?.Session.IsRunning == true && !recording;
+        RecordButton.IsEnabled = recording || (udpRunning && !busy);
+        RecordButton.Content = recording ? "Stop recording" : "Record…";
+        SourceSettings.IsEnabled = !recording;
     }
 }

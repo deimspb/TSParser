@@ -176,6 +176,8 @@ namespace TSParser
         public event PcrTimestampChange? OnPcrTimestampChange;
         /// <summary>Raised when a TR 101 290 indicator changes state. Requires <see cref="ParserOptions.Tr101290"/>.</summary>
         public event Action<Tr101290Event>? OnTr101290Event;
+        /// <summary>Raised once when an active raw UDP recording ends.</summary>
+        public event Action<UdpRecordingResult>? OnUdpRecordingCompleted;
 
         private Lazy<TsPacketFactory> packetFactory = new();
         private Lazy<Analyzer> analyzer;
@@ -309,7 +311,9 @@ namespace TSParser
 
             if (options.UdpSource != null)
             {
-                m_inputSource = new UdpTsSource(options.UdpSource);
+                var udpSource = new UdpTsSource(options.UdpSource);
+                udpSource.RecordingCompleted += result => OnUdpRecordingCompleted?.Invoke(result);
+                m_inputSource = udpSource;
                 return;
             }
         }
@@ -321,6 +325,26 @@ namespace TSParser
             : this(ParserOptions.Default)
         {
         }
+
+        /// <summary>Starts recording complete raw datagrams from the active UDP source.</summary>
+        public void StartUdpRecording(UdpRecordingOptions options)
+        {
+            ObjectDisposedException.ThrowIf(m_disposed, this);
+            if (m_inputSource is not UdpTsSource udpSource)
+                throw new InvalidOperationException("UDP recording requires an active UDP source.");
+            udpSource.StartRecording(options);
+        }
+
+        /// <summary>Stops the active UDP recording, if any.</summary>
+        public void StopUdpRecording()
+        {
+            if (m_inputSource is UdpTsSource udpSource)
+                udpSource.StopRecording();
+        }
+
+        public bool IsUdpRecording => m_inputSource is UdpTsSource { IsRecording: true };
+
+        public UdpRecordingStatus? UdpRecordingStatus => (m_inputSource as UdpTsSource)?.RecordingStatus;
 
         public void Dispose()
         {

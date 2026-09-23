@@ -63,6 +63,16 @@ public sealed class TsParserSessionService : IAsyncDisposable
         }
     }
 
+    public bool IsRecording
+    {
+        get { lock (_parserLock) return _parser?.IsUdpRecording == true; }
+    }
+
+    public UdpRecordingStatus? RecordingStatus
+    {
+        get { lock (_parserLock) return _parser?.UdpRecordingStatus; }
+    }
+
     public bool HasActiveSource
     {
         get
@@ -82,6 +92,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
     /// <summary>Re-opens the current file or UDP session so bitrate measurement options take effect.</summary>
     public async Task RestartCurrentSessionAsync(CancellationToken cancellationToken = default)
     {
+        ThrowIfRecording();
         TsParserSessionInputMode mode;
         string? filePath;
         string? displayName;
@@ -132,6 +143,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
 
     public async Task OpenFileAsync(string fullPath, CancellationToken cancellationToken = default)
     {
+        ThrowIfRecording();
         ArgumentException.ThrowIfNullOrWhiteSpace(fullPath);
 
         var path = Path.GetFullPath(fullPath.Trim());
@@ -179,6 +191,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
         string? bindAddress = null,
         CancellationToken cancellationToken = default)
     {
+        ThrowIfRecording();
         ArgumentException.ThrowIfNullOrWhiteSpace(multicastEndpoint);
 
         if (!TryParseMulticastEndpoint(multicastEndpoint, out var group, out var port))
@@ -219,6 +232,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
 
     public void Stop()
     {
+        ThrowIfRecording();
         TsParser? parser;
         var mode = _inputMode;
 
@@ -229,6 +243,24 @@ public sealed class TsParserSessionService : IAsyncDisposable
 
         parser?.StopParser();
         Post(new TsParserUiUpdate.ParserStopped(mode));
+    }
+
+    public void StartUdpRecording(UdpRecordingOptions options)
+    {
+        lock (_parserLock)
+        {
+            if (_inputMode != TsParserSessionInputMode.Udp || _parser is null || _runTask is not { IsCompleted: false })
+                throw new InvalidOperationException("Connect to a running UDP source before recording.");
+            _parser.StartUdpRecording(options);
+        }
+
+        Post(new TsParserUiUpdate.RecordingStarted(Path.GetFullPath(options.FilePath)));
+    }
+
+    public void StopUdpRecording()
+    {
+        lock (_parserLock)
+            _parser?.StopUdpRecording();
     }
 
     public static bool TryParseMulticastEndpoint(string input, out string group, out int port)
@@ -462,6 +494,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
         parser.OnPcrTimestampChange += OnPcrTimestamp;
         parser.OnT2miPlpDiscovered += OnT2miPlpDiscovered;
         parser.OnPlpTsReady += OnPlpTsReady;
+        parser.OnUdpRecordingCompleted += OnUdpRecordingCompleted;
     }
 
     private void UnsubscribeParser(TsParser parser)
@@ -486,6 +519,7 @@ public sealed class TsParserSessionService : IAsyncDisposable
         parser.OnPcrTimestampChange -= OnPcrTimestamp;
         parser.OnT2miPlpDiscovered -= OnT2miPlpDiscovered;
         parser.OnPlpTsReady -= OnPlpTsReady;
+        parser.OnUdpRecordingCompleted -= OnUdpRecordingCompleted;
     }
 
     private void EnsureLoggerSubscribed()
@@ -650,6 +684,15 @@ public sealed class TsParserSessionService : IAsyncDisposable
 
     private void OnParserComplete() =>
         Post(new TsParserUiUpdate.ParserCompleted());
+
+    private void OnUdpRecordingCompleted(UdpRecordingResult result) =>
+        Post(new TsParserUiUpdate.RecordingCompleted(result));
+
+    private void ThrowIfRecording()
+    {
+        if (IsRecording)
+            throw new InvalidOperationException("Stop the UDP recording before changing the session.");
+    }
 
     private void PostTable(TsTableKind kind, Table table)
     {

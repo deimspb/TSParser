@@ -31,8 +31,11 @@ public partial class MainWindow : Window
     private void OnEmptyConnectUdpClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
         ParserToolbar.FocusUdpSettings();
 
-    private void OnChartSettingsClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
-        ParserToolbar.RequestBitrateSettings();
+    private void OnChartSettingsClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel { IsRecording: false })
+            ParserToolbar.RequestBitrateSettings();
+    }
 
     private async void OnClosing(object? sender, WindowClosingEventArgs e)
     {

@@ -124,6 +124,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
     public bool HasSource => Session.InputMode != TsParserSessionInputMode.None;
 
+    public bool IsRecording => Session.IsRecording;
+
     public string SourceSummary => Session.InputMode switch
     {
         TsParserSessionInputMode.File => Session.CurrentFileDisplayName ?? "Transport stream file",
@@ -324,6 +326,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
         OnPropertyChanged(nameof(ErrorSummary));
         OnPropertyChanged(nameof(BitrateSummary));
         OnPropertyChanged(nameof(LastPacketSummary));
+        OnPropertyChanged(nameof(IsRecording));
     }
 
 
@@ -486,6 +489,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
                         break;
 
+                    case TsParserUiUpdate.RecordingStarted(var filePath):
+                        statusText = $"Recording {Path.GetFileName(filePath)} — 0 B";
+                        needsRefresh = true;
+                        break;
+
+                    case TsParserUiUpdate.RecordingCompleted(var result):
+                        statusText = result.Reason == UdpRecordingStopReason.Error
+                            ? $"Recording failed ({result.FilePath}): {result.Error?.Message ?? "unknown error"}"
+                            : $"Recording saved: {result.FilePath} ({FormatBytes(result.BytesWritten)})";
+                        needsRefresh = true;
+                        break;
+
 
 
                     case TsParserUiUpdate.ParserCompleted:
@@ -533,12 +548,19 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
                         break;
 
                     case TsParserUiUpdate.PidCatalogPoll:
-
+                        if (Session.RecordingStatus is { } recording)
+                        {
+                            statusText = $"Recording {Path.GetFileName(recording.FilePath)} — {FormatBytes(recording.BytesWritten)} — {recording.Elapsed:mm\\:ss}";
+                            needsRefresh = true;
+                        }
                         break;
 
                 }
 
 
+
+                if (Session.RecordingStatus is { } activeRecording)
+                    statusText = $"Recording {Path.GetFileName(activeRecording.FilePath)} — {FormatBytes(activeRecording.BytesWritten)} — {activeRecording.Elapsed:mm\\:ss}";
 
                 if (TrySyncPidTree())
 
@@ -900,6 +922,14 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
         NotifyDashboardChanged();
 
     }
+
+    private static string FormatBytes(long bytes) => bytes switch
+    {
+        >= 1024L * 1024L * 1024L => $"{bytes / (1024d * 1024d * 1024d):0.00} GB",
+        >= 1024L * 1024L => $"{bytes / (1024d * 1024d):0.00} MB",
+        >= 1024L => $"{bytes / 1024d:0.00} KB",
+        _ => $"{bytes} B"
+    };
 
 
 

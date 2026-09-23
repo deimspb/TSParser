@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="TSParser.Desktop.Views.Dialogs.UdpRecordingWindow"
+        Title="Record UDP stream"
+        Classes="dialog-window"
+        Width="500"
+        SizeToContent="Height">
+    <StackPanel Margin="20" Spacing="4">
+        <TextBlock Classes="dialog-title" Text="Record raw UDP stream"/>
+        <TextBlock Classes="dialog-hint" Text="Every complete multicast datagram is saved before parsing. The file is created new and an existing file will not be overwritten."/>
+
+        <TextBlock Classes="dialog-field-label" Text="Destination"/>
+        <Grid ColumnDefinitions="*,Auto">
+            <TextBox x:Name="PathBox" Grid.Column="0" Classes="dialog-input" IsReadOnly="True"/>
+            <Button Grid.Column="1" Classes="dialog-btn" Content="Browse…" Click="OnBrowseClick" Margin="8,0,0,0"/>
+        </Grid>
+
+        <TextBlock Classes="dialog-field-label" Text="Stop limit"/>
+        <ComboBox x:Name="LimitKindBox" Classes="dialog-select" SelectedIndex="0" SelectionChanged="OnLimitKindChanged">
+            <ComboBoxItem Content="Time (minutes)"/>
+            <ComboBoxItem Content="Size (MB)"/>
+        </ComboBox>
+        <TextBox x:Name="LimitBox" Classes="dialog-input" Text="10"/>
+
+        <TextBlock x:Name="ErrorText" Classes="dialog-error" IsVisible="False"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,16,0,0">
+            <Button Classes="dialog-btn dialog-btn-primary" Content="Record" Click="OnOkClick" IsDefault="True"/>
+            <Button Classes="dialog-btn" Content="Cancel" Click="OnCancelClick" IsCancel="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

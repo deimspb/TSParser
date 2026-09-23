@@ -62,6 +62,10 @@ public abstract record TsParserUiUpdate
 
     public sealed record ParserStopped(TsParserSessionInputMode PreviousMode) : TsParserUiUpdate;
 
+    public sealed record RecordingStarted(string FilePath) : TsParserUiUpdate;
+
+    public sealed record RecordingCompleted(UdpRecordingResult Result) : TsParserUiUpdate;
+
     public sealed record LogMessage(string Text, bool IsError) : TsParserUiUpdate;
 
     public sealed record PlpDiscovered(byte PlpId) : TsParserUiUpdate;

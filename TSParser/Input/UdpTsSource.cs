@@ -21,6 +21,7 @@ namespace TSParser.Input;
 
 internal sealed class UdpTsSource : ITsInputSource
 {
+    private readonly UdpDatagramRecorder _recorder = new();
     private readonly IPAddress _multicastGroup;
     private readonly IPAddress _incomingIpInterface;
     private readonly int _multicastPort;
@@ -33,6 +34,7 @@ internal sealed class UdpTsSource : ITsInputSource
 
     public UdpTsSource(UdpSourceOptions source, int socketTimeout = 5000, int connectionAttempts = 5)
     {
+        _recorder.Completed += result => RecordingCompleted?.Invoke(result);
         if (string.IsNullOrWhiteSpace(source.MulticastGroup))
         {
             throw new TsParserConfigurationException("UDP multicast group must be set.");
@@ -61,6 +63,16 @@ internal sealed class UdpTsSource : ITsInputSource
         _socketTimeOut = socketTimeout;
         _connectionAttempts = connectionAttempts;
     }
+
+    public event Action<UdpRecordingResult>? RecordingCompleted;
+
+    public bool IsRecording => _recorder.IsRecording;
+
+    public UdpRecordingStatus? RecordingStatus => _recorder.Status;
+
+    public void StartRecording(UdpRecordingOptions options) => _recorder.Start(options);
+
+    public void StopRecording() => _recorder.Stop();
 
     public void Run(TsInputSourceContext context)
     {
@@ -114,6 +126,8 @@ internal sealed class UdpTsSource : ITsInputSource
                 return;
             }
 
+            _recorder.Record(bytes.AsSpan(0, bytesCount));
+
             if (!TsPacketLengthDetector.TryResolveUdpTsPacketLength(bytesCount, out var packetLength))
             {
                 Logger.Send(
@@ -142,7 +156,7 @@ internal sealed class UdpTsSource : ITsInputSource
                 {
                     ThrowIfBufferReaderFaulted();
                     var bytesLength = udpSocket.Receive(bytes);
-                    WriteUdpDatagram(channel.Writer, bytes, bytesLength, context.CancellationToken);
+                    RecordAndQueueDatagram(channel.Writer, bytes, bytesLength, context.CancellationToken);
                 }
                 catch (Exception ex) when (context.IsExpectedShutdown(ex))
                 {
@@ -181,6 +195,7 @@ internal sealed class UdpTsSource : ITsInputSource
             }
             finally
             {
+                _recorder.Stop(UdpRecordingStopReason.SourceStopped);
                 if (ReferenceEquals(_channel, channel))
                 {
                     _channel = null;
@@ -193,6 +208,7 @@ internal sealed class UdpTsSource : ITsInputSource
 
     public void Stop()
     {
+        _recorder.Stop(UdpRecordingStopReason.SourceStopped);
         _channel?.Writer.TryComplete();
         CloseSocket();
     }
@@ -200,6 +216,7 @@ internal sealed class UdpTsSource : ITsInputSource
     public void Dispose()
     {
         Stop();
+        _recorder.Dispose();
     }
 
     internal static bool TryResolveUdpTsPacketLength(int datagramByteCount, out int packetLength)
@@ -222,6 +239,12 @@ internal sealed class UdpTsSource : ITsInputSource
         var datagram = new byte[bytesCount];
         Buffer.BlockCopy(bytes, 0, datagram, 0, bytesCount);
         writer.WriteAsync(datagram, cancellationToken).AsTask().GetAwaiter().GetResult();
+    }
+
+    private void RecordAndQueueDatagram(ChannelWriter<byte[]> writer, byte[] bytes, int bytesCount, CancellationToken cancellationToken)
+    {
+        _recorder.Record(bytes.AsSpan(0, bytesCount));
+        WriteUdpDatagram(writer, bytes, bytesCount, cancellationToken);
     }
 
     private static async Task ReadFromBuffer(ChannelReader<byte[]> reader, int packetLength, TsInputSourceContext context)
