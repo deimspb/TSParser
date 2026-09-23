@@ -122,6 +122,51 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
     }
 
+    public bool HasSource => Session.InputMode != TsParserSessionInputMode.None;
+
+    public string SourceSummary => Session.InputMode switch
+    {
+        TsParserSessionInputMode.File => Session.CurrentFileDisplayName ?? "Transport stream file",
+        TsParserSessionInputMode.Udp => Session.CurrentMulticastEndpoint ?? "UDP multicast",
+        _ => "No source connected"
+    };
+
+    public string ServiceSummary => TreeStore.GetOverviewCounts().Services.ToString();
+
+    public string PidSummary => TreeStore.GetOverviewCounts().Pids.ToString();
+
+    public string TableSummary => TreeStore.GetOverviewCounts().TableGroups.ToString();
+
+    public string ErrorSummary
+    {
+        get
+        {
+            var snapshot = Tr101290Store.GetSnapshot(Tr101290ViewFilter.ErrorsOnly);
+            var total = snapshot.ActivePriority1 + snapshot.ActivePriority2 + snapshot.ActivePriority3;
+            return total == 0 ? "None active" : $"{total} active";
+        }
+    }
+
+    public string BitrateSummary
+    {
+        get
+        {
+            var snapshot = BitrateStore.GetSnapshot();
+            return snapshot.AverageTotalMegabitsPerSecond is double value
+                ? $"{value:0.00} Mb/s avg"
+                : snapshot.HasStoredSamples ? "Live samples" : "Waiting for samples";
+        }
+    }
+
+    public string LastPacketSummary
+    {
+        get
+        {
+            var rows = Tr101290Store.GetSnapshot(Tr101290ViewFilter.All).Rows;
+            return rows.Count == 0 ? "—" : $"#{rows.Max(row => row.PacketNumber):N0}";
+        }
+    }
+
 
 
     public Guid? SelectedNodeId
@@ -260,6 +305,25 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
 
         ChartFitRevision++;
 
+    }
+
+    public void ShowStatus(string message)
+    {
+        _uiStatusText = message;
+        StatusText = message;
+        NotifyDashboardChanged();
+    }
+
+    private void NotifyDashboardChanged()
+    {
+        OnPropertyChanged(nameof(HasSource));
+        OnPropertyChanged(nameof(SourceSummary));
+        OnPropertyChanged(nameof(ServiceSummary));
+        OnPropertyChanged(nameof(PidSummary));
+        OnPropertyChanged(nameof(TableSummary));
+        OnPropertyChanged(nameof(ErrorSummary));
+        OnPropertyChanged(nameof(BitrateSummary));
+        OnPropertyChanged(nameof(LastPacketSummary));
     }
 
 
@@ -832,6 +896,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IAsyncDisposable
         if (treeRev != _treeRevision)
 
             TreeRevision = treeRev;
+
+        NotifyDashboardChanged();
 
     }
 

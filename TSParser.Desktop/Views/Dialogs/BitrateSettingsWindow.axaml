@@ -85,7 +85,8 @@
 
             <ScrollViewer Classes="dialog-pid-scroll"
                           IsVisible="{Binding HasAvailablePids}"
-                          HorizontalScrollBarVisibility="Disabled">
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
                 <Border Classes="dialog-pid-picker">
                     <ItemsControl ItemsSource="{Binding PidItems}">
                         <ItemsControl.ItemsPanel>

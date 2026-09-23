@@ -42,14 +42,14 @@
                        TextTrimming="CharacterEllipsis"
                        VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="0">
-                <ToggleButton x:Name="HexModeButton"
-                              Classes="detail-view-btn"
-                              Content="Hex"
-                              Click="OnHexModeClick"/>
                 <ToggleButton x:Name="StringModeButton"
                               Classes="detail-view-btn"
-                              Content="String"
+                              Content="Details"
                               Click="OnStringModeClick"/>
+                <ToggleButton x:Name="HexModeButton"
+                              Classes="detail-view-btn"
+                              Content="Raw hex"
+                              Click="OnHexModeClick"/>
             </StackPanel>
         </Grid>
 

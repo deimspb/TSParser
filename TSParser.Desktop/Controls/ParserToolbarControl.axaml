@@ -5,52 +5,32 @@
              x:DataType="vm:MainWindowViewModel"
              x:Name="Self">
     <Border Classes="parser-toolbar">
-        <Grid ColumnDefinitions="Auto,*,Auto">
-            <TextBlock Grid.Column="0"
-                       Classes="parser-brand"
-                       Text="TSParser"
-                       Margin="0,0,12,0"/>
-
-            <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                <Button x:Name="OpenFileButton"
-                        Classes="toolbar-btn"
-                        Content="File…"
-                        Click="OnOpenFileClick"/>
-                <Button x:Name="BitrateButton"
-                        Classes="toolbar-btn"
-                        Content="Bitrate…"
-                        Click="OnBitrateClick"/>
-
-                <TextBlock Classes="toolbar-label" Text="Multicast"/>
-                <TextBox x:Name="EndpointBox"
-                         Classes="toolbar-input-endpoint"
-                         PlaceholderText="239.1.2.3:1234"/>
-                <TextBlock Classes="toolbar-label" Text="Source IP"/>
-                <ComboBox x:Name="BindCombo"
-                          Classes="toolbar-select"/>
-                <Button x:Name="PlayButton"
-                        Classes="toolbar-btn toolbar-btn-primary"
-                        Content="Play"
-                        Click="OnPlayUdpClick"/>
-                <Button x:Name="StopButton"
-                        Classes="toolbar-btn"
-                        Content="Stop"
-                        Click="OnStopUdpClick"/>
-
-                <Button x:Name="EwsButton"
-                        Classes="toolbar-btn"
-                        Content="EWS…"
-                        Click="OnEwsClick"
-                        Margin="8,0,0,0"/>
-                <Button x:Name="PlpButton"
-                        Classes="toolbar-btn"
-                        Content="PLP…"
-                        Click="OnPlpClick"/>
-            </WrapPanel>
-
-            <TextBlock x:Name="StatusText"
-                       Grid.Column="2"
-                       Classes="parser-status"/>
+        <Grid RowDefinitions="Auto,Auto">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <TextBlock Grid.Column="0" Classes="parser-brand" Text="TSParser" Margin="0,0,18,0"/>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding SourceSummary}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="#6c757d" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <Button x:Name="OpenFileButton" Grid.Column="2" Classes="toolbar-btn"
+                        Content="Open TS file" Click="OnOpenFileClick"/>
+                <Button x:Name="StopButton" Grid.Column="3" Classes="toolbar-btn"
+                        Content="Stop" Click="OnStopUdpClick"/>
+            </Grid>
+            <Expander x:Name="SourceSettings" Grid.Row="1" Header="Source &amp; analysis settings" Margin="0,6,0,0">
+                <WrapPanel VerticalAlignment="Center" Margin="0,8,0,2">
+                    <TextBlock Classes="toolbar-label" Text="UDP multicast" Margin="0,0,4,0"/>
+                    <TextBox x:Name="EndpointBox" Classes="toolbar-input-endpoint" PlaceholderText="239.1.2.3:1234"/>
+                    <TextBlock Classes="toolbar-label" Text="Source IP"/>
+                    <ComboBox x:Name="BindCombo" Classes="toolbar-select"/>
+                    <Button x:Name="PlayButton" Classes="toolbar-btn toolbar-btn-primary"
+                            Content="Connect UDP" Click="OnPlayUdpClick"/>
+                    <Button x:Name="BitrateButton" Classes="toolbar-btn" Content="Bitrate…"
+                            Click="OnBitrateClick" Margin="12,0,4,0"/>
+                    <Button x:Name="EwsButton" Classes="toolbar-btn" Content="EWS…" Click="OnEwsClick"/>
+                    <Button x:Name="PlpButton" Classes="toolbar-btn" Content="PLP…" Click="OnPlpClick"/>
+                </WrapPanel>
+            </Expander>
         </Grid>
     </Border>
 </UserControl>

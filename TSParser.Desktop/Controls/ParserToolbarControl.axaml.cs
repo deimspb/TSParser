@@ -36,6 +36,20 @@ public partial class ParserToolbarControl : UserControl
     public bool CanPlayUdp =>
         !SessionBusy && !IsUdpRunning && TsParserSessionService.TryParseMulticastEndpoint(_multicastEndpoint, out _, out _);
 
+    public void RequestOpenFile() => OnOpenFileClick(this, new RoutedEventArgs());
+
+    public void FocusUdpSettings()
+    {
+        SourceSettings.IsExpanded = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            EndpointBox.Focus();
+            EndpointBox.SelectAll();
+        });
+    }
+
+    public void RequestBitrateSettings() => OnBitrateClick(this, new RoutedEventArgs());
+
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
         _bindOptions.Clear();
@@ -116,7 +130,10 @@ public partial class ParserToolbarControl : UserControl
             return;
 
         if (vm.NeedsParserRestart)
+        {
             await RunSessionAsync(() => Shell.Session.RestartCurrentSessionAsync()).ConfigureAwait(true);
+            Shell.ShowStatus("Bitrate settings applied; current source restarted.");
+        }
 
         Shell.OnChartSettingsChanged();
     }
@@ -137,7 +154,10 @@ public partial class ParserToolbarControl : UserControl
             return;
 
         if (vm.NeedsRestart)
+        {
             await RunSessionAsync(() => Shell.Session.RestartCurrentSessionAsync()).ConfigureAwait(true);
+            Shell.ShowStatus("EWS settings applied; current source restarted.");
+        }
     }
 
     private async void OnPlpClick(object? sender, RoutedEventArgs e)
@@ -156,7 +176,10 @@ public partial class ParserToolbarControl : UserControl
             return;
 
         if (vm.NeedsRestart)
+        {
             await RunSessionAsync(() => Shell.Session.RestartCurrentSessionAsync()).ConfigureAwait(true);
+            Shell.ShowStatus("PLP settings applied; current source restarted.");
+        }
     }
 
     private void OnPlayUdpClick(object? sender, RoutedEventArgs e)
@@ -200,7 +223,11 @@ public partial class ParserToolbarControl : UserControl
         }
         catch (Exception ex)
         {
-            await Dispatcher.UIThread.InvokeAsync(() => _sessionError = ex.Message);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _sessionError = ex.Message;
+                Shell?.ShowStatus(ex.Message);
+            });
         }
         finally
         {
@@ -218,11 +245,6 @@ public partial class ParserToolbarControl : UserControl
 
     private void RefreshToolbarState()
     {
-        var status = StatusDisplay;
-        StatusText.Text = status;
-        ToolTip.SetTip(StatusText, status);
-        StatusText.Classes.Set("parser-status-error", !string.IsNullOrEmpty(_sessionError));
-
         var udpRunning = IsUdpRunning;
         var busy = SessionBusy;
         var canPlay = CanPlayUdp;
@@ -234,6 +256,6 @@ public partial class ParserToolbarControl : UserControl
         EndpointBox.IsEnabled = !udpRunning;
         BindCombo.IsEnabled = !udpRunning;
         PlayButton.IsEnabled = canPlay;
-        StopButton.IsEnabled = udpRunning;
+        StopButton.IsEnabled = Shell?.Session.IsRunning == true;
     }
 }

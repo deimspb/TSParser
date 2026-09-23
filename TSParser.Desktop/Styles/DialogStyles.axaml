@@ -84,10 +84,10 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="4"/>
         <Setter Property="Padding" Value="8"/>
-        <Setter Property="MaxHeight" Value="160"/>
     </Style>
 
     <Style Selector="ScrollViewer.dialog-pid-scroll">
-        <Setter Property="MaxHeight" Value="160"/>
+        <Setter Property="MaxHeight" Value="360"/>
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
     </Style>
 </Styles>

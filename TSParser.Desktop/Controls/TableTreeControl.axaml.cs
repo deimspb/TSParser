@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using TSParser.Desktop.Models;
 using TSParser.Desktop.Services;
@@ -68,13 +69,71 @@ public partial class TableTreeControl : UserControl
 
     private void RefreshNodes()
     {
-        var categories = Store?.RootCategories ?? Array.Empty<TableTreeNode>();
+        if (EmptyText is null || RootItems is null)
+            return;
+
+        var categories = (Store?.RootCategories ?? Array.Empty<TableTreeNode>())
+            .Where(MatchesTypeFilter)
+            .Where(MatchesSearch)
+            .ToList();
         var isEmpty = categories.Count == 0;
 
         EmptyText.IsVisible = isEmpty;
         RootItems.IsVisible = !isEmpty;
-        RootItems.ItemsSource = isEmpty ? null : categories.ToList();
+        RootItems.ItemsSource = isEmpty ? null : categories;
         RefreshNodePresentation();
+    }
+
+    private void OnSearchChanged(object? sender, TextChangedEventArgs e) => RefreshNodes();
+
+    private void OnFilterChanged(object? sender, SelectionChangedEventArgs e) => RefreshNodes();
+
+    public void SetFilter(int selectedIndex)
+    {
+        TypeFilter.SelectedIndex = selectedIndex;
+        RefreshNodes();
+    }
+
+    private bool MatchesTypeFilter(TableTreeNode node) => TypeFilter?.SelectedIndex switch
+    {
+        1 => node.Label != "PIDs" && !node.Label.Contains("PLP", StringComparison.OrdinalIgnoreCase),
+        2 => node.Label == "PIDs",
+        3 => node.Label.Contains("PLP", StringComparison.OrdinalIgnoreCase),
+        4 => node.Label.StartsWith("PMT", StringComparison.OrdinalIgnoreCase)
+             || node.Label.StartsWith("SDT", StringComparison.OrdinalIgnoreCase)
+             || node.Label.Contains("PLP", StringComparison.OrdinalIgnoreCase),
+        _ => true
+    };
+
+    private bool MatchesSearch(TableTreeNode node)
+    {
+        var query = SearchBox?.Text?.Trim();
+        if (string.IsNullOrEmpty(query))
+            return true;
+
+        if (ContainsMatch(node, query))
+        {
+            ExpandMatchingBranches(node, query);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool ContainsMatch(TableTreeNode node, string query) =>
+        node.Label.Contains(query, StringComparison.OrdinalIgnoreCase)
+        || node.Children.Any(child => ContainsMatch(child, query));
+
+    private static bool ExpandMatchingBranches(TableTreeNode node, string query)
+    {
+        var childMatch = false;
+        foreach (var child in node.Children)
+            childMatch |= ExpandMatchingBranches(child, query);
+
+        var selfMatch = node.Label.Contains(query, StringComparison.OrdinalIgnoreCase);
+        if (childMatch)
+            node.IsExpanded = true;
+        return selfMatch || childMatch;
     }
 
     private void RefreshNodePresentation()

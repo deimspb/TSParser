@@ -17,7 +17,22 @@ public partial class MainWindow : Window
             if (DataContext is MainWindowViewModel vm)
                 vm.SelectTreeNode(node);
         };
+        ServicesTree.NodeSelected += node =>
+        {
+            if (DataContext is MainWindowViewModel vm)
+                vm.SelectTreeNode(node);
+        };
+        ServicesTree.SetFilter(4);
     }
+
+    private void OnEmptyOpenFileClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        ParserToolbar.RequestOpenFile();
+
+    private void OnEmptyConnectUdpClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        ParserToolbar.FocusUdpSettings();
+
+    private void OnChartSettingsClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        ParserToolbar.RequestBitrateSettings();
 
     private async void OnClosing(object? sender, WindowClosingEventArgs e)
     {

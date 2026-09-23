@@ -187,5 +187,60 @@
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="FontSize" Value="12"/>
     </Style>
+
+    <Style Selector="Button.launch-btn, Button.launch-btn-primary">
+        <Setter Property="Padding" Value="18,10"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="BorderBrush" Value="#ced4da"/>
+        <Setter Property="Background" Value="White"/>
+    </Style>
+    <Style Selector="Button.launch-btn-primary">
+        <Setter Property="Background" Value="#0d6efd"/>
+        <Setter Property="BorderBrush" Value="#0d6efd"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <Style Selector="Border.summary-card">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#e2e8f0"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="18"/>
+        <Setter Property="Margin" Value="5"/>
+        <Setter Property="MinHeight" Value="105"/>
+    </Style>
+    <Style Selector="TextBlock.summary-label">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="#6c757d"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="TextBlock.summary-value">
+        <Setter Property="FontSize" Value="28"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Margin" Value="0,5,0,0"/>
+    </Style>
+    <Style Selector="TextBlock.summary-value-small">
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Margin" Value="0,9,0,0"/>
+    </Style>
+    <Style Selector="Border.overview-hint">
+        <Setter Property="Background" Value="#eef5ff"/>
+        <Setter Property="BorderBrush" Value="#cfe2ff"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="16"/>
+    </Style>
+    <Style Selector="Border.tr-priority-card">
+        <Setter Property="Background" Value="#f8f9fa"/>
+        <Setter Property="BorderBrush" Value="#dee2e6"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="12"/>
+        <Setter Property="Margin" Value="4"/>
+    </Style>
+    <Style Selector="Border.tr-priority-card.p1"><Setter Property="BorderBrush" Value="#dc3545"/></Style>
+    <Style Selector="Border.tr-priority-card.p2"><Setter Property="BorderBrush" Value="#fd7e14"/></Style>
+    <Style Selector="Border.tr-priority-card.p3"><Setter Property="BorderBrush" Value="#ffc107"/></Style>
 </Styles>
 

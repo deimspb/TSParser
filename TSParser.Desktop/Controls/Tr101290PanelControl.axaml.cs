@@ -60,7 +60,13 @@ public partial class Tr101290PanelControl : UserControl
             return;
 
         var snapshot = Store?.GetSnapshot(_filter) ?? Tr101290Snapshot.Empty;
-        SummaryText.Text = snapshot.Summary;
+        var active = snapshot.ActivePriority1 + snapshot.ActivePriority2 + snapshot.ActivePriority3;
+        SummaryText.Text = active == 0
+            ? "No active compliance errors"
+            : $"{active} active compliance {(active == 1 ? "error" : "errors")}";
+        P1Text.Text = snapshot.ActivePriority1.ToString();
+        P2Text.Text = snapshot.ActivePriority2.ToString();
+        P3Text.Text = snapshot.ActivePriority3.ToString();
         IndicatorList.ItemsSource = snapshot.Rows;
         JournalList.ItemsSource = snapshot.Journal;
     }

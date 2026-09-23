@@ -40,8 +40,20 @@
         </Style>
     </UserControl.Styles>
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                  VerticalScrollBarVisibility="Auto">
+    <Grid RowDefinitions="Auto,*">
+        <Grid ColumnDefinitions="*,140" Margin="0,0,0,8">
+            <TextBox x:Name="SearchBox" PlaceholderText="Search tables, PIDs, descriptors…"
+                     TextChanged="OnSearchChanged" Margin="0,0,6,0"/>
+            <ComboBox x:Name="TypeFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnFilterChanged">
+                <ComboBoxItem Content="All data"/>
+                <ComboBoxItem Content="PSI / SI tables"/>
+                <ComboBoxItem Content="PIDs"/>
+                <ComboBoxItem Content="PLP services"/>
+                <ComboBoxItem Content="Services"/>
+            </ComboBox>
+        </Grid>
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto">
         <Panel MinHeight="40">
             <TextBlock x:Name="EmptyText"
                        Text="No tables yet. Open a file or start UDP to parse."
@@ -58,5 +70,6 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </Panel>
-    </ScrollViewer>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

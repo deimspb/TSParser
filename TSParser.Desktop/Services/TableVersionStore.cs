@@ -79,6 +79,17 @@ public sealed class TableVersionStore
         }
     }
 
+    public (int Services, int Pids, int TableGroups) GetOverviewCounts()
+    {
+        lock (_sync)
+        {
+            var services = _categories.TryGetValue("PMT", out var pmt)
+                ? pmt.Children.Count
+                : 0;
+            return (services, _pidsCategory.Children.Count, _categories.Count);
+        }
+    }
+
     public TableTreeNode? FindNode(Guid nodeId)
     {
         lock (_sync)

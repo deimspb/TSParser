@@ -4,19 +4,29 @@
              x:Class="TSParser.Desktop.Controls.Tr101290PanelControl"
              x:Name="Root">
     <Border Classes="tr-panel">
-        <Grid RowDefinitions="Auto,Auto,*,Auto,160">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBlock x:Name="SummaryText" Classes="tr-summary" Text="P1 0    P2 0    P3 0" VerticalAlignment="Center"/>
-                <ComboBox x:Name="FilterBox" MinWidth="140" SelectedIndex="0" SelectionChanged="OnFilterChanged">
+        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,160">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                    <TextBlock Text="TR 101 290 health" FontSize="20" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="SummaryText" Classes="tr-summary" Text="No active compliance errors"/>
+                </StackPanel>
+                <ComboBox x:Name="FilterBox" Grid.Column="1" MinWidth="140"
+                          VerticalAlignment="Center" SelectedIndex="0" SelectionChanged="OnFilterChanged">
                     <ComboBoxItem Content="All"/>
                     <ComboBoxItem Content="Errors only"/>
                     <ComboBoxItem Content="Priority 1"/>
                     <ComboBoxItem Content="Priority 2"/>
                     <ComboBoxItem Content="Priority 3"/>
                 </ComboBox>
-            </StackPanel>
+            </Grid>
 
-            <Grid Grid.Row="1" ColumnDefinitions="36,210,70,70,70,90,*" Margin="0,8,0,4">
+            <Grid Grid.Row="1" ColumnDefinitions="*,*,*" Margin="0,12,0,12">
+                <Border Grid.Column="0" Classes="tr-priority-card p1"><StackPanel><TextBlock Text="PRIORITY 1" Classes="summary-label"/><TextBlock x:Name="P1Text" Text="0" Classes="summary-value"/><TextBlock Text="Sync and essential stream" Foreground="#6c757d" FontSize="11"/></StackPanel></Border>
+                <Border Grid.Column="1" Classes="tr-priority-card p2"><StackPanel><TextBlock Text="PRIORITY 2" Classes="summary-label"/><TextBlock x:Name="P2Text" Text="0" Classes="summary-value"/><TextBlock Text="Continuity and timing" Foreground="#6c757d" FontSize="11"/></StackPanel></Border>
+                <Border Grid.Column="2" Classes="tr-priority-card p3"><StackPanel><TextBlock Text="PRIORITY 3" Classes="summary-label"/><TextBlock x:Name="P3Text" Text="0" Classes="summary-value"/><TextBlock Text="SI and service health" Foreground="#6c757d" FontSize="11"/></StackPanel></Border>
+            </Grid>
+
+            <Grid Grid.Row="2" ColumnDefinitions="36,210,70,70,70,90,*" Margin="0,8,0,4">
                 <TextBlock Classes="tr-header" Text="P"/>
                 <TextBlock Grid.Column="1" Classes="tr-header" Text="Indicator"/>
                 <TextBlock Grid.Column="2" Classes="tr-header" Text="State"/>
@@ -26,7 +36,7 @@
                 <TextBlock Grid.Column="6" Classes="tr-header" Text="Detail"/>
             </Grid>
 
-            <ListBox Grid.Row="2" x:Name="IndicatorList" Classes="tr-list">
+            <ListBox Grid.Row="3" x:Name="IndicatorList" Classes="tr-list">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="services:Tr101290ErrorRow">
                         <Grid ColumnDefinitions="36,210,70,70,70,90,*">
@@ -42,8 +52,8 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <TextBlock Grid.Row="3" Classes="tr-header" Text="Recent events" Margin="0,8,0,4"/>
-            <ListBox Grid.Row="4" x:Name="JournalList" Classes="tr-list"/>
+            <TextBlock Grid.Row="4" Classes="tr-header" Text="Recent events" Margin="0,8,0,4"/>
+            <ListBox Grid.Row="5" x:Name="JournalList" Classes="tr-list"/>
         </Grid>
     </Border>
 </UserControl>
