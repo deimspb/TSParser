@@ -20,7 +20,6 @@ namespace TSParser.DictionariesData
 {
     internal class Dictionaries
     {
-        private static readonly UTF8Encoding StrictUtf8 = new UTF8Encoding(false, true);
         private static readonly Dictionary<byte, ushort> iso8859_1 = new Dictionary<byte, ushort>()
         {
             {0x00,0x0000},
@@ -4013,25 +4012,29 @@ namespace TSParser.DictionariesData
 
         private static bool TryDecodeUtf8WithCyrillic(ReadOnlySpan<byte> bytes, out string decoded)
         {
-            try
+            var remaining = bytes;
+            var containsCyrillic = false;
+            while (!remaining.IsEmpty)
             {
-                decoded = StrictUtf8.GetString(bytes);
+                var status = Rune.DecodeFromUtf8(remaining, out var rune, out var consumed);
+                if (status != System.Buffers.OperationStatus.Done)
+                {
+                    decoded = string.Empty;
+                    return false;
+                }
+
+                containsCyrillic |= rune.Value is >= 0x0400 and <= 0x04FF;
+                remaining = remaining[consumed..];
             }
-            catch (DecoderFallbackException)
+
+            if (!containsCyrillic)
             {
                 decoded = string.Empty;
                 return false;
             }
 
-            for (var i = 0; i < decoded.Length; i++)
-            {
-                if (decoded[i] >= '\u0400' && decoded[i] <= '\u04FF')
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            decoded = Encoding.UTF8.GetString(bytes);
+            return true;
         }
         internal static string GetStreamIdName(byte bt)
         {

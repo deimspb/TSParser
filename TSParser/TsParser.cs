@@ -205,6 +205,7 @@ namespace TSParser
         private bool m_allowAnalyzer;
         private bool m_t2miEnabled;
         private readonly Tr101290Monitor? m_monitor;
+        private readonly bool m_monitorUsesRouterSections;
         private long? m_fileStreamByteOffset;
         private System.Timers.Timer? m_timer;
         private int? MaxParserRunTime
@@ -279,7 +280,13 @@ namespace TSParser
             m_bitrateMeasurement = options.BitrateMeasurement;
             m_allowAnalyzer = options.AllowAnalyzer || (m_bitrateMeasurement?.Enabled ?? false);
             m_t2miEnabled = options.T2mi.Enabled;
-            m_monitor = options.Tr101290.Enabled ? new Tr101290Monitor(options.Tr101290) : null;
+            var monitorClockMode = options.UdpSource != null
+                ? Tr101290ClockMode.Udp
+                : options.TsFileName != null
+                    ? Tr101290ClockMode.File
+                    : Tr101290ClockMode.Push;
+            m_monitor = options.Tr101290.Enabled ? new Tr101290Monitor(options.Tr101290, monitorClockMode) : null;
+            m_monitorUsesRouterSections = m_monitor != null && options.CurrentDecodeMode == DecodeMode.Table;
             analyzer = new Lazy<Analyzer>(() => new Analyzer(m_bitrateMeasurement));
             m_tableRouter = new DvbTableRouter(options.CurrentTsMode, options.T2mi);
             m_inputSource = m_pushSource;
@@ -609,16 +616,8 @@ namespace TSParser
         private void AttachMonitor()
         {
             m_monitor!.OnEvent += measurement => OnTr101290Event?.Invoke(measurement);
-            m_tableRouter.SetSectionCrcFailedHandler((pid, tableId) => m_monitor.ObserveCrcError(pid, tableId));
-            m_tableRouter.OnPatReady += m_monitor.ObservePat;
-            m_tableRouter.OnPmtReady += m_monitor.ObservePmt;
-            m_tableRouter.OnCatReady += m_monitor.ObserveCat;
-            m_tableRouter.OnNitReady += m_monitor.ObserveNit;
-            m_tableRouter.OnSdtReady += m_monitor.ObserveSdt;
-            m_tableRouter.OnBatReady += m_monitor.ObserveBat;
-            m_tableRouter.OnEitReady += m_monitor.ObserveEit;
-            m_tableRouter.OnTdtReady += m_monitor.ObserveTdt;
-            m_tableRouter.OnTotReady += m_monitor.ObserveTot;
+            if (m_monitorUsesRouterSections)
+                m_tableRouter.SetSectionAssembledHandler((pid, section) => m_monitor.ObserveSection(pid, section.Span));
         }
 
         private void ResetStreamStateForRun()
@@ -707,7 +706,7 @@ namespace TSParser
 
                 if (pid == (ushort)ReservedPids.NullPacket)
                 {
-                    if (m_allowAnalyzer)
+                    if (m_allowAnalyzer || m_monitor != null)
                     {
                         var nullPacket = m_tsPacketFactory.GetTsPacket(
                             bytes.Slice(packetOffset, packetLength),
@@ -715,8 +714,9 @@ namespace TSParser
                             TsPacketBuildOptions.HeaderOnly);
                         if (nullPacket.Pid != 0xFFFF)
                         {
-                            m_monitor?.ObservePacket(nullPacket);
-                            PushPacketWithFileOffset(nullPacket, packetLength, i);
+                            m_monitor?.ObservePacket(nullPacket, transportSpan, observeSections: false);
+                            if (m_allowAnalyzer)
+                                PushPacketWithFileOffset(nullPacket, packetLength, i);
                         }
                     }
                     else
@@ -737,11 +737,20 @@ namespace TSParser
                 TsPacketBuildOptions options;
                 if (routeSi || routeT2miOnly)
                 {
-                    options = TsPacketBuildOptions.SiTable(captureRawPacket: true);
+                    options = TsPacketBuildOptions.SiTable(captureRawPacket: m_tableRouter.RequiresRawPacket(pid));
                 }
                 else if (m_monitor != null && pid == (ushort)ReservedPids.RST)
                 {
                     options = new TsPacketBuildOptions { IncludePayload = true };
+                }
+                else if (m_monitor != null)
+                {
+                    options = new TsPacketBuildOptions
+                    {
+                        CaptureRawPacket = false,
+                        IncludePayload = false,
+                        ParsePesHeader = false,
+                    };
                 }
                 else
                 {
@@ -755,7 +764,10 @@ namespace TSParser
                     continue;
                 }
 
-                m_monitor?.ObservePacket(packet);
+                m_monitor?.ObservePacket(
+                    packet,
+                    transportSpan,
+                    observeSections: !m_monitorUsesRouterSections || pid == (ushort)ReservedPids.RST);
 
                 if (m_allowAnalyzer)
                 {
@@ -803,7 +815,8 @@ namespace TSParser
                     continue;
                 }
 
-                m_monitor?.ObservePacket(packet);
+                var transportSpan = TsPacketHeader.GetTransportPacketSpan(bytes.Slice(packetOffset, packetLength), packetLength);
+                m_monitor?.ObservePacket(packet, transportSpan, observeSections: true);
 
                 if (m_allowAnalyzer)
                 {

@@ -143,6 +143,7 @@ internal static class Tr101290Limits
     public const ulong PcrModulus = (1UL << 33) * 300UL;
     public const ulong TickHz = 27_000_000UL;
     public const ulong Ms25 = 675_000UL;
+    internal const ulong Ms10 = 270_000UL;
     public const ulong Ms40 = 1_080_000UL;
     public const ulong Ms100 = 2_700_000UL;
     public const ulong Ms500 = 13_500_000UL;

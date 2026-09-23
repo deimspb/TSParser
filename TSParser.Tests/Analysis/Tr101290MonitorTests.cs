@@ -1,6 +1,9 @@
 using NUnit.Framework;
+using System.Buffers.Binary;
 using TSParser.Analysis;
+using TSParser.Service;
 using TSParser.Tables.DvbTables;
+using TSParser.Tests.Helpers;
 using TSParser.TransportStream;
 
 namespace TSParser.Tests.Analysis;
@@ -100,7 +103,7 @@ public class Tr101290MonitorTests
     }
 
     [Test]
-    public void Pat_missing_longer_than_500ms_is_cleared_by_pid_0()
+    public void Pat_missing_longer_than_500ms_is_cleared_by_a_valid_current_pat_section()
     {
         var monitor = new Tr101290Monitor();
 
@@ -109,7 +112,7 @@ public class Tr101290MonitorTests
 
         Assert.That(monitor.GetState(Tr101290Indicator.PatError2), Is.EqualTo(Tr101290IndicatorState.Error));
 
-        monitor.ObservePacket(Packet(pid: 0x0000, cc: 0));
+        monitor.ObservePat(Pat(0x0020));
 
         Assert.That(monitor.GetState(Tr101290Indicator.PatError2), Is.EqualTo(Tr101290IndicatorState.Ok));
     }
@@ -178,12 +181,12 @@ public class Tr101290MonitorTests
     }
 
     [Test]
-    public void Pcr_interval_above_40ms_sets_repetition_error()
+    public void Pcr_interval_above_100ms_sets_repetition_error()
     {
         var monitor = new Tr101290Monitor();
         monitor.ObservePmt(Pmt(pmtPid: 0x0020, pcrPid: 0x100, esPid: 0x200));
         monitor.ObservePacket(Pcr(pid: 0x100, pcr: 0));
-        monitor.ObservePacket(Pcr(pid: 0x100, pcr: Tr101290Limits.Ms40 + 300));
+        monitor.ObservePacket(Pcr(pid: 0x100, pcr: Tr101290Limits.Ms100 + 300));
 
         Assert.That(monitor.GetState(Tr101290Indicator.PcrRepetitionError, 0x100), Is.EqualTo(Tr101290IndicatorState.Error));
     }
@@ -201,18 +204,18 @@ public class Tr101290MonitorTests
     }
 
     [Test]
-    public void Discontinuity_flag_without_a_pcr_break_is_an_error_and_a_real_break_is_not()
+    public void Discontinuity_flag_is_not_an_error_for_small_or_large_pcr_steps()
     {
         var monitor = new Tr101290Monitor();
         monitor.ObservePmt(Pmt(pmtPid: 0x0020, pcrPid: 0x100, esPid: 0x200));
         monitor.ObservePacket(Pcr(pid: 0x100, pcr: 0));
         monitor.ObservePacket(Pcr(pid: 0x100, pcr: Tr101290Limits.Ms25, discontinuity: true));
 
-        Assert.That(monitor.GetState(Tr101290Indicator.PcrDiscontinuityIndicatorError, 0x100), Is.EqualTo(Tr101290IndicatorState.Error));
+        Assert.That(monitor.GetState(Tr101290Indicator.PcrDiscontinuityIndicatorError, 0x100), Is.Not.EqualTo(Tr101290IndicatorState.Error));
 
         monitor.ObservePacket(Pcr(pid: 0x100, pcr: Tr101290Limits.Ms25 + Tr101290Limits.Ms100 + Tr101290Limits.Ms40, discontinuity: true));
 
-        Assert.That(monitor.GetState(Tr101290Indicator.PcrDiscontinuityIndicatorError, 0x100), Is.EqualTo(Tr101290IndicatorState.Ok));
+        Assert.That(monitor.GetState(Tr101290Indicator.PcrDiscontinuityIndicatorError, 0x100), Is.Not.EqualTo(Tr101290IndicatorState.Error));
     }
 
     [Test]
@@ -277,12 +280,157 @@ public class Tr101290MonitorTests
     public void Rst_sections_closer_than_25ms_are_an_error()
     {
         var monitor = new Tr101290Monitor();
+        var rst = PsiTsPacketFactory.BuildSection(0x71, new byte[9]);
         monitor.ObservePacket(Pcr(pid: 0x100, pcr: 0));
-        monitor.ObservePacket(Packet(pid: 0x0013, cc: 0, pusi: true, payloadBytes: [0x00, 0x71]));
+        monitor.ObservePacket(Packet(pid: 0x0013, cc: 0, pusi: true, payloadBytes: [0x00, .. rst]));
         monitor.ObservePacket(Pcr(pid: 0x100, pcr: Tr101290Limits.Ms25 / 2));
-        monitor.ObservePacket(Packet(pid: 0x0013, cc: 1, pusi: true, payloadBytes: [0x00, 0x71]));
+        monitor.ObservePacket(Packet(pid: 0x0013, cc: 1, pusi: true, payloadBytes: [0x00, .. rst]));
 
         Assert.That(monitor.GetState(Tr101290Indicator.RstError, 0x0013), Is.EqualTo(Tr101290IndicatorState.Error));
+    }
+
+    [Test]
+    public void Same_continuity_counter_requires_an_exact_duplicate()
+    {
+        var monitor = new Tr101290Monitor();
+
+        monitor.ObservePacket(Packet(pid: 0x100, cc: 1, payloadBytes: [0x10]));
+        monitor.ObservePacket(Packet(pid: 0x100, cc: 1, payloadBytes: [0x11]));
+
+        Assert.That(monitor.GetState(Tr101290Indicator.ContinuityCountError, 0x100), Is.EqualTo(Tr101290IndicatorState.Error));
+    }
+
+    [Test]
+    public void Section_timing_does_not_require_parsing_descriptor_payloads()
+    {
+        var monitor = new Tr101290Monitor();
+        var nit = NitWithMalformedDescriptor();
+
+        monitor.ObservePacket(Pcr(0x0100, 0));
+        monitor.ObserveSection(0x0010, nit);
+        monitor.ObservePacket(Pcr(0x0100, Tr101290Limits.Ms25 / 2));
+        monitor.ObserveSection(0x0010, nit);
+
+        Assert.That(
+            monitor.GetState(Tr101290Indicator.SiRepetitionError, 0x0010),
+            Is.EqualTo(Tr101290IndicatorState.Error));
+    }
+
+    [Test]
+    public void Sync_loss_gates_downstream_checks_until_five_good_packets()
+    {
+        var monitor = new Tr101290Monitor();
+        monitor.ObservePacket(Packet(pid: 0x100, cc: 0));
+        monitor.ObserveMissingSync();
+        monitor.ObserveMissingSync();
+
+        for (byte cc = 5; cc < 9; cc++)
+            monitor.ObservePacket(Packet(pid: 0x100, cc: cc));
+
+        Assert.That(monitor.GetCount(Tr101290Indicator.ContinuityCountError, 0x100), Is.Zero);
+
+        monitor.ObservePacket(Packet(pid: 0x100, cc: 9));
+        monitor.ObservePacket(Packet(pid: 0x100, cc: 11));
+
+        Assert.That(monitor.GetState(Tr101290Indicator.ContinuityCountError, 0x100), Is.EqualTo(Tr101290IndicatorState.Error));
+    }
+
+    [Test]
+    public void Si_minimum_interval_is_between_any_sections_of_the_same_table_id()
+    {
+        var monitor = new Tr101290Monitor();
+        monitor.ObservePacket(Pcr(0x100, 0));
+        monitor.ObserveNit(Nit(0x40, sectionNumber: 0, lastSectionNumber: 1));
+        monitor.ObservePacket(Pcr(0x100, Tr101290Limits.Ms25 / 2));
+        monitor.ObserveNit(Nit(0x40, sectionNumber: 1, lastSectionNumber: 1));
+
+        Assert.That(monitor.GetState(Tr101290Indicator.SiRepetitionError, 0x0010), Is.EqualTo(Tr101290IndicatorState.Error));
+
+        monitor.ObservePacket(Pcr(0x100, Tr101290Limits.Ms25 + Tr101290Limits.Ms25));
+        monitor.ObserveNit(Nit(0x40, sectionNumber: 0, lastSectionNumber: 1));
+
+        Assert.That(monitor.GetState(Tr101290Indicator.SiRepetitionError, 0x0010), Is.EqualTo(Tr101290IndicatorState.Ok));
+    }
+
+    [Test]
+    public void Si_maximum_interval_is_tracked_per_subtable_section()
+    {
+        var monitor = new Tr101290Monitor();
+        monitor.ObservePacket(Pcr(0x100, 0));
+        monitor.ObserveNit(Nit(0x40, sectionNumber: 0, lastSectionNumber: 1));
+        monitor.ObservePacket(Pcr(0x100, Tr101290Limits.Sec5));
+        monitor.ObserveNit(Nit(0x40, sectionNumber: 1, lastSectionNumber: 1));
+        monitor.ObservePacket(Pcr(0x100, Tr101290Limits.Sec10 + Tr101290Limits.Ms100));
+
+        Assert.That(monitor.GetState(Tr101290Indicator.NitActualError, 0x0010), Is.EqualTo(Tr101290IndicatorState.Error));
+    }
+
+    [Test]
+    public void Eit_pf_error_is_aggregated_across_known_services()
+    {
+        var monitor = new Tr101290Monitor();
+        monitor.ObservePacket(Pcr(0x100, 0));
+        monitor.ObserveEit(Eit(0x4E, serviceId: 1, sectionNumber: 0));
+        monitor.ObserveEit(Eit(0x4E, serviceId: 1, sectionNumber: 1));
+        monitor.ObserveEit(Eit(0x4E, serviceId: 2, sectionNumber: 0));
+        monitor.ObservePacket(Pcr(0x100, Tr101290Limits.Sec2 + Tr101290Limits.Ms100));
+
+        Assert.That(monitor.GetState(Tr101290Indicator.EitPfError, 0x0012), Is.EqualTo(Tr101290IndicatorState.Error));
+
+        monitor.ObserveEit(Eit(0x4E, serviceId: 1, sectionNumber: 0));
+        monitor.ObserveEit(Eit(0x4E, serviceId: 1, sectionNumber: 1));
+
+        Assert.That(monitor.GetState(Tr101290Indicator.EitPfError, 0x0012), Is.EqualTo(Tr101290IndicatorState.Error));
+    }
+
+    [Test]
+    public void Completed_new_pat_and_pmt_versions_remove_stale_referenced_pids()
+    {
+        var monitor = new Tr101290Monitor();
+        monitor.ObservePat(Pat(0x0020, version: 0, sectionNumber: 0, lastSectionNumber: 1));
+        monitor.ObservePat(Pat(0x0030, version: 0, sectionNumber: 1, lastSectionNumber: 1));
+        monitor.ObservePmt(Pmt(0x0020, 0x0100, 0x0200));
+        monitor.ObservePmt(Pmt(0x0030, 0x0100, 0x0300));
+
+        monitor.ObservePat(Pat(0x0040, version: 1));
+        monitor.ObservePmt(Pmt(0x0040, 0x0100, 0x0400));
+        monitor.ObservePacket(Pcr(0x0100, 0));
+        monitor.ObservePacket(Pcr(0x0100, Tr101290Limits.Sec5 + Tr101290Limits.Ms100));
+
+        Assert.That(monitor.GetState(Tr101290Indicator.PidError, 0x0200), Is.Not.EqualTo(Tr101290IndicatorState.Error));
+        Assert.That(monitor.GetState(Tr101290Indicator.PidError, 0x0300), Is.Not.EqualTo(Tr101290IndicatorState.Error));
+        Assert.That(monitor.GetState(Tr101290Indicator.PidError, 0x0400), Is.EqualTo(Tr101290IndicatorState.Error));
+    }
+
+    [Test]
+    public void File_clock_estimation_starts_only_after_a_reliable_pcr_pair()
+    {
+        var monitor = new Tr101290Monitor(Tr101290Options.Enable, Tr101290ClockMode.File);
+        monitor.ObservePacket(Pcr(0x0100, 0));
+        for (byte i = 0; i < 10; i++)
+            monitor.ObservePacket(Packet(0x0200, (byte)(i & 0x0F)));
+
+        Assert.That(monitor.GetState(Tr101290Indicator.PatError2), Is.Not.EqualTo(Tr101290IndicatorState.Error));
+
+        monitor.ObservePacket(Pcr(0x0100, Tr101290Limits.Ms100));
+        for (var i = 0; i < 60; i++)
+            monitor.ObservePacket(Packet(0x0200, (byte)(i & 0x0F)));
+
+        Assert.That(monitor.GetState(Tr101290Indicator.PatError2), Is.EqualTo(Tr101290IndicatorState.Error));
+    }
+
+    [Test]
+    public void Udp_clock_uses_monotonic_time_when_pcr_is_absent()
+    {
+        var monitor = new Tr101290Monitor(
+            new Tr101290Options { Enabled = true, PidErrorTimeout = TimeSpan.FromMilliseconds(1) },
+            Tr101290ClockMode.Udp);
+        monitor.ObservePmt(Pmt(0x0020, 0x0100, 0x0200));
+
+        Thread.Sleep(30);
+        monitor.ObservePacket(Packet(0x0300, 0));
+
+        Assert.That(monitor.GetState(Tr101290Indicator.PidError, 0x0200), Is.EqualTo(Tr101290IndicatorState.Error));
     }
 
     [Test]
@@ -364,13 +512,15 @@ public class Tr101290MonitorTests
         six[5] = (byte)(ext & 0xFF);
     }
 
-    private static PAT Pat(ushort pmtPid)
+    private static PAT Pat(ushort pmtPid, byte version = 0, byte sectionNumber = 0, byte lastSectionNumber = 0)
     {
         var bytes = new byte[16];
         bytes[0] = 0x00;
         bytes[1] = 0xB0;
         bytes[2] = 13;
-        bytes[5] = 0x01;
+        bytes[5] = (byte)((version << 1) | 0x01);
+        bytes[6] = sectionNumber;
+        bytes[7] = lastSectionNumber;
         bytes[9] = 0x01;
         bytes[10] = (byte)((pmtPid >> 8) & 0x1F);
         bytes[11] = (byte)pmtPid;
@@ -393,13 +543,15 @@ public class Tr101290MonitorTests
         return new PMT(bytes, pmtPid);
     }
 
-    private static NIT Nit(byte tableId)
+    private static NIT Nit(byte tableId, byte sectionNumber = 0, byte lastSectionNumber = 0)
     {
         var bytes = new byte[16];
         bytes[0] = tableId;
         bytes[1] = 0xB0;
         bytes[2] = 13;
         bytes[5] = 0x01;
+        bytes[6] = sectionNumber;
+        bytes[7] = lastSectionNumber;
         return new NIT(bytes);
     }
 
@@ -435,5 +587,21 @@ public class Tr101290MonitorTests
         bytes[2] = 9;
         bytes[5] = 0x01;
         return new CAT(bytes);
+    }
+
+    private static byte[] NitWithMalformedDescriptor()
+    {
+        var bytes = new byte[18];
+        bytes[0] = 0x40;
+        bytes[1] = 0xB0;
+        bytes[2] = 15;
+        bytes[5] = 0xC1;
+        bytes[9] = 2;
+        bytes[10] = 0x40;
+        bytes[11] = 5; // Descriptor body exceeds the declared two-byte descriptor loop.
+        bytes[12] = 0xF0;
+        var crc = Utils.GetCRC32(bytes.AsSpan(0, 14));
+        BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(14), crc);
+        return bytes;
     }
 }

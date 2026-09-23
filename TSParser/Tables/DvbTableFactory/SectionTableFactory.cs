@@ -61,16 +61,16 @@ internal abstract class SectionTableFactory<TTable, TKey> : TableFactory
         }
 
         var crc32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
-        if (_sectionCache.HasCrc(crc32))
-        {
-            return;
-        }
-
         if (Utils.GetCRC32(bytes[..^4]) != crc32)
         {
             ReportSectionCrcFailed(bytes[0]);
             Logger.Send(LogStatus.ETSI, GetCrcErrorMessage());
             ResetFactory();
+            return;
+        }
+
+        if (_sectionCache.HasCrc(crc32))
+        {
             return;
         }
 

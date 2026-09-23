@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Diagnostics;
+using System.Buffers.Binary;
+using TSParser.Service;
+using TSParser.Tables;
 using TSParser.Tables.DvbTables;
 using TSParser.TransportStream;
 
@@ -19,22 +23,33 @@ namespace TSParser.Analysis;
 
 /// <summary>
 /// ETSI TR 101 290 V1.4.1 monitor for the outer MPEG-TS.
-/// Interval checks use the PCR of the PMT PCR PID, or the first PID that carries a PCR until a PMT arrives.
+/// Interval checks use a stable PMT PCR PID (or the first PCR before PMT topology is known),
+/// with monotonic UDP time as fallback and a PCR-derived packet-rate estimate for file input.
 /// PCR accuracy, PTS, and the T-STD buffer model are not measured.
 /// </summary>
 public sealed class Tr101290Monitor
 {
+    private readonly Tr101290ClockMode _clockMode;
     private readonly ulong _pidTimeoutTicks;
     private readonly Dictionary<IndicatorKey, IndicatorSlot> _slots = new();
     private readonly Dictionary<ushort, ContinuityState> _continuity = new();
     private readonly Dictionary<ushort, PcrState> _pcr = new();
-    private readonly Dictionary<byte, SectionMark> _sections = new();
+    private readonly Dictionary<SectionKey, SectionMark> _sections = new();
+    private readonly Dictionary<byte, SectionMark> _tableIdArrivals = new();
+    private readonly Dictionary<ushort, PsiSectionAssembler> _sectionAssemblers = new();
     private readonly Dictionary<ushort, PidWatch> _referenced = new();
     private readonly Dictionary<ushort, SectionMark> _unreferenced = new();
     private readonly Dictionary<(byte TableId, ushort ServiceId), EitPfMark> _eitPf = new();
     private readonly HashSet<ushort> _pmtPids = new();
     private readonly HashSet<ushort> _referencedPids = new();
     private readonly HashSet<ushort> _discontinuityPending = new();
+    private readonly Dictionary<byte, PAT> _patTopologySections = new();
+    private readonly Dictionary<byte, uint> _patSectionCrcs = new();
+    private readonly Dictionary<ushort, PmtTopology> _pmtTopologies = new();
+    private readonly Dictionary<(ushort Pid, byte SectionNumber), uint> _pmtSectionCrcs = new();
+    private readonly Dictionary<ushort, HashSet<ushort>> _pmtReferences = new();
+    private readonly Dictionary<ushort, HashSet<SectionKey>> _siRepetitionFaults = new();
+    private readonly Dictionary<(Tr101290Indicator Indicator, ushort? Pid), HashSet<SectionKey>> _indicatorRepetitionFaults = new();
 
     private ulong _packetNumber;
     private ulong _lastPacketNumber;
@@ -45,13 +60,35 @@ public sealed class Tr101290Monitor
     private bool _clockLocked;
     private ulong _lockedAt;
     private bool _catSeen;
+    private bool _syncLost;
+    private long _lastMonotonicTimestamp;
+    private double? _fileTicksPerPacket;
+    private ulong? _lastClockPacketNumber;
+    private ulong? _lastClockPcr;
+    private ulong _lastClockLogical;
+    private ulong _lastTimeoutCheck;
+    private byte? _patTopologyVersion;
+    private ushort? _patTopologyTransportStreamId;
+    private byte _patTopologyLastSection;
     private readonly SectionMark _patPackets = new();
     private readonly Dictionary<ushort, PmtWatch> _pmtSections = new();
 
     public Tr101290Monitor(Tr101290Options? options = null)
+        : this(options, Tr101290ClockMode.Push)
+    {
+    }
+
+    internal Tr101290Monitor(Tr101290Options? options, Tr101290ClockMode clockMode)
     {
         options ??= Tr101290Options.Enable;
+        _clockMode = clockMode;
         _pidTimeoutTicks = Tr101290Limits.Ticks(options.PidErrorTimeout);
+        _lastMonotonicTimestamp = Stopwatch.GetTimestamp();
+        if (_clockMode == Tr101290ClockMode.Udp)
+        {
+            _clockLocked = true;
+            _now = 0;
+        }
     }
 
     public event Action<Tr101290Event>? OnEvent;
@@ -62,12 +99,21 @@ public sealed class Tr101290Monitor
         _continuity.Clear();
         _pcr.Clear();
         _sections.Clear();
+        _tableIdArrivals.Clear();
+        _sectionAssemblers.Clear();
         _referenced.Clear();
         _unreferenced.Clear();
         _eitPf.Clear();
         _pmtPids.Clear();
         _referencedPids.Clear();
         _discontinuityPending.Clear();
+        _patTopologySections.Clear();
+        _patSectionCrcs.Clear();
+        _pmtTopologies.Clear();
+        _pmtSectionCrcs.Clear();
+        _pmtReferences.Clear();
+        _siRepetitionFaults.Clear();
+        _indicatorRepetitionFaults.Clear();
         _pmtSections.Clear();
         _patPackets.Reset();
         _packetNumber = 0;
@@ -75,10 +121,20 @@ public sealed class Tr101290Monitor
         _consecutiveGoodSync = 0;
         _consecutiveBadSync = 0;
         _clockPid = null;
-        _now = null;
-        _clockLocked = false;
+        _now = _clockMode == Tr101290ClockMode.Udp ? 0 : null;
+        _clockLocked = _clockMode == Tr101290ClockMode.Udp;
         _lockedAt = 0;
         _catSeen = false;
+        _syncLost = false;
+        _lastMonotonicTimestamp = Stopwatch.GetTimestamp();
+        _fileTicksPerPacket = null;
+        _lastClockPacketNumber = null;
+        _lastClockPcr = null;
+        _lastClockLogical = 0;
+        _lastTimeoutCheck = 0;
+        _patTopologyVersion = null;
+        _patTopologyTransportStreamId = null;
+        _patTopologyLastSection = 0;
     }
 
     public Tr101290IndicatorState GetState(Tr101290Indicator indicator, ushort? pid = null)
@@ -110,6 +166,13 @@ public sealed class Tr101290Monitor
 
         if (_consecutiveBadSync >= 2)
         {
+            if (!_syncLost)
+            {
+                _syncLost = true;
+                _continuity.Clear();
+                _sectionAssemblers.Clear();
+            }
+
             Fault(
                 Tr101290Indicator.TsSyncLoss,
                 pid: null,
@@ -127,8 +190,21 @@ public sealed class Tr101290Monitor
 
     public void ObservePacket(TsPacket packet)
     {
+        var rawPacket = packet.RawPacket is { Length: > 0 } raw
+            ? raw.AsSpan()
+            : ReadOnlySpan<byte>.Empty;
+        ObservePacket(packet, rawPacket, observeSections: true);
+    }
+
+    internal void ObservePacket(TsPacket packet, ReadOnlySpan<byte> rawPacket, bool observeSections)
+    {
         StampPacket();
         NoteGoodSync();
+
+        if (_syncLost)
+            return;
+
+        AdvanceFallbackClock();
 
         if (packet.Pid == 0xFFFF)
             return;
@@ -151,13 +227,13 @@ public sealed class Tr101290Monitor
             return;
 
         NotePidPresence(packet.Pid);
-        CheckContinuity(packet);
+        CheckContinuity(packet, rawPacket);
         CheckScrambling(packet);
         CheckPcr(packet);
         CheckTableId(packet);
 
-        if (packet.Pid == 0x0000)
-            NotePatPacket();
+        if (observeSections)
+            ObserveSections(packet);
     }
 
     public void ObserveCrcError(ushort pid, byte tableId)
@@ -173,14 +249,44 @@ public sealed class Tr101290Monitor
     public void ObservePat(PAT pat)
     {
         NoteValidSection(pat.TablePid);
-        _pmtPids.Clear();
-        foreach (var record in pat.PatRecords)
-        {
-            if (record.ProgramNumber == 0)
-                continue;
+        if (!pat.CurrentNextIndicator)
+            return;
 
-            _pmtPids.Add(record.Pid);
-            var watch = Pmt(record.Pid);
+        NotePatSection();
+        UpdatePatTopology(pat);
+    }
+
+    private void UpdatePatTopology(PAT pat)
+    {
+
+        if (_patTopologyVersion != pat.VersionNumber
+            || _patTopologyTransportStreamId != pat.TransportStreamId
+            || _patTopologyLastSection != pat.LastSectionNumber)
+        {
+            _patTopologySections.Clear();
+            _patSectionCrcs.Clear();
+            _patTopologyVersion = pat.VersionNumber;
+            _patTopologyTransportStreamId = pat.TransportStreamId;
+            _patTopologyLastSection = pat.LastSectionNumber;
+        }
+
+        _patTopologySections[pat.SectionNumber] = pat;
+        if (!HasAllSections(_patTopologySections.Keys, pat.LastSectionNumber))
+            return;
+
+        var desiredPmtPids = _patTopologySections.Values
+            .SelectMany(section => section.PatRecords)
+            .Where(record => record.ProgramNumber != 0)
+            .Select(record => record.Pid)
+            .ToHashSet();
+
+        foreach (var stalePid in _pmtPids.Except(desiredPmtPids).ToArray())
+            RemovePmt(stalePid);
+
+        foreach (var pid in desiredPmtPids)
+        {
+            _pmtPids.Add(pid);
+            var watch = Pmt(pid);
             if (!watch.Announced.Seen)
                 StampArrival(watch.Announced);
         }
@@ -191,17 +297,46 @@ public sealed class Tr101290Monitor
     public void ObservePmt(PMT pmt)
     {
         NoteValidSection(pmt.TablePid);
-        NotePeriodic(Pmt(pmt.TablePid).Section, Tr101290Indicator.PmtError2, pmt.TablePid, countsAsSiRepetition: false, applyMinimum: false);
+        if (!pmt.CurrentNextIndicator)
+            return;
 
-        if (pmt.PcrPid != 0x1FFF)
+        NotePeriodic(Pmt(pmt.TablePid).Section(pmt.SectionNumber), Tr101290Indicator.PmtError2, pmt.TablePid, countsAsSiRepetition: false, applyMinimum: false);
+        UpdatePmtTopology(pmt);
+    }
+
+    private void UpdatePmtTopology(PMT pmt)
+    {
+
+        if (!_pmtTopologies.TryGetValue(pmt.TablePid, out var topology)
+            || topology.ProgramNumber != pmt.ProgramNumber
+            || topology.Version != pmt.VersionNumber
+            || topology.LastSectionNumber != pmt.LastSectionNumber)
         {
-            ActivatePcr(pmt.PcrPid);
-            ReferencePid(pmt.PcrPid);
-            AdoptPmtClock(pmt.PcrPid);
+            topology = new PmtTopology(pmt.ProgramNumber, pmt.VersionNumber, pmt.LastSectionNumber);
+            _pmtTopologies[pmt.TablePid] = topology;
+            Pmt(pmt.TablePid).Sections.Clear();
+            foreach (var key in _pmtSectionCrcs.Keys.Where(key => key.Pid == pmt.TablePid).ToArray())
+                _pmtSectionCrcs.Remove(key);
         }
 
-        foreach (var es in pmt.EsInfoList)
-            ReferencePid(es.ElementaryPid);
+        topology.Sections[pmt.SectionNumber] = pmt;
+        if (!HasAllSections(topology.Sections.Keys, pmt.LastSectionNumber))
+            return;
+
+        var references = topology.Sections.Values
+            .SelectMany(section => section.EsInfoList.Select(es => es.ElementaryPid)
+                .Append(section.PcrPid).Where(pid => pid != 0x1FFF))
+            .ToHashSet();
+        _pmtReferences[pmt.TablePid] = references;
+        ReconcileReferencedPids();
+        ReconcilePcrPids();
+
+        var pcrPid = topology.Sections.Values.Select(section => section.PcrPid).FirstOrDefault(pid => pid != 0x1FFF);
+        if (pcrPid != 0)
+        {
+            ActivatePcr(pcrPid);
+            AdoptPmtClock(pcrPid);
+        }
 
         DropNewlyReferenced();
     }
@@ -221,24 +356,24 @@ public sealed class Tr101290Monitor
     {
         NoteValidSection(nit.TablePid);
         if (nit.TableId == 0x40)
-            NotePeriodic(Section(0x40), Tr101290Indicator.NitActualError, nit.TablePid, countsAsSiRepetition: true);
+            NotePeriodic(Section(nit.TableId, nit.NetworkId, nit.SectionNumber), Tr101290Indicator.NitActualError, nit.TablePid, countsAsSiRepetition: true);
         else if (nit.TableId == 0x41)
-            NotePeriodic(Section(0x41), Tr101290Indicator.NitOtherError, nit.TablePid, countsAsSiRepetition: true);
+            NotePeriodic(Section(nit.TableId, nit.NetworkId, nit.SectionNumber), Tr101290Indicator.NitOtherError, nit.TablePid, countsAsSiRepetition: true);
     }
 
     public void ObserveSdt(SDT sdt)
     {
         NoteValidSection(sdt.TablePid);
         if (sdt.TableId == 0x42)
-            NotePeriodic(Section(0x42), Tr101290Indicator.SdtActualError, sdt.TablePid, countsAsSiRepetition: true);
+            NotePeriodic(Section(sdt.TableId, sdt.TransportStreamId, sdt.SectionNumber), Tr101290Indicator.SdtActualError, sdt.TablePid, countsAsSiRepetition: true);
         else if (sdt.TableId == 0x46)
-            NotePeriodic(Section(0x46), Tr101290Indicator.SdtOtherError, sdt.TablePid, countsAsSiRepetition: true);
+            NotePeriodic(Section(sdt.TableId, sdt.TransportStreamId, sdt.SectionNumber), Tr101290Indicator.SdtOtherError, sdt.TablePid, countsAsSiRepetition: true);
     }
 
     public void ObserveBat(BAT bat)
     {
         NoteValidSection(bat.TablePid);
-        NotePeriodic(Section(bat.TableId), indicator: null, bat.TablePid, countsAsSiRepetition: true);
+        NotePeriodic(Section(bat.TableId, bat.BouquetId, bat.SectionNumber), indicator: null, bat.TablePid, countsAsSiRepetition: true);
     }
 
     public void ObserveEit(EIT eit)
@@ -250,7 +385,7 @@ public sealed class Tr101290Monitor
             0x4F => Tr101290Indicator.EitOtherError,
             _ => null,
         };
-        NotePeriodic(Section(eit.TableId), indicator, eit.TablePid, countsAsSiRepetition: true);
+        NotePeriodic(Section(eit.TableId, eit.ServiceId, eit.SectionNumber), indicator, eit.TablePid, countsAsSiRepetition: true);
 
         if (eit.TableId is 0x4E or 0x4F && eit.SectionNumber is 0 or 1)
             NoteEitPf(eit.TableId, eit.ServiceId, eit.SectionNumber);
@@ -258,13 +393,13 @@ public sealed class Tr101290Monitor
 
     public void ObserveTdt(TDT tdt)
     {
-        NotePeriodic(Section(0x70), Tr101290Indicator.TdtError, tdt.TablePid, countsAsSiRepetition: true);
+        NotePeriodic(Section(0x70, 0, 0), Tr101290Indicator.TdtError, tdt.TablePid, countsAsSiRepetition: true);
     }
 
     public void ObserveTot(TOT tot)
     {
         NoteValidSection(tot.TablePid);
-        NotePeriodic(Section(0x73), indicator: null, tot.TablePid, countsAsSiRepetition: true);
+        NotePeriodic(Section(0x73, 0, 0), indicator: null, tot.TablePid, countsAsSiRepetition: true);
     }
 
     private void StampPacket() => _lastPacketNumber = _packetNumber++;
@@ -276,6 +411,7 @@ public sealed class Tr101290Monitor
         Heal(Tr101290Indicator.SyncByteError, pid: null, Tr101290Fault.Continuity, "sync byte is 0x47", surfaceOk: true);
         if (_consecutiveGoodSync >= 5)
         {
+            _syncLost = false;
             Heal(
                 Tr101290Indicator.TsSyncLoss,
                 pid: null,
@@ -285,7 +421,7 @@ public sealed class Tr101290Monitor
         }
     }
 
-    private void CheckContinuity(TsPacket packet)
+    private void CheckContinuity(TsPacket packet, ReadOnlySpan<byte> rawPacket)
     {
         var hasPayload = packet.AdaptationFieldControl is 0b01 or 0b11;
         var adaptationOnly = packet.AdaptationFieldControl == 0b10;
@@ -300,6 +436,7 @@ public sealed class Tr101290Monitor
                 HasLast = true,
                 Last = packet.ContinuityCounter,
                 Copies = hasPayload ? 1 : 0,
+                LastPacket = CopyPacket(rawPacket),
             };
             return;
         }
@@ -308,6 +445,7 @@ public sealed class Tr101290Monitor
         {
             state.Last = packet.ContinuityCounter;
             state.Copies = hasPayload ? 1 : 0;
+            SetLastPacket(state, rawPacket);
             Heal(Tr101290Indicator.ContinuityCountError, packet.Pid, Tr101290Fault.Continuity, "discontinuity_indicator set", surfaceOk: false);
             return;
         }
@@ -323,13 +461,21 @@ public sealed class Tr101290Monitor
                 Heal(Tr101290Indicator.ContinuityCountError, packet.Pid, Tr101290Fault.Continuity, "continuity counter held without payload", surfaceOk: false);
             }
 
-            state.Last = packet.ContinuityCounter;
-            state.Copies = 0;
+            if (packet.ContinuityCounter != state.Last)
+                state.Last = packet.ContinuityCounter;
             return;
         }
 
         if (packet.ContinuityCounter == state.Last)
         {
+            if (state.LastPacket is null || rawPacket.IsEmpty || !rawPacket.SequenceEqual(state.LastPacket))
+            {
+                state.Copies = 1;
+                SetLastPacket(state, rawPacket);
+                Fault(Tr101290Indicator.ContinuityCountError, packet.Pid, Tr101290Fault.Continuity, "same continuity counter with different packet bytes", countEach: true);
+                return;
+            }
+
             state.Copies++;
             if (state.Copies > 2)
             {
@@ -347,6 +493,7 @@ public sealed class Tr101290Monitor
         var broken = packet.ContinuityCounter != expected;
         state.Last = packet.ContinuityCounter;
         state.Copies = 1;
+        SetLastPacket(state, rawPacket);
         if (broken)
         {
             Fault(Tr101290Indicator.ContinuityCountError, packet.Pid, Tr101290Fault.Continuity, "continuity counter is not sequential", countEach: true);
@@ -418,10 +565,7 @@ public sealed class Tr101290Monitor
         if (packet.Pid != _clockPid)
             return;
 
-        if (flagged && hasDelta)
-            UpdateClock(pcr, rebase: true);
-        else
-            UpdateClock(pcr, rebase: false);
+        UpdateClockFromPcr(pcr, hasDelta ? delta : null, flagged);
     }
 
     private void EvaluatePcrErrors(ushort pid, ulong delta, bool discontinuity)
@@ -430,13 +574,13 @@ public sealed class Tr101290Monitor
         {
             Heal(Tr101290Indicator.PcrRepetitionError, pid, Tr101290Fault.Interval, "PCR discontinuity flagged", surfaceOk: false);
         }
-        else if (delta > Tr101290Limits.Ms40)
+        else if (delta > Tr101290Limits.Ms100)
         {
-            Fault(Tr101290Indicator.PcrRepetitionError, pid, Tr101290Fault.Interval, "PCR interval greater than 40 ms", countEach: false);
+            Fault(Tr101290Indicator.PcrRepetitionError, pid, Tr101290Fault.Interval, "PCR interval greater than 100 ms", countEach: false);
         }
         else
         {
-            Heal(Tr101290Indicator.PcrRepetitionError, pid, Tr101290Fault.Interval, "PCR interval within 40 ms", surfaceOk: true);
+            Heal(Tr101290Indicator.PcrRepetitionError, pid, Tr101290Fault.Interval, "PCR interval within 100 ms", surfaceOk: true);
         }
 
         if (!discontinuity && delta > Tr101290Limits.Ms100)
@@ -458,25 +602,185 @@ public sealed class Tr101290Monitor
                 surfaceOk: false);
         }
 
-        if (discontinuity && delta <= Tr101290Limits.Ms100)
+    }
+
+    private void ObserveSections(TsPacket packet)
+    {
+        if (!packet.HasPayload || packet.Payload.Length == 0 || packet.TransportScramblingControl != 0)
+            return;
+
+        if (!IsMonitoredSectionPid(packet.Pid))
+            return;
+
+        if (!_sectionAssemblers.TryGetValue(packet.Pid, out var assembler))
         {
-            Fault(
-                Tr101290Indicator.PcrDiscontinuityIndicatorError,
-                pid,
-                Tr101290Fault.FalseDiscontinuity,
-                "discontinuity_indicator set without a PCR break greater than 100 ms",
-                countEach: false);
+            assembler = new PsiSectionAssembler(packet.Pid);
+            _sectionAssemblers[packet.Pid] = assembler;
         }
-        else
+
+        foreach (var memory in assembler.PushPacket(packet))
+            ObserveSection(packet.Pid, memory.Span);
+    }
+
+    internal void ObserveSection(ushort pid, ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length < 3)
+            return;
+
+        var tableId = bytes[0];
+        uint crc = 0;
+        if (HasSectionCrc(bytes))
         {
-            Heal(
-                Tr101290Indicator.PcrDiscontinuityIndicatorError,
-                pid,
-                Tr101290Fault.FalseDiscontinuity,
-                "discontinuity_indicator matches the PCR step",
-                surfaceOk: true);
+            if (bytes.Length < 4)
+                return;
+
+            crc = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);
+            if (Utils.GetCRC32(bytes[..^4]) != crc)
+            {
+                ObserveCrcError(pid, tableId);
+                return;
+            }
+
+            NoteValidSection(pid);
+        }
+
+        if (!IsAllowedTableId(pid, tableId))
+            return;
+
+        try
+        {
+            var syntaxSection = (bytes[1] & 0x80) != 0;
+            if (syntaxSection && bytes.Length < 8)
+                return;
+
+            var tableIdExtension = syntaxSection ? BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]) : (ushort)0;
+            var sectionNumber = syntaxSection ? bytes[6] : (byte)0;
+            switch (tableId)
+            {
+                case 0x00: ObservePatSection(bytes, crc); break;
+                case 0x01:
+                    _catSeen = true;
+                    Heal(Tr101290Indicator.CatError, pid: null, Tr101290Fault.Missing, "CAT present", surfaceOk: true);
+                    Heal(Tr101290Indicator.CatError, pid: null, Tr101290Fault.TableId, "CAT table_id 0x01", surfaceOk: true);
+                    break;
+                case 0x02: ObservePmtSection(pid, bytes, crc); break;
+                case 0x40:
+                    NotePeriodic(Section(tableId, tableIdExtension, sectionNumber), Tr101290Indicator.NitActualError, pid, countsAsSiRepetition: true);
+                    break;
+                case 0x41:
+                    NotePeriodic(Section(tableId, tableIdExtension, sectionNumber), Tr101290Indicator.NitOtherError, pid, countsAsSiRepetition: true);
+                    break;
+                case 0x42:
+                    NotePeriodic(Section(tableId, tableIdExtension, sectionNumber), Tr101290Indicator.SdtActualError, pid, countsAsSiRepetition: true);
+                    break;
+                case 0x46:
+                    NotePeriodic(Section(tableId, tableIdExtension, sectionNumber), Tr101290Indicator.SdtOtherError, pid, countsAsSiRepetition: true);
+                    break;
+                case 0x4A:
+                    NotePeriodic(Section(tableId, tableIdExtension, sectionNumber), indicator: null, pid, countsAsSiRepetition: true);
+                    break;
+                case >= 0x4E and <= 0x6F:
+                    ObserveEitSection(tableId, tableIdExtension, sectionNumber, pid);
+                    break;
+                case 0x70: NotePeriodic(Section(0x70, 0, 0), Tr101290Indicator.TdtError, pid, countsAsSiRepetition: true); break;
+                case 0x71: NotePeriodic(Section(0x71, 0, 0), Tr101290Indicator.RstError, pid, countsAsSiRepetition: false); break;
+                case 0x73: NotePeriodic(Section(0x73, 0, 0), indicator: null, pid, countsAsSiRepetition: true); break;
+            }
+        }
+        catch (Exception ex) when (ex is SectionParseException or ArgumentOutOfRangeException or IndexOutOfRangeException)
+        {
+            // A malformed section must not disturb monitoring of later sections.
         }
     }
+
+    private static byte[]? CopyPacket(ReadOnlySpan<byte> rawPacket) =>
+        rawPacket.IsEmpty ? null : rawPacket.ToArray();
+
+    private static void SetLastPacket(ContinuityState state, ReadOnlySpan<byte> rawPacket)
+    {
+        if (rawPacket.IsEmpty)
+        {
+            state.LastPacket = null;
+            return;
+        }
+
+        if (state.LastPacket is not { } destination || destination.Length != rawPacket.Length)
+        {
+            state.LastPacket = rawPacket.ToArray();
+            return;
+        }
+
+        rawPacket.CopyTo(destination);
+    }
+
+    private void ObservePatSection(ReadOnlySpan<byte> bytes, uint crc)
+    {
+        var current = (bytes[5] & 0x01) != 0;
+        if (!current)
+            return;
+
+        NotePatSection();
+        var transportStreamId = BinaryPrimitives.ReadUInt16BigEndian(bytes[3..]);
+        var version = (byte)((bytes[5] & 0x3E) >> 1);
+        var sectionNumber = bytes[6];
+        var lastSectionNumber = bytes[7];
+        if (_patTopologyVersion != version
+            || _patTopologyTransportStreamId != transportStreamId
+            || _patTopologyLastSection != lastSectionNumber)
+        {
+            _patTopologySections.Clear();
+            _patSectionCrcs.Clear();
+            _patTopologyVersion = version;
+            _patTopologyTransportStreamId = transportStreamId;
+            _patTopologyLastSection = lastSectionNumber;
+        }
+
+        if (_patSectionCrcs.TryGetValue(sectionNumber, out var previousCrc) && previousCrc == crc)
+            return;
+
+        var pat = new PAT(bytes);
+        _patSectionCrcs[sectionNumber] = crc;
+        UpdatePatTopology(pat);
+    }
+
+    private void ObservePmtSection(ushort pid, ReadOnlySpan<byte> bytes, uint crc)
+    {
+        if ((bytes[5] & 0x01) == 0)
+            return;
+
+        var sectionNumber = bytes[6];
+        NotePeriodic(Pmt(pid).Section(sectionNumber), Tr101290Indicator.PmtError2, pid, countsAsSiRepetition: false, applyMinimum: false);
+        var key = (pid, sectionNumber);
+        if (_pmtSectionCrcs.TryGetValue(key, out var previousCrc) && previousCrc == crc)
+            return;
+
+        var pmt = new PMT(bytes, pid);
+        UpdatePmtTopology(pmt);
+        _pmtSectionCrcs[key] = crc;
+    }
+
+    private void ObserveEitSection(byte tableId, ushort serviceId, byte sectionNumber, ushort pid)
+    {
+        Tr101290Indicator? indicator = tableId switch
+        {
+            0x4E => Tr101290Indicator.EitActualError,
+            0x4F => Tr101290Indicator.EitOtherError,
+            _ => null,
+        };
+        NotePeriodic(Section(tableId, serviceId, sectionNumber), indicator, pid, countsAsSiRepetition: true);
+        if (tableId is 0x4E or 0x4F && sectionNumber is 0 or 1)
+            NoteEitPf(tableId, serviceId, sectionNumber);
+    }
+
+    private bool IsMonitoredSectionPid(ushort pid) => pid is 0x0000 or 0x0001 or 0x0010 or 0x0011 or 0x0012 or 0x0013 or 0x0014
+        || _pmtPids.Contains(pid);
+
+    private static bool HasSectionCrc(ReadOnlySpan<byte> bytes) => bytes[0] switch
+    {
+        0x70 or 0x71 or 0x72 => false,
+        0x73 => true,
+        _ => (bytes[1] & 0x80) != 0,
+    };
 
     private void CheckTableId(TsPacket packet)
     {
@@ -486,9 +790,6 @@ public sealed class Tr101290Monitor
         if (IsAllowedTableId(packet.Pid, tableId))
         {
             ClearUnexpectedTable(packet.Pid);
-            if (packet.Pid == 0x0013 && tableId == 0x71)
-                NotePeriodic(Section(0x71), Tr101290Indicator.RstError, packet.Pid, countsAsSiRepetition: false);
-
             return;
         }
 
@@ -555,7 +856,7 @@ public sealed class Tr101290Monitor
         return true;
     }
 
-    private void NotePatPacket()
+    private void NotePatSection()
     {
         StampArrival(_patPackets);
         if (_clockLocked)
@@ -589,6 +890,56 @@ public sealed class Tr101290Monitor
             StampArrival(mark);
     }
 
+    private static bool HasAllSections(IEnumerable<byte> sections, byte lastSectionNumber)
+    {
+        var present = sections.ToHashSet();
+        return Enumerable.Range(0, lastSectionNumber + 1).All(section => present.Contains((byte)section));
+    }
+
+    private void RemovePmt(ushort pid)
+    {
+        _pmtPids.Remove(pid);
+        _pmtSections.Remove(pid);
+        _pmtTopologies.Remove(pid);
+        _pmtReferences.Remove(pid);
+        foreach (var key in _pmtSectionCrcs.Keys.Where(key => key.Pid == pid).ToArray())
+            _pmtSectionCrcs.Remove(key);
+        Heal(Tr101290Indicator.PmtError2, pid, Tr101290Fault.Interval | Tr101290Fault.Scrambling | Tr101290Fault.TableId, "PMT PID removed by current PAT", surfaceOk: false);
+        ReconcileReferencedPids();
+        ReconcilePcrPids();
+    }
+
+    private void ReconcileReferencedPids()
+    {
+        var desired = _pmtReferences.Values.SelectMany(pids => pids).ToHashSet();
+        foreach (var stalePid in _referencedPids.Except(desired).ToArray())
+        {
+            _referencedPids.Remove(stalePid);
+            _referenced.Remove(stalePid);
+            if (_pcr.TryGetValue(stalePid, out var pcr))
+                pcr.Active = false;
+            Heal(Tr101290Indicator.PidError, stalePid, Tr101290Fault.Missing, "PID no longer referenced by current PMT", surfaceOk: false);
+        }
+
+        foreach (var pid in desired)
+            ReferencePid(pid);
+    }
+
+    private void ReconcilePcrPids()
+    {
+        foreach (var state in _pcr.Values)
+            state.Active = false;
+
+        var desired = _pmtTopologies
+            .Where(pair => _pmtReferences.ContainsKey(pair.Key))
+            .SelectMany(pair => pair.Value.Sections.Values)
+            .Select(section => section.PcrPid)
+            .Where(pid => pid != 0x1FFF)
+            .Distinct();
+        foreach (var pid in desired)
+            ActivatePcr(pid);
+    }
+
     private void ReferencePid(ushort pid)
     {
         _referencedPids.Add(pid);
@@ -615,11 +966,14 @@ public sealed class Tr101290Monitor
 
     private void AdoptPmtClock(ushort pid)
     {
-        if (_clockPid == pid)
+        if (_clockPid == pid
+            || (_clockPid is ushort current && _pcr.TryGetValue(current, out var currentState) && currentState.Active))
             return;
 
         _clockPid = pid;
-        SuspendIntervals();
+        _lastClockPcr = null;
+        _lastClockPacketNumber = null;
+        _lastClockLogical = _now ?? 0;
     }
 
     private void DropNewlyReferenced()
@@ -641,18 +995,31 @@ public sealed class Tr101290Monitor
 
     private void NotePeriodic(SectionMark mark, Tr101290Indicator? indicator, ushort pid, bool countsAsSiRepetition, bool applyMinimum = true)
     {
-        if (applyMinimum && _clockLocked && _now is ulong now && mark.HasAt && now != mark.At)
+        var intervalMark = applyMinimum && mark.Key is SectionKey sectionKey
+            ? Minimum(sectionKey.TableId)
+            : mark;
+        if (applyMinimum && _clockLocked && _now is ulong now && intervalMark.HasAt && now != intervalMark.At)
         {
-            var delta = Tr101290Limits.ForwardDelta(now, mark.At);
+            var delta = Tr101290Limits.ForwardDelta(now, intervalMark.At);
             if (delta < Tr101290Limits.Ms25)
             {
                 if (indicator is Tr101290Indicator specific)
                 {
+                    AddRepetitionFault(specific, PidFor(specific, pid), intervalMark);
                     Fault(specific, PidFor(specific, pid), Tr101290Fault.Repetition, "section interval less than 25 ms", countEach: false);
                 }
 
                 if (countsAsSiRepetition)
                 {
+                    if (intervalMark.Key is SectionKey key)
+                    {
+                        if (!_siRepetitionFaults.TryGetValue(pid, out var faults))
+                        {
+                            faults = new HashSet<SectionKey>();
+                            _siRepetitionFaults[pid] = faults;
+                        }
+                        faults.Add(key);
+                    }
                     Fault(Tr101290Indicator.SiRepetitionError, pid, Tr101290Fault.Repetition, "SI section interval less than 25 ms", countEach: false);
                 }
             }
@@ -660,17 +1027,25 @@ public sealed class Tr101290Monitor
             {
                 if (indicator is Tr101290Indicator specific)
                 {
-                    Heal(specific, PidFor(specific, pid), Tr101290Fault.Repetition, "section interval at least 25 ms", surfaceOk: true);
+                    RemoveRepetitionFault(specific, PidFor(specific, pid), intervalMark);
                 }
 
                 if (countsAsSiRepetition)
                 {
-                    Heal(Tr101290Indicator.SiRepetitionError, pid, Tr101290Fault.Repetition, "SI section interval at least 25 ms", surfaceOk: true);
+                    if (intervalMark.Key is SectionKey key)
+                    {
+                        if (_siRepetitionFaults.TryGetValue(pid, out var faults))
+                            faults.Remove(key);
+                    }
+                    if (!_siRepetitionFaults.TryGetValue(pid, out var remaining) || remaining.Count == 0)
+                        Heal(Tr101290Indicator.SiRepetitionError, pid, Tr101290Fault.Repetition, "SI section interval at least 25 ms", surfaceOk: true);
                 }
             }
         }
 
-        StampArrival(mark);
+        StampArrival(intervalMark);
+        if (!ReferenceEquals(intervalMark, mark))
+            StampArrival(mark);
         if (indicator is Tr101290Indicator arrived && _clockLocked)
             Heal(arrived, PidFor(arrived, pid), Tr101290Fault.Interval, "section present", surfaceOk: true);
     }
@@ -686,55 +1061,147 @@ public sealed class Tr101290Monitor
 
         var slot = sectionNumber == 0 ? mark.Section0 : mark.Section1;
         StampArrival(slot);
-        EvaluateEitPf(tableId, serviceId, mark);
+        EvaluateEitPfAggregate();
     }
 
-    private void EvaluateEitPf(byte tableId, ushort serviceId, EitPfMark mark)
+    private void AddRepetitionFault(Tr101290Indicator indicator, ushort? pid, SectionMark mark)
+    {
+        if (mark.Key is not SectionKey key)
+            return;
+
+        var aggregateKey = (indicator, pid);
+        if (!_indicatorRepetitionFaults.TryGetValue(aggregateKey, out var faults))
+        {
+            faults = new HashSet<SectionKey>();
+            _indicatorRepetitionFaults[aggregateKey] = faults;
+        }
+
+        faults.Add(key);
+    }
+
+    private void RemoveRepetitionFault(Tr101290Indicator indicator, ushort? pid, SectionMark mark)
+    {
+        var aggregateKey = (indicator, pid);
+        if (mark.Key is SectionKey key && _indicatorRepetitionFaults.TryGetValue(aggregateKey, out var faults))
+        {
+            faults.Remove(key);
+            if (faults.Count > 0)
+                return;
+        }
+
+        Heal(indicator, pid, Tr101290Fault.Repetition, "section interval at least 25 ms", surfaceOk: true);
+    }
+
+    private void EvaluateEitPfAggregate()
     {
         if (!_clockLocked || _now is not ulong now)
             return;
 
-        var fresh0 = mark.Section0.HasAt && Tr101290Limits.ForwardDelta(now, mark.Section0.At) <= Tr101290Limits.Sec2;
-        var fresh1 = mark.Section1.HasAt && Tr101290Limits.ForwardDelta(now, mark.Section1.At) <= Tr101290Limits.Sec2;
         var pid = (ushort)0x0012;
-        if (fresh0 && fresh1)
+        var hasIncompletePair = false;
+        foreach (var (key, mark) in _eitPf)
         {
-            Heal(Tr101290Indicator.EitPfError, pid, Tr101290Fault.Pair, "EIT P/F sections 0 and 1 are both present", surfaceOk: true);
-            return;
+            var fresh0 = mark.Section0.HasAt && Tr101290Limits.ForwardDelta(now, mark.Section0.At) <= Tr101290Limits.Sec2;
+            var fresh1 = mark.Section1.HasAt && Tr101290Limits.ForwardDelta(now, mark.Section1.At) <= Tr101290Limits.Sec2;
+            var aged = (mark.Section0.HasAt && !fresh0) || (mark.Section1.HasAt && !fresh1);
+            if (aged && (mark.Section0.Seen || mark.Section1.Seen) && !(fresh0 && fresh1))
+            {
+                Fault(
+                    Tr101290Indicator.EitPfError,
+                    pid,
+                    Tr101290Fault.Pair,
+                    $"EIT P/F table 0x{key.TableId:X2} service {key.ServiceId} is missing section 0 or 1",
+                    countEach: false);
+                return;
+            }
+
+            if (!fresh0 || !fresh1)
+                hasIncompletePair = true;
         }
 
-        var aged = (mark.Section0.HasAt && !fresh0) || (mark.Section1.HasAt && !fresh1);
-        if (aged && (mark.Section0.Seen || mark.Section1.Seen))
+        if (_eitPf.Count > 0 && !hasIncompletePair)
+            Heal(Tr101290Indicator.EitPfError, pid, Tr101290Fault.Pair, "all known EIT P/F section pairs are present", surfaceOk: true);
+    }
+
+    private void AdvanceFallbackClock()
+    {
+        if (_clockMode == Tr101290ClockMode.Udp)
         {
-            Fault(
-                Tr101290Indicator.EitPfError,
-                pid,
-                Tr101290Fault.Pair,
-                $"EIT P/F table 0x{tableId:X2} service {serviceId} is missing section 0 or 1",
-                countEach: false);
+            var timestamp = Stopwatch.GetTimestamp();
+            var elapsed = timestamp - _lastMonotonicTimestamp;
+            _lastMonotonicTimestamp = timestamp;
+            if (elapsed > 0)
+            {
+                var ticks = (ulong)((double)elapsed * Tr101290Limits.TickHz / Stopwatch.Frequency);
+                AdvanceLogicalClock(ticks);
+            }
+        }
+        else if (_clockMode == Tr101290ClockMode.File && _fileTicksPerPacket is double ticksPerPacket)
+        {
+            AdvanceLogicalClock((ulong)Math.Max(0, ticksPerPacket));
         }
     }
 
-    private void UpdateClock(ulong pcr, bool rebase)
+    private void UpdateClockFromPcr(ulong pcr, ulong? delta, bool rebase)
     {
         if (!_clockLocked)
         {
-            _now = pcr;
+            _now = 0;
             _clockLocked = true;
-            _lockedAt = pcr;
-            StampPending(pcr);
+            _lockedAt = 0;
+            StampPending(0);
+            _lastClockPcr = pcr;
+            _lastClockPacketNumber = _lastPacketNumber;
+            _lastClockLogical = 0;
             return;
         }
 
-        _now = pcr;
         if (rebase)
         {
-            _lockedAt = pcr;
-            Restamp(pcr);
+            var now = _now ?? 0;
+            _lastClockPcr = pcr;
+            _lastClockPacketNumber = _lastPacketNumber;
+            _lastClockLogical = now;
             return;
         }
 
-        CheckTimeouts();
+        if (delta is ulong pcrDelta)
+        {
+            if (_clockMode == Tr101290ClockMode.File
+                && _lastClockPacketNumber is ulong lastPacket
+                && _lastPacketNumber > lastPacket
+                && pcrDelta > 0
+                && pcrDelta <= Tr101290Limits.Sec10)
+            {
+                _fileTicksPerPacket = (double)pcrDelta / (_lastPacketNumber - lastPacket);
+            }
+
+            var target = _lastClockLogical > ulong.MaxValue - pcrDelta
+                ? ulong.MaxValue
+                : _lastClockLogical + pcrDelta;
+            var now = _now ?? 0;
+            if (target > now)
+                AdvanceLogicalClock(target - now);
+        }
+
+        _lastClockPcr = pcr;
+        _lastClockPacketNumber = _lastPacketNumber;
+        _lastClockLogical = _now ?? 0;
+    }
+
+    private void AdvanceLogicalClock(ulong delta)
+    {
+        if (!_clockLocked || delta == 0)
+            return;
+
+        var current = _now ?? 0;
+        _now = current > ulong.MaxValue - delta ? ulong.MaxValue : current + delta;
+        var now = _now.Value;
+        if (Tr101290Limits.ForwardDelta(now, _lastTimeoutCheck) >= Tr101290Limits.Ms10)
+        {
+            _lastTimeoutCheck = now;
+            CheckTimeouts();
+        }
     }
 
     private void CheckTimeouts()
@@ -755,15 +1222,18 @@ public sealed class Tr101290Monitor
 
         foreach (var (pid, watch) in _pmtSections)
         {
-            var sectionFresh = watch.Section.HasAt
-                && Tr101290Limits.ForwardDelta(now, watch.Section.At) <= Tr101290Limits.Ms500;
+            var sectionFresh = watch.Sections.Count > 0
+                && watch.Sections.Values.All(mark => mark.HasAt
+                    && Tr101290Limits.ForwardDelta(now, mark.At) <= Tr101290Limits.Ms500);
             if (sectionFresh)
             {
                 Heal(Tr101290Indicator.PmtError2, pid, Tr101290Fault.Interval, "PMT section present", surfaceOk: true);
                 continue;
             }
 
-            var basis = watch.Section.HasAt ? watch.Section : watch.Announced;
+            var staleSection = watch.Sections.Values.FirstOrDefault(mark => mark.HasAt
+                && Tr101290Limits.ForwardDelta(now, mark.At) > Tr101290Limits.Ms500);
+            var basis = staleSection ?? watch.Announced;
             if (basis.HasAt && Tr101290Limits.ForwardDelta(now, basis.At) > Tr101290Limits.Ms500)
                 Fault(Tr101290Indicator.PmtError2, pid, Tr101290Fault.Interval, "PMT section missing for more than 500 ms", countEach: false);
         }
@@ -797,8 +1267,7 @@ public sealed class Tr101290Monitor
         CheckRequiredSection(0x4F, Tr101290Indicator.EitOtherError, Tr101290Limits.Sec10, required: false, pid: 0x0012);
         CheckRequiredSection(0x70, Tr101290Indicator.TdtError, Tr101290Limits.Sec30, required: true, pid: 0x0014);
 
-        foreach (var pair in _eitPf)
-            EvaluateEitPf(pair.Key.TableId, pair.Key.ServiceId, pair.Value);
+        EvaluateEitPfAggregate();
     }
 
     private void CheckRequiredSection(byte tableId, Tr101290Indicator indicator, ulong max, bool required, ushort pid)
@@ -806,8 +1275,8 @@ public sealed class Tr101290Monitor
         if (_now is not ulong now)
             return;
 
-        _sections.TryGetValue(tableId, out var mark);
-        if (mark is not { Seen: true })
+        var marks = _sections.Where(pair => pair.Key.TableId == tableId).Select(pair => pair.Value).ToArray();
+        if (marks.Length == 0)
         {
             if (required && Tr101290Limits.ForwardDelta(now, _lockedAt) > max)
                 Fault(indicator, pid, Tr101290Fault.Interval, "section missing", countEach: false);
@@ -815,40 +1284,13 @@ public sealed class Tr101290Monitor
             return;
         }
 
-        if (!mark.HasAt)
+        if (marks.Any(mark => !mark.HasAt))
             return;
 
-        if (Tr101290Limits.ForwardDelta(now, mark.At) > max)
+        if (marks.Any(mark => Tr101290Limits.ForwardDelta(now, mark.At) > max))
             Fault(indicator, pid, Tr101290Fault.Interval, "section interval too long", countEach: false);
         else
             Heal(indicator, pid, Tr101290Fault.Interval, "section interval within limit", surfaceOk: true);
-    }
-
-    private void SuspendIntervals()
-    {
-        _clockLocked = false;
-        _now = null;
-        Suspend(_patPackets);
-        foreach (var watch in _pmtSections.Values)
-        {
-            Suspend(watch.Announced);
-            Suspend(watch.Section);
-        }
-        foreach (var mark in _sections.Values)
-            Suspend(mark);
-        foreach (var mark in _unreferenced.Values)
-            Suspend(mark);
-        foreach (var watch in _referenced.Values)
-        {
-            Suspend(watch.Announced);
-            Suspend(watch.LastPacket);
-        }
-
-        foreach (var pf in _eitPf.Values)
-        {
-            Suspend(pf.Section0);
-            Suspend(pf.Section1);
-        }
     }
 
     private void StampPending(ulong now)
@@ -857,9 +1299,12 @@ public sealed class Tr101290Monitor
         foreach (var watch in _pmtSections.Values)
         {
             StampIfPending(watch.Announced, now);
-            StampIfPending(watch.Section, now);
+            foreach (var mark in watch.Sections.Values)
+                StampIfPending(mark, now);
         }
         foreach (var mark in _sections.Values)
+            StampIfPending(mark, now);
+        foreach (var mark in _tableIdArrivals.Values)
             StampIfPending(mark, now);
         foreach (var mark in _unreferenced.Values)
             StampIfPending(mark, now);
@@ -876,59 +1321,12 @@ public sealed class Tr101290Monitor
         }
     }
 
-    private void Restamp(ulong now)
-    {
-        Restamp(_patPackets, now);
-        foreach (var watch in _pmtSections.Values)
-        {
-            Restamp(watch.Announced, now);
-            Restamp(watch.Section, now);
-        }
-        foreach (var mark in _sections.Values)
-            Restamp(mark, now);
-        foreach (var mark in _unreferenced.Values)
-            Restamp(mark, now);
-        foreach (var watch in _referenced.Values)
-        {
-            Restamp(watch.Announced, now);
-            Restamp(watch.LastPacket, now);
-        }
-
-        foreach (var pf in _eitPf.Values)
-        {
-            Restamp(pf.Section0, now);
-            Restamp(pf.Section1, now);
-        }
-
-        _lockedAt = now;
-    }
-
-    private static void Suspend(SectionMark mark)
-    {
-        if (!mark.Seen && !mark.HasAt)
-            return;
-
-        mark.Pending = true;
-        mark.HasAt = false;
-    }
-
     private static void StampIfPending(SectionMark mark, ulong now)
     {
         if (!mark.Pending && mark.HasAt)
             return;
 
         if (!mark.Seen && !mark.Pending)
-            return;
-
-        mark.At = now;
-        mark.HasAt = true;
-        mark.Pending = false;
-        mark.Seen = true;
-    }
-
-    private static void Restamp(SectionMark mark, ulong now)
-    {
-        if (!mark.Seen && !mark.HasAt)
             return;
 
         mark.At = now;
@@ -952,12 +1350,25 @@ public sealed class Tr101290Monitor
         mark.HasAt = false;
     }
 
-    private SectionMark Section(byte tableId)
+    private SectionMark Section(byte tableId, ushort tableIdExtension, byte sectionNumber)
     {
-        if (!_sections.TryGetValue(tableId, out var mark))
+        var key = new SectionKey(tableId, tableIdExtension, sectionNumber);
+        if (!_sections.TryGetValue(key, out var mark))
         {
             mark = new SectionMark();
-            _sections[tableId] = mark;
+            mark.Key = key;
+            _sections[key] = mark;
+        }
+
+        return mark;
+    }
+
+    private SectionMark Minimum(byte tableId)
+    {
+        if (!_tableIdArrivals.TryGetValue(tableId, out var mark))
+        {
+            mark = new SectionMark { Key = new SectionKey(tableId, 0, 0) };
+            _tableIdArrivals[tableId] = mark;
         }
 
         return mark;
@@ -1041,6 +1452,7 @@ public sealed class Tr101290Monitor
         new(indicator, pid ?? 0, pid.HasValue);
 
     private readonly record struct IndicatorKey(Tr101290Indicator Indicator, ushort Pid, bool HasPid);
+    private readonly record struct SectionKey(byte TableId, ushort TableIdExtension, byte SectionNumber);
 
     [Flags]
     private enum Tr101290Fault : uint
@@ -1055,9 +1467,8 @@ public sealed class Tr101290Monitor
         Crc = 1 << 6,
         Missing = 1 << 7,
         Discontinuity = 1 << 8,
-        FalseDiscontinuity = 1 << 9,
-        Unreferenced = 1 << 10,
-        Pair = 1 << 11,
+        Unreferenced = 1 << 9,
+        Pair = 1 << 10,
     }
 
     private sealed class IndicatorSlot
@@ -1074,6 +1485,7 @@ public sealed class Tr101290Monitor
         public bool HasLast;
         public byte Last;
         public int Copies;
+        public byte[]? LastPacket;
     }
 
     private sealed class PcrState
@@ -1085,6 +1497,7 @@ public sealed class Tr101290Monitor
 
     private sealed class SectionMark
     {
+        public SectionKey? Key;
         public bool Seen;
         public bool Pending;
         public bool HasAt;
@@ -1102,7 +1515,18 @@ public sealed class Tr101290Monitor
     private sealed class PmtWatch
     {
         public SectionMark Announced { get; } = new();
-        public SectionMark Section { get; } = new();
+        public Dictionary<byte, SectionMark> Sections { get; } = new();
+
+        public SectionMark Section(byte sectionNumber)
+        {
+            if (!Sections.TryGetValue(sectionNumber, out var mark))
+            {
+                mark = new SectionMark();
+                Sections[sectionNumber] = mark;
+            }
+
+            return mark;
+        }
     }
 
     private sealed class PidWatch
@@ -1117,4 +1541,19 @@ public sealed class Tr101290Monitor
         public SectionMark Section0 { get; } = new();
         public SectionMark Section1 { get; } = new();
     }
+
+    private sealed class PmtTopology(ushort programNumber, byte version, byte lastSectionNumber)
+    {
+        public ushort ProgramNumber { get; } = programNumber;
+        public byte Version { get; } = version;
+        public byte LastSectionNumber { get; } = lastSectionNumber;
+        public Dictionary<byte, PMT> Sections { get; } = new();
+    }
+}
+
+internal enum Tr101290ClockMode
+{
+    Push,
+    File,
+    Udp,
 }

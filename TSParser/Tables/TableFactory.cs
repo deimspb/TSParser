@@ -55,6 +55,7 @@ namespace TSParser.Tables
         }
 
         internal Action<ushort, byte>? SectionCrcFailed { get; set; }
+        internal Action<ushort, ReadOnlyMemory<byte>>? SectionAssembled { get; set; }
 
         protected void ReportSectionCrcFailed(byte tableId)
         {
@@ -87,6 +88,7 @@ namespace TSParser.Tables
         {
             foreach (var section in PushPacketForSections(tsPacket))
             {
+                SectionAssembled?.Invoke(tsPacket.Pid, section);
                 TableData = GetSectionArray(section);
                 ProcessCurrentSection();
             }

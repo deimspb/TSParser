@@ -78,8 +78,6 @@ namespace TSParser.Tables.DvbTableFactory
 
             var crc32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);            
 
-            if (_sdtCache.HasCrc(crc32)) return; // already push this table outside
-
             if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
             {
                 ReportSectionCrcFailed(bytes[0]);
@@ -87,6 +85,8 @@ namespace TSParser.Tables.DvbTableFactory
                 ResetFactory();
                 return;
             }
+
+            if (_sdtCache.HasCrc(crc32)) return; // already push this table outside
 
             if (!TryParseAssembledTable(() =>
             {
@@ -119,8 +119,6 @@ namespace TSParser.Tables.DvbTableFactory
 
             var crc32 = BinaryPrimitives.ReadUInt32BigEndian(bytes[^4..]);            
 
-            if (_batCache.HasCrc(crc32)) return; // already push this table outside
-
             if (Utils.GetCRC32(bytes[..^4]) != crc32) // drop invalid ts packet
             {
                 ReportSectionCrcFailed(bytes[0]);
@@ -128,6 +126,8 @@ namespace TSParser.Tables.DvbTableFactory
                 ResetFactory();
                 return;
             }
+
+            if (_batCache.HasCrc(crc32)) return; // already push this table outside
 
             if (!TryParseAssembledTable(() =>
             {
